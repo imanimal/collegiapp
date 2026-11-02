@@ -1,0 +1,475 @@
+/* Pocket for Spotify: Collegiapp's Pocket design (docs/UIKit/README.md) as a Spicetify theme.
+   The handheld lives in a few places only: the dot-grid desk, module cards, the Your Library label band, B8 keys
+   (the orange play keys, the top row's program keys), and the LCD time readouts on the deck (the player bar).
+   Everything you read sits on a solid surface in Space Grotesk, with nothing drawn over it.
+
+   Alignment rules this file keeps (measured in the running app, Spotify 1.2.79):
+   - Shapes change, boxes don't. Spotify sizes its parts with hashed classes, so this file changes colour, radius
+     and shadow, and resizes only what it fully owns (the deck, the LCDs, the top row's keys).
+   - A key's lip is part of its height. Where a key sits next to a flat part (the search field), the face shrinks
+     by the lip so the top and bottom edges still line up.
+   - Spotify lazy-loads route CSS after this file, so rules that fight its own carry a `body` or `:root` prefix.
+     Only stable hooks are used: main-* and Root__* classes, data-testid, data-encore-id and Encore set classes.
+   Sections: fonts · tokens · Encore sets · radii · page and modules · library band · top row · keys · lists ·
+   deck · overlays · scrollbars · focus. */
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Doto:wght@600;800&display=swap");
+
+/* ───────────── tokens ───────────── */
+:root {
+  /* from color.ini (--spice-*); the fallbacks are Night, so a missing key still renders */
+  --pk-bg: var(--spice-bg, #1a1917);
+  --pk-bg2: var(--spice-bg2, #2a2926);
+  --pk-surface: var(--spice-main, #262522);
+  --pk-surface-2: var(--spice-main-elevated, #302e2a);
+  --pk-line: var(--spice-line, #3f3c36);
+  --pk-lip: var(--spice-lip, #0b0a09);
+  --pk-text: var(--spice-text, #f4efe5);
+  --pk-text-2: var(--spice-text-2, #d0c9ba);
+  --pk-text-3: var(--spice-subtext, #a39c8d);
+  --pk-chrome-bg: var(--spice-chrome-bg, #0f0e0d);
+  --pk-chrome-fg: var(--spice-chrome-fg, #ece6da);
+  --pk-accent: var(--spice-accent, #ff6a2b);
+  --pk-on-accent: var(--spice-on-accent, #1b1915);
+  --pk-warn: var(--spice-warn, #f0b54a);
+  --pk-bad: var(--spice-bad, #ff7a5c);
+  --pk-on-bad: var(--spice-on-bad, #1b1915);
+  --pk-ok: var(--spice-ok, #62c470);
+  --pk-acc2: var(--spice-acc2, #7aa5ff);
+  --pk-disp-bg: var(--spice-disp-bg, #45b3a1);
+  --pk-disp-fg: var(--spice-disp-fg, #04211c);
+  --pk-accent-soft: color-mix(in srgb, var(--pk-accent) 16%, transparent);
+  --pk-chrome-fg-2: color-mix(in srgb, var(--pk-chrome-fg) 72%, transparent);
+
+  --pk-radius: 14px;   /* modules */
+  --pk-btn-r: 10px;    /* keys, fields, rows */
+  --pk-font-ui: "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --pk-font-num: "Doto", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* elevation (kit section 2): card, key, dark key, program key, recessed, drop */
+  --pk-shadow-a: .3;
+  --pk-drop-a: .55;
+  --pk-scrim: rgba(0, 0, 0, .5);
+  --pk-card: 0 0 0 1px var(--pk-line), 0 2px 0 var(--pk-lip), 0 10px 24px rgba(0, 0, 0, var(--pk-shadow-a));
+  --pk-drop: 0 24px 60px rgba(0, 0, 0, var(--pk-drop-a)), 0 0 0 1px var(--pk-line);
+  --pk-ring: color-mix(in srgb, var(--pk-line) 75%, #000);
+  --pk-key: 0 0 0 1px var(--pk-ring), 0 3px 0 color-mix(in srgb, var(--pk-line) 55%, #000), 0 5px 10px rgba(0, 0, 0, .14);
+  --pk-key-down: 0 0 0 1px var(--pk-ring), 0 0 0 transparent, 0 1px 3px rgba(0, 0, 0, .12);
+  --pk-key-primary: 0 0 0 1px color-mix(in srgb, var(--pk-accent) 62%, #000), 0 3px 0 color-mix(in srgb, var(--pk-accent) 52%, #000), 0 5px 12px rgba(0, 0, 0, .16);
+  --pk-key-primary-down: 0 0 0 1px color-mix(in srgb, var(--pk-accent) 62%, #000), 0 0 0 transparent, 0 1px 3px rgba(0, 0, 0, .14);
+  --pk-key-dark: 0 0 0 1px #000, 0 3px 0 #000, 0 5px 12px rgba(0, 0, 0, .2);
+  --pk-key-dark-down: 0 0 0 1px #000, 0 0 0 transparent, 0 1px 3px rgba(0, 0, 0, .2);
+  --pk-prog: 0 0 0 1px var(--pk-ring), 0 2px 0 color-mix(in srgb, var(--pk-line) 55%, #000);
+  --pk-prog-on: 0 0 0 1px #000, 0 2px 0 #000;
+  --pk-recess: inset 0 0 0 1px var(--pk-line), inset 0 2px 2px rgba(0, 0, 0, .14);
+  --pk-face: linear-gradient(to bottom, color-mix(in srgb, #fff 14%, var(--pk-surface-2)), var(--pk-surface-2));
+  --pk-shine: linear-gradient(to bottom, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 70%);
+  --pk-grid: radial-gradient(color-mix(in srgb, var(--pk-text) 12%, transparent) 1px, transparent 1.5px);
+
+  /* Spotify's own font stacks */
+  --encore-body-font-stack: var(--pk-font-ui);
+  --encore-title-font-stack: var(--pk-font-ui);
+  --encore-variable-font-stack: var(--pk-font-ui);
+  --font-family: var(--pk-font-ui);
+  --fallback-fonts: system-ui, sans-serif;
+}
+/* theme.js sets this from --spice-main, so Cream gets Cream's lighter shadows */
+:root[data-pk-scheme="light"] {
+  --pk-shadow-a: .07;
+  --pk-drop-a: .28;
+  --pk-scrim: rgba(28, 22, 12, .34);
+}
+
+html, body { background: var(--pk-bg); color: var(--pk-text); font-family: var(--pk-font-ui); }
+button, input, select, textarea { font-family: var(--pk-font-ui); }
+
+/* ───────────── Encore sets: Spotify's colour roles, mapped to Pocket ─────────────
+   Everything built from Encore (buttons, chips, rows, text) follows these. Bright accent is Spotify's green: here
+   it is the orange key with ink on it. Orange text fails 4.5:1 on Cream, so --text-bright-accent stays ink and
+   orange is only ever a fill, an edge or an icon (kit section 2). */
+:root .encore-dark-theme,
+:root .encore-dark-theme .encore-base-set {
+  --background-base: var(--pk-surface);
+  --background-highlight: var(--pk-surface-2);
+  --background-press: var(--pk-bg2);
+  --background-elevated-base: var(--pk-surface-2);
+  --background-elevated-highlight: var(--pk-line);
+  --background-elevated-press: var(--pk-bg2);
+  --background-tinted-base: color-mix(in srgb, var(--pk-text) 8%, transparent);
+  --background-tinted-highlight: color-mix(in srgb, var(--pk-text) 13%, transparent);
+  --background-tinted-press: color-mix(in srgb, var(--pk-text) 18%, transparent);
+  --text-base: var(--pk-text);
+  --text-subdued: var(--pk-text-3);
+  --text-bright-accent: var(--pk-text);
+  --text-negative: var(--pk-bad);
+  --text-warning: var(--pk-warn);
+  --text-positive: var(--pk-ok);
+  --text-announcement: var(--pk-acc2);
+  --essential-base: var(--pk-text);
+  --essential-subdued: var(--pk-text-3);
+  --essential-bright-accent: var(--pk-accent);
+  --essential-negative: var(--pk-bad);
+  --essential-warning: var(--pk-warn);
+  --essential-positive: var(--pk-ok);
+  --essential-announcement: var(--pk-acc2);
+  --decorative-base: var(--pk-text);
+  --decorative-subdued: var(--pk-line);
+}
+:root .encore-dark-theme > *,
+:root .encore-dark-theme .encore-base-set > * { --parents-essential-base: var(--pk-text); }
+
+/* the orange key: ink on orange, 5.7:1 on Cream and 6.1:1 on Night */
+:root .encore-dark-theme .encore-bright-accent-set,
+:root .encore-dark-theme [data-testid="control-button-playpause"] > .encore-inverted-light-set {
+  --background-base: var(--pk-accent);
+  --background-highlight: color-mix(in srgb, #fff 18%, var(--pk-accent));
+  --background-press: color-mix(in srgb, #000 12%, var(--pk-accent));
+  --background-elevated-base: var(--pk-accent);
+  --background-elevated-highlight: color-mix(in srgb, #fff 18%, var(--pk-accent));
+  --background-elevated-press: color-mix(in srgb, #000 12%, var(--pk-accent));
+  --background-tinted-base: var(--pk-accent);
+  --background-tinted-highlight: var(--pk-accent);
+  --background-tinted-press: var(--pk-accent);
+  --text-base: var(--pk-on-accent);
+  --text-subdued: var(--pk-on-accent);
+  --text-bright-accent: var(--pk-on-accent);
+  --text-negative: var(--pk-on-accent);
+  --text-warning: var(--pk-on-accent);
+  --text-positive: var(--pk-on-accent);
+  --text-announcement: var(--pk-on-accent);
+  --essential-base: var(--pk-on-accent);
+  --essential-subdued: var(--pk-on-accent);
+  --essential-bright-accent: var(--pk-on-accent);
+  --essential-negative: var(--pk-on-accent);
+  --essential-warning: var(--pk-on-accent);
+  --essential-positive: var(--pk-on-accent);
+  --essential-announcement: var(--pk-on-accent);
+  --decorative-base: var(--pk-on-accent);
+  --decorative-subdued: color-mix(in srgb, #000 18%, var(--pk-accent));
+}
+:root .encore-dark-theme .encore-bright-accent-set > *,
+:root .encore-dark-theme [data-testid="control-button-playpause"] > .encore-inverted-light-set > * { --parents-essential-base: var(--pk-on-accent); }
+
+/* state sets: solid fills take --bg2 ink (or --on-bad), as in the kit's due pills; the subdued twins are washes */
+:root .encore-dark-theme .encore-negative-set {
+  --background-base: var(--pk-bad); --background-highlight: var(--pk-bad); --background-press: var(--pk-bad);
+  --background-elevated-base: var(--pk-bad); --background-elevated-highlight: var(--pk-bad); --background-elevated-press: var(--pk-bad);
+  --text-base: var(--pk-on-bad); --text-subdued: var(--pk-on-bad); --text-bright-accent: var(--pk-on-bad);
+  --essential-base: var(--pk-on-bad); --essential-subdued: var(--pk-on-bad); --essential-bright-accent: var(--pk-on-bad);
+  --decorative-base: var(--pk-on-bad);
+}
+:root .encore-dark-theme .encore-warning-set {
+  --background-base: var(--pk-warn); --background-highlight: var(--pk-warn); --background-press: var(--pk-warn);
+  --background-elevated-base: var(--pk-warn); --background-elevated-highlight: var(--pk-warn); --background-elevated-press: var(--pk-warn);
+  --text-base: var(--pk-bg2); --text-subdued: var(--pk-bg2); --text-bright-accent: var(--pk-bg2);
+  --essential-base: var(--pk-bg2); --essential-subdued: var(--pk-bg2); --essential-bright-accent: var(--pk-bg2);
+  --decorative-base: var(--pk-bg2);
+}
+:root .encore-dark-theme .encore-positive-set {
+  --background-base: var(--pk-ok); --background-highlight: var(--pk-ok); --background-press: var(--pk-ok);
+  --background-elevated-base: var(--pk-ok); --background-elevated-highlight: var(--pk-ok); --background-elevated-press: var(--pk-ok);
+  --text-base: var(--pk-bg2); --text-subdued: var(--pk-bg2); --text-bright-accent: var(--pk-bg2);
+  --essential-base: var(--pk-bg2); --essential-subdued: var(--pk-bg2); --essential-bright-accent: var(--pk-bg2);
+  --decorative-base: var(--pk-bg2);
+}
+:root .encore-dark-theme .encore-announcement-set {
+  --background-base: var(--pk-acc2); --background-highlight: var(--pk-acc2); --background-press: var(--pk-acc2);
+  --background-elevated-base: var(--pk-acc2); --background-elevated-highlight: var(--pk-acc2); --background-elevated-press: var(--pk-acc2);
+  --text-base: var(--pk-bg2); --text-subdued: var(--pk-bg2); --text-bright-accent: var(--pk-bg2);
+  --essential-base: var(--pk-bg2); --essential-subdued: var(--pk-bg2); --essential-bright-accent: var(--pk-bg2);
+  --decorative-base: var(--pk-bg2);
+}
+:root .encore-dark-theme :is(.encore-negative-subdued-set, .encore-warning-subdued-set, .encore-positive-subdued-set, .encore-announcement-subdued-set) {
+  --background-base: color-mix(in srgb, var(--pk-surface) 84%, var(--pk-text-3));
+  --background-highlight: var(--pk-surface-2);
+  --background-press: var(--pk-bg2);
+  --background-elevated-base: var(--pk-surface-2);
+  --background-elevated-highlight: var(--pk-line);
+  --text-base: var(--pk-text); --text-subdued: var(--pk-text-2); --text-bright-accent: var(--pk-text);
+  --essential-base: var(--pk-text); --essential-subdued: var(--pk-text-2);
+  --decorative-base: var(--pk-text); --decorative-subdued: var(--pk-line);
+}
+:root .encore-dark-theme .encore-negative-subdued-set { --essential-base: var(--pk-bad); --text-negative: var(--pk-bad); }
+:root .encore-dark-theme .encore-warning-subdued-set { --essential-base: var(--pk-warn); --text-warning: var(--pk-warn); }
+:root .encore-dark-theme .encore-positive-subdued-set { --essential-base: var(--pk-ok); --text-positive: var(--pk-ok); }
+:root .encore-dark-theme .encore-announcement-subdued-set { --essential-base: var(--pk-acc2); --text-announcement: var(--pk-acc2); }
+
+/* Spotify's white-on-black parts (a selected chip, white buttons) become the dark key: graphite with light ink,
+   like the pressed program key (.nv.on) */
+:root .encore-dark-theme :is(.encore-inverted-light-set, .encore-inverted-dark-set) {
+  --background-base: var(--pk-chrome-bg);
+  --background-highlight: color-mix(in srgb, #fff 10%, var(--pk-chrome-bg));
+  --background-press: #000;
+  --background-elevated-base: var(--pk-chrome-bg);
+  --background-elevated-highlight: color-mix(in srgb, #fff 10%, var(--pk-chrome-bg));
+  --text-base: var(--pk-chrome-fg); --text-subdued: var(--pk-chrome-fg-2); --text-bright-accent: var(--pk-chrome-fg);
+  --essential-base: var(--pk-chrome-fg); --essential-subdued: var(--pk-chrome-fg-2); --essential-bright-accent: var(--pk-accent);
+  --decorative-base: var(--pk-chrome-fg);
+}
+:root .encore-dark-theme :is(.encore-inverted-light-set, .encore-inverted-dark-set) > * { --parents-essential-base: var(--pk-chrome-fg); }
+
+/* ───────────── radii ─────────────
+   Spotify's corner tokens, moved onto the kit's scale: covers and small chips 6, rows and keys 10. */
+:root :is(.encore-layout-themes, .encore-small-devices-theme, .encore-medium-devices-theme) {
+  --encore-corner-radius-smaller: 4px;
+  --encore-corner-radius-base: 6px;
+  --encore-corner-radius-larger: 8px;
+  --encore-corner-radius-larger-2: 10px;
+}
+
+/* ───────────── page and modules ─────────────
+   The desk is --bg with the 16 px dot grid; the library, the page, the right sidebar and the deck are modules (F3):
+   a solid card with a ring, a 2 px lip and a soft shadow. */
+body .Root__top-container { background: var(--pk-grid) 0 0 / 16px 16px, var(--pk-bg); }
+body .Root__globalNav,
+body .Root__now-playing-bar { background: transparent; }
+
+/* each sidebar's resize handle is a sibling with a hidden label; it must stay bare */
+body .Root__nav-bar,
+body .Root__main-view,
+body .Root__right-sidebar > :not(:has(> label)) {
+  background-color: var(--pk-surface);
+  border-radius: var(--pk-radius);
+  box-shadow: var(--pk-card);
+}
+body .Root__right-sidebar > :not(:has(> label)) { overflow: hidden; }
+/* the library can't clip (its resize handle sits just outside its box), so its inner layers take the same corners */
+body .Root__nav-bar :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryContainer) { border-radius: var(--pk-radius); }
+body .main-topBar-background { border-radius: var(--pk-radius) var(--pk-radius) 0 0; }
+
+/* Spotify tints page headers with the cover's colour and a gradient. Pocket draws nothing over text, so the washes go
+   and the sticky top bar is plain surface. */
+body .main-entityHeader-backgroundColor,
+body .main-actionBarBackground-background,
+body .main-home-homeHeader { background: none !important; }
+body .main-topBar-background { background-color: var(--pk-surface) !important; }
+body .main-topBar-overlay { background: none !important; }
+
+/* ───────────── Your Library: the F3 label band ─────────────
+   A graphite band with the uppercase label and an orange icon; its keys are ghost keys in the band's colours.
+   Open: one 48 px row. Collapsed: the two keys stacked and centred. */
+body .main-yourLibraryX-header {
+  --text-base: var(--pk-chrome-fg);
+  --text-subdued: var(--pk-chrome-fg-2);
+  --essential-base: var(--pk-chrome-fg);
+  --essential-subdued: var(--pk-chrome-fg-2);
+  --background-tinted-base: rgba(255, 255, 255, .08);
+  --background-tinted-highlight: rgba(255, 255, 255, .14);
+  --background-tinted-press: rgba(255, 255, 255, .2);
+  --background-elevated-base: rgba(255, 255, 255, .08);
+  --background-elevated-highlight: rgba(255, 255, 255, .14);
+  gap: 0;
+  min-height: 48px;
+  padding: 6px 8px 6px 16px;
+  justify-content: center;
+  background: var(--pk-chrome-bg);
+  color: var(--pk-chrome-fg);
+  border-radius: var(--pk-radius) var(--pk-radius) 0 0;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .25);
+}
+body .main-yourLibraryX-header:has(.main-yourLibraryX-headerIsCollapsed) { padding: 10px 0; align-items: center; }
+body .main-yourLibraryX-header h1 { font-size: 12px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+body .main-yourLibraryX-collapseButton svg { color: var(--pk-accent); }
+body .main-yourLibraryX-headerContent > :last-child button { border-radius: 8px; }
+body .main-yourLibraryX-filterArea { margin-top: 12px; }
+
+/* ───────────── the top row ───────────── */
+/* the search field is recessed, with field corners instead of a pill */
+body .main-globalNav-searchInputContainer .main-topBar-searchBar,
+body .main-globalNav-searchInputContainer:hover .main-topBar-searchBar {
+  background: var(--pk-bg2) !important;
+  color: var(--pk-text);
+  caret-color: var(--pk-accent);
+  border-radius: var(--pk-btn-r) !important;
+  box-shadow: var(--pk-recess) !important;
+}
+body .main-globalNav-searchInputContainer .main-topBar-searchBar:focus { outline: 2px solid var(--pk-accent); outline-offset: -2px; }
+body .main-topBar-searchBar::placeholder { color: var(--pk-text-3); opacity: 1; }
+
+/* home and the custom-app links are program keys (1 px ring, 2 px lip). The face is 46 px and the lip fills the
+   last 2, so key and search field share their top and bottom edges. The page you are on is the pressed key:
+   graphite with an orange icon. */
+body .Root__globalNav .main-globalNav-navLink {
+  box-sizing: border-box;
+  width: 48px;
+  height: 46px;
+  min-block-size: 46px;
+  margin-bottom: 2px;
+  border-radius: var(--pk-btn-r);
+  color: var(--pk-text-3);
+  background: var(--pk-face);
+  box-shadow: var(--pk-prog);
+}
+body .Root__globalNav .main-globalNav-navLink:active { transform: translateY(2px); box-shadow: 0 0 0 1px var(--pk-ring); }
+body .Root__globalNav .main-globalNav-navLinkActive {
+  color: var(--pk-accent);
+  background: var(--pk-chrome-bg);
+  box-shadow: var(--pk-prog-on);
+}
+@media (hover: hover) {
+  body .Root__globalNav .main-globalNav-navLink:hover { color: var(--pk-text); background: linear-gradient(to bottom, color-mix(in srgb, #fff 26%, var(--pk-surface-2)), var(--pk-surface-2)); }
+  body .Root__globalNav .main-globalNav-navLinkActive:hover { color: var(--pk-accent); background: var(--pk-chrome-bg); }
+}
+
+/* ───────────── keys (B8) ─────────────
+   Orange primary keys (play on pages and cards, the green buttons), dark keys (Spotify's white buttons) and plastic
+   secondary keys. Keys travel 3 px when pressed and light up on hover instead of growing. Other primary buttons
+   (the round arrows over media) keep Spotify's look. Tertiary buttons stay flat ghosts. */
+body [data-encore-id="buttonPrimary"]:has(> :is(.encore-bright-accent-set, .encore-inverted-light-set)),
+body [data-encore-id="buttonPrimary"] > :is(.encore-bright-accent-set, .encore-inverted-light-set),
+body [data-encore-id="buttonSecondary"],
+body [data-encore-id="buttonSecondary"] > span {
+  border-radius: var(--pk-btn-r);
+}
+/* a primary key's ring and lip go on its face (the inner span), not the button: Spotify hides hover-only keys
+   (Home's shortcut tiles) by fading the face, and the key must vanish with it */
+body [data-encore-id="buttonPrimary"] > :is(.encore-bright-accent-set, .encore-inverted-light-set) { background-image: var(--pk-shine); }
+body [data-encore-id="buttonPrimary"] > .encore-bright-accent-set { box-shadow: var(--pk-key-primary); }
+body [data-encore-id="buttonPrimary"] > .encore-inverted-light-set { box-shadow: var(--pk-key-dark); }
+/* secondary keys carry their face on the button itself (some have no inner span); an inner span goes clear */
+body [data-encore-id="buttonSecondary"] {
+  color: var(--pk-text);
+  background: var(--pk-face);
+  box-shadow: var(--pk-key);
+}
+body [data-encore-id="buttonSecondary"] > span { background: transparent; box-shadow: none; color: inherit; }
+body [data-encore-id="buttonPrimary"]:has(> :is(.encore-bright-accent-set, .encore-inverted-light-set)):active,
+body [data-encore-id="buttonSecondary"]:active { transform: translateY(3px); }
+body [data-encore-id="buttonPrimary"]:active > .encore-bright-accent-set { box-shadow: var(--pk-key-primary-down); }
+body [data-encore-id="buttonPrimary"]:active > .encore-inverted-light-set { box-shadow: var(--pk-key-dark-down); }
+body [data-encore-id="buttonSecondary"]:active { box-shadow: var(--pk-key-down); }
+body :is([data-encore-id="buttonPrimary"], [data-encore-id="buttonSecondary"]) > span { transform: none !important; }
+@media (hover: hover) {
+  body [data-encore-id="buttonSecondary"]:hover { background: linear-gradient(to bottom, color-mix(in srgb, #fff 26%, var(--pk-surface-2)), var(--pk-surface-2)); }
+}
+/* a card's play key is a key, not a disc */
+body .main-playButton-PlayButton { border-radius: var(--pk-btn-r); }
+/* Home's shortcut tiles float their play key over the right end of the title column. The title stops short of it
+   (key 32 px + 8 px gap + 8 px edge), so long names wrap and end before the key instead of running under it; the
+   space is kept at rest too, so titles don't reflow when the key fades in. The grid gives the key a drop shadow
+   of its own, which the lip replaces. */
+body .view-homeShortcutsGrid-nameContainer { padding-inline-end: 48px; }
+body .view-homeShortcutsGrid-shortcut .view-homeShortcutsGrid-PlayButtonContainer .view-homeShortcutsGrid-playButton { box-shadow: var(--pk-key-primary); }
+body .view-homeShortcutsGrid-shortcut .view-homeShortcutsGrid-PlayButtonContainer button:active > .view-homeShortcutsGrid-playButton { box-shadow: var(--pk-key-primary-down); }
+
+/* ───────────── lists ───────────── */
+/* track rows: a solid hover, and a selected row is the accent wash with a 3 px accent edge (kit: .sel) */
+body .main-trackList-trackListRow { border-radius: var(--pk-btn-r); }
+body .main-trackList-trackListHeaderRow { border-bottom-color: var(--pk-line); }
+body :is(.main-trackList-number, .main-trackList-rowSectionEnd) { font-variant-numeric: tabular-nums; }
+@media (hover: hover) {
+  body .main-trackList-trackListRow:hover { background-color: var(--pk-surface-2); }
+}
+body .main-trackList-trackListRow[aria-selected="true"],
+body .main-trackList-trackListRow[aria-selected="true"]:hover {
+  background-color: var(--pk-accent-soft);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+
+/* list rows everywhere (library, queue, home lists); the open library item gets the same .sel look */
+body [data-encore-id="listRow"] { border-radius: var(--pk-btn-r); }
+body .main-yourLibraryX-listItem[aria-selected="true"] [data-encore-id="listRow"] {
+  background-color: var(--pk-accent-soft);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+
+/* cards stay flat until hovered, like Spotify's, with the kit's corners */
+body :is(.main-card-card, [data-encore-id="card"]) { border-radius: var(--pk-btn-r); }
+
+/* ───────────── the deck: the player bar ─────────────
+   The device's bottom row: an 80 px module, everything centred on its middle line. Play/pause is the orange key;
+   the elapsed and total times are LCD inlays (Doto digits, dark on the reflective panel, in a graphite bezel). */
+body .main-nowPlayingBar-nowPlayingBar {
+  height: 80px;
+  padding: 0 12px 0 8px;
+  align-items: center;
+  background: var(--pk-surface);
+  border-radius: var(--pk-radius);
+  box-shadow: var(--pk-card);
+}
+body [data-testid="player-controls"] { justify-content: center; }
+body :is([data-testid="cover-art-button"], .main-nowPlayingWidget-coverArt, .main-nowPlayingWidget-coverArt img) { border-radius: 6px; }
+
+/* Spotify draws this one as a white key; [data-encore-id] lifts these rules over the dark-key rules above */
+body [data-encore-id][data-testid="control-button-playpause"],
+body [data-encore-id][data-testid="control-button-playpause"] > span { border-radius: 8px; }
+body [data-encore-id][data-testid="control-button-playpause"] > span { box-shadow: var(--pk-key-primary); }
+body [data-encore-id][data-testid="control-button-playpause"]:active { transform: translateY(3px); }
+body [data-encore-id][data-testid="control-button-playpause"]:active > span { box-shadow: var(--pk-key-primary-down); }
+
+body .playback-bar { gap: 12px; }
+body :is(.playback-bar__progress-time-elapsed, .main-playbackBarRemainingTime-container) {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  min-width: 52px;
+  padding: 0 6px;
+  font: 800 14px/1 var(--pk-font-num);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  color: var(--pk-disp-fg);
+  border-radius: 5px;
+  /* dot-matrix texture under the digits, then the reflective panel */
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .045) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .045) 0 1px, transparent 1px 3px),
+    linear-gradient(170deg, color-mix(in srgb, #fff 18%, var(--pk-disp-bg)), var(--pk-disp-bg) 60%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .28), inset 0 0 0 1px rgba(0, 0, 0, .3), 0 0 0 2px var(--pk-chrome-bg), 0 0 0 3px #000;
+}
+
+/* seek and volume: a recessed pill that fills with ink and turns orange while you drag or hover; the handle is a
+   graphite cap the same size as Spotify's, so it stays centred on the track */
+body .progress-bar {
+  --bg-color: var(--pk-line);
+  --mg-color: color-mix(in srgb, var(--pk-text-3) 70%, transparent);
+  --fg-color: var(--pk-text-2);
+  --is-active-fg-color: var(--pk-accent);
+  --progress-bar-height: 6px;
+}
+body .x-progressBar-progressBarBg { box-shadow: var(--pk-recess); }
+body .progress-bar__slider {
+  border-radius: 3px;
+  background-color: var(--pk-chrome-bg);
+  box-shadow: 0 0 0 2px var(--pk-accent), 0 2px 3px rgba(0, 0, 0, .3);
+}
+
+/* the "listening on" bar is a graphite label band */
+body .main-connectBar-connectBar {
+  background: var(--pk-chrome-bg);
+  color: var(--pk-chrome-fg);
+  border-radius: var(--pk-btn-r);
+}
+
+/* ───────────── overlays: menus, dialogs ───────────── */
+body .main-contextMenu-menu {
+  background: var(--pk-surface);
+  border-radius: var(--pk-btn-r);
+  box-shadow: var(--pk-drop);
+  padding: 4px;
+}
+body .main-contextMenu-menuItemButton { border-radius: 6px; }
+@media (hover: hover) {
+  body .main-contextMenu-menuItemButton:hover { background-color: var(--pk-surface-2); }
+}
+body :is(.main-confirmDialog-container, .main-trackCreditsModal-container, .main-playlistEditDetailsModal-container) {
+  border-radius: var(--pk-radius);
+  box-shadow: var(--pk-drop);
+}
+body .GenericModal__overlay { background: var(--pk-scrim); backdrop-filter: blur(3px); }
+
+/* section headers in the right sidebar read as group headers: small, 600, sentence case */
+body .main-nowPlayingView-sectionHeaderText { font-size: .85em; font-weight: 600; letter-spacing: 0; }
+
+/* ───────────── scrollbars: a thin --line thumb, like the app ───────────── */
+body .os-theme-spotify .os-scrollbar-handle { background-color: var(--pk-line) !important; border-radius: 99px; }
+@media (hover: hover) {
+  body .os-theme-spotify .os-scrollbar:hover .os-scrollbar-handle { background-color: var(--pk-text-3) !important; }
+}
+
+/* ───────────── focus: always a 2 px orange ring ───────────── */
+body :is(button, a, [role="button"]):focus-visible {
+  outline: 2px solid var(--pk-accent);
+  outline-offset: 2px;
+}

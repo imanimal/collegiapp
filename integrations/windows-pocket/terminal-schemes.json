@@ -1,0 +1,83 @@
+{
+  "schemes": [
+    {
+      "name": "Pocket Cream",
+      "background": "#F6F3EC",
+      "foreground": "#2A2722",
+      "cursorColor": "#FF5B1F",
+      "selectionBackground": "#F9C2AA",
+      "black": "#2A2722",
+      "red": "#C8341B",
+      "green": "#2E7D32",
+      "yellow": "#9A5B00",
+      "blue": "#2F6FDE",
+      "purple": "#B03AA8",
+      "cyan": "#00838F",
+      "white": "#D3CCBD",
+      "brightBlack": "#6A645A",
+      "brightRed": "#E0451F",
+      "brightGreen": "#3B8F40",
+      "brightYellow": "#C27A00",
+      "brightBlue": "#4A86F0",
+      "brightPurple": "#C454BC",
+      "brightCyan": "#1A9FAB",
+      "brightWhite": "#EBE7DD"
+    },
+    {
+      "name": "Pocket Night",
+      "background": "#1A1917",
+      "foreground": "#E9E3D6",
+      "cursorColor": "#FF6A2B",
+      "selectionBackground": "#63331D",
+      "black": "#0F0E0D",
+      "red": "#FF7A5C",
+      "green": "#62C470",
+      "yellow": "#F0B54A",
+      "blue": "#7AA5FF",
+      "purple": "#D77BD0",
+      "cyan": "#4FC3C9",
+      "white": "#D0C9BA",
+      "brightBlack": "#7D766A",
+      "brightRed": "#FF9A82",
+      "brightGreen": "#86D891",
+      "brightYellow": "#F6CB79",
+      "brightBlue": "#9DBCFF",
+      "brightPurple": "#E49EE0",
+      "brightCyan": "#7FD6DA",
+      "brightWhite": "#F4EFE5"
+    },
+    {
+      "name": "Pocket LCD",
+      "background": "#B1BD93",
+      "foreground": "#1F2A17",
+      "cursorColor": "#1F2A17",
+      "selectionBackground": "#94A07A",
+      "black": "#1F2A17",
+      "red": "#7A2410",
+      "green": "#1E5420",
+      "yellow": "#6B4E00",
+      "blue": "#1D3D73",
+      "purple": "#6A2463",
+      "cyan": "#0B5157",
+      "white": "#E4E9D5",
+      "brightBlack": "#4A5640",
+      "brightRed": "#A1341A",
+      "brightGreen": "#2C6E2E",
+      "brightYellow": "#8A6500",
+      "brightBlue": "#2B5296",
+      "brightPurple": "#8A3383",
+      "brightCyan": "#116B72",
+      "brightWhite": "#F4F6EC"
+    }
+  ],
+  "profiles": {
+    "defaults": {
+      "colorScheme": { "light": "Pocket Cream", "dark": "Pocket Night" },
+      "font": { "face": "Space Mono, Cascadia Mono", "size": 11 },
+      "cursorShape": "filledBox",
+      "padding": "12",
+      "useAcrylic": false,
+      "opacity": 100
+    }
+  }
+}

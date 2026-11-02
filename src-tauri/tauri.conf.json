@@ -1,0 +1,105 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Collegiapp",
+  "version": "0.1.0",
+  "identifier": "io.github.imanimal.collegiapp",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Collegiapp",
+        "url": "index.html",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 520,
+        "center": true,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true
+      },
+      {
+        "label": "island",
+        "create": false,
+        "title": "Collegiapp Island",
+        "url": "island.html",
+        "width": 380,
+        "height": 64,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "visible": false,
+        "shadow": false,
+        "focus": false
+      },
+      {
+        "label": "start",
+        "create": false,
+        "title": "Collegiapp Start",
+        "url": "start.html",
+        "width": 756,
+        "height": 742,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "visible": false,
+        "shadow": false,
+        "focus": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "category": "Productivity",
+    "shortDescription": "Get through college: one list, do-first ranking, focus mode.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "11.0"
+    },
+    "iOS": {
+      "minimumSystemVersion": "16.2"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENBMTI4MDgzQTg0MzAxMjMKUldRakFVT29nNEFTeXF4L2Y3QmlOSEViNUxTOENmMW5SK1FZbnoybjdCaGkxdGNoOXJwb0dGLysK",
+      "endpoints": [
+        "https://github.com/imanimal/collegiapp/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

@@ -1,0 +1,167 @@
+/* Collegiapp — base: page, desk, screen and content box, overlay plumbing, island and shell previews.
+   The look itself (Pocket: L6 P9 B8 F3 T6) is pocket.css; Standard (L8) is standard.css on top of it. Colours are
+   palette tokens that lab.js sets on :root (from themes.js); the defaults below are P9 Cream so the first paint
+   already matches. Needs WebKit 16.2+ / Chromium 111+ (color-mix, container queries, :has, dvh): WebView2 on
+   Windows, WKWebView on macOS 11+ and iOS 16.2+. */
+
+:root {
+  color-scheme: light;
+  --desk-c: #e6e2d8; --panel-bg: #f6f3ec; --bg: #e6e2d8; --bg2: #fbf9f4;
+  --fg: #2a2722; --dim: #6f695e; --hi: #151310;
+  --acc: #ff5b1f; --acc2: #2f6fde; --warn: #9a5b00; --bad: #c8341b; --ok: #2e7d32;
+  --sel-bg: #ff5b1f; --sel-fg: #1b1915; --hover-bg: rgba(0, 0, 0, .04);
+  --chrome-bg: #2a2722; --chrome-fg: #f6f3ec; --hot: #ff5b1f; --shadow: rgba(60, 50, 30, .25);
+  --glow-rgb: 255, 91, 31;
+  --k1: #2f6fde; --k2: #ff5b1f; --k3: #2e8b57; --k4: #b03aa8; --k5: #c27a00; --k6: #5b5548;
+
+  --font-body: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-body);
+  --font-scale: .95; --display-scale: 1;
+  --fs-base: 18px; --pad: .8em; --gap: .9em; --rowpad: .32em; --zoom: 1;
+  --m: 1;           /* motion multiplier (0 = instant); lab.js sets it from the style code (M2 = 1) */
+  --ts: none;
+  /* Fluid type: the chosen size on laptops, growing up to 18% on large monitors so 1440p and 4K stay
+     proportionate. --zoom is the user's text size (Ctrl/⌘ + and −); it scales everything, layout included. */
+  --fs0: calc(var(--fs-base) * var(--font-scale) * var(--zoom));
+  --fs: clamp(var(--fs0), calc(var(--fs0) * .8 + .3vw), calc(var(--fs0) * 1.18));
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; height: 100%; height: 100dvh; overflow: hidden;
+  background: var(--desk-c); color: var(--fg); font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-synthesis: none;
+}
+button { font: inherit; color: inherit; touch-action: manipulation; }
+::selection { background: color-mix(in srgb, var(--acc) 32%, transparent); }
+
+/* ───────────── desk / monitor ─────────────
+   Full mode (the default) is the app filling its window edge to edge, as it will in Tauri and on a phone.
+   Desk mode previews the window on a desktop with the island and taskbar/menu-bar mocks around it. */
+.desk { position: relative; height: 100%; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.desk[data-mode="desk"] {
+  place-items: center; padding: 62px 24px 66px;
+  background: radial-gradient(ellipse 70% 55% at 50% 42%, #24272c 0%, #15171a 55%, #0a0a0b 100%);
+}
+.desk[data-mode="desk"][data-shell="zebar"], .desk[data-mode="desk"][data-shell="mac"] { padding-block: 84px 22px; }
+body.lab-open .desk { padding-right: 400px; }
+body.lab-open .desk[data-mode="desk"] { padding-right: 424px; }
+.monitor { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.desk[data-mode="desk"] .monitor { max-width: 1240px; max-height: 820px; }
+.bezel { height: 100%; display: flex; flex-direction: column; }
+
+/* ───────────── screen + content box ─────────────
+   The screen is a named container: the layouts in pocket.css follow the room the app actually has
+   (@container screen …), not the window, so the Appearance drawer, the desk preview, split view and
+   iPad Slide Over all get the layout that fits. */
+.screen { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--bg); isolation: isolate; container: screen / inline-size; }
+.warp { position: absolute; inset: 0; } /* holds C2's warp filter (crt.css), so the content can slide under it */
+.content {
+  position: absolute; inset: 0; display: grid; gap: var(--gap);
+  font-size: var(--fs); line-height: 1.45; overflow: hidden;
+}
+.region { min-width: 0; min-height: 0; position: relative; container-type: inline-size; }
+#top { grid-area: top; } #nav { grid-area: nav; } #now { grid-area: now; } #sched { grid-area: sched; }
+#list { grid-area: list; } #bottom { grid-area: bottom; }
+.sp { flex: 1; }
+.num { font-variant-numeric: tabular-nums; }
+
+.screen :is(input, select, textarea) { font: inherit; min-width: 0; }
+.screen kbd { font: inherit; }
+
+/* ───────────── overlay plumbing (looks in pocket.css) ───────────── */
+.layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; font-size: var(--fs); line-height: 1.45; }
+.layer > * { pointer-events: auto; }
+.ov { position: absolute; inset: 0; display: grid; place-items: center; padding: 4%; }
+.ov.full { place-items: stretch; padding: max(3.5%, env(safe-area-inset-top)) 5% max(3.5%, env(safe-area-inset-bottom)); }
+.dialog { width: min(46em, 100%); max-height: 100%; height: auto; }
+.dialog.sm { width: min(30em, 100%); }
+.toasts { position: absolute; right: 2.4%; bottom: 7.5em; display: flex; flex-direction: column; gap: .45em; align-items: flex-end; pointer-events: none; max-width: min(34em, 92%); z-index: 2; }
+.toast { pointer-events: auto; display: flex; gap: .6em; align-items: center; max-width: 100%; }
+.toast .msg { overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: .45em; min-width: 0; }
+.radial { position: absolute; width: 0; height: 0; z-index: 25; }
+.radial .hub { position: absolute; left: -1.6em; top: -1.6em; width: 3.2em; height: 3.2em; border-radius: 50%; display: grid; place-items: center; }
+/* keys sit on an ellipse around the hub (--x, --y: the spoke's direction) and grow outward from it,
+   so a label of any length never reaches the hub or a neighbour; the ring is the dial they hang from */
+.radial .ring { position: absolute; left: -4.6em; top: -4.6em; width: 9.2em; height: 9.2em; border-radius: 50%; }
+.radial .rb { position: absolute; left: calc(var(--x) * 3em); top: calc(var(--y) * 4em); transform: translate(calc(-50% + var(--x) * 50%), calc(-50% + var(--y) * 50%)); }
+#radial.sizing * { animation: none; }
+.tips { position: absolute; inset: 0; pointer-events: none; z-index: 28; }
+.tip { position: absolute; transform: translate(-30%, -60%); }
+
+/* ───────────── island (desk preview of the live-activity pill; the real one is island.html) ───────────── */
+.island {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60;
+  border-radius: 999px; padding: 6px 16px 6px 8px; min-width: 330px; max-width: calc(100% - 32px);
+  display: flex; flex-direction: column; gap: 0; cursor: pointer; user-select: none; -webkit-user-select: none;
+  transition: border-radius calc(var(--m) * 320ms) cubic-bezier(.2, .9, .3, 1.15), padding calc(var(--m) * 320ms), width calc(var(--m) * 320ms);
+}
+.desk[data-shell="zebar"] .island, .desk[data-shell="mac"] .island { top: 44px; }
+.island.open { border-radius: 24px; padding: 12px 14px; width: min(460px, calc(100% - 32px)); cursor: default; }
+.is-pill { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.is-ring { width: 26px; height: 26px; flex: none; }
+.is-ring circle { fill: none; stroke-width: 3; }
+.is-ring .pr { stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s linear; }
+.is-lbl { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.is-more { display: none; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .12); }
+.island.open .is-more { display: flex; }
+.is-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.is-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.is-row input { flex: 1; min-width: 0; }
+.is-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--p-island, var(--acc)); }
+
+/* ───────────── shell mocks: Windows taskbar / Zebar / macOS menu bar ───────────── */
+.taskbar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 48px; z-index: 55;
+  background: rgba(28, 30, 34, .94); border-top: 1px solid rgba(255, 255, 255, .08);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font: 12px/1.2 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #e8e8e8; padding-inline: 16px;
+}
+.tb-ic { width: 40px; height: 40px; border-radius: 6px; display: grid; place-items: center; position: relative; color: #cfd3da; font: 600 13px/1 ui-monospace, Consolas, monospace; }
+.tb-ic:hover { background: rgba(255, 255, 255, .08); }
+.tb-ic .g { width: 22px; height: 22px; border-radius: 5px; background: #3b4048; display: grid; place-items: center; }
+.tb-prog { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.tb-prog i { display: block; height: 100%; background: #3ddc84; transition: width 1s linear; }
+.tb-badge { position: absolute; right: 2px; top: 2px; min-width: 15px; height: 15px; border-radius: 8px; background: #e5484d; color: #fff; font: 700 10px/15px "Segoe UI", sans-serif; text-align: center; padding: 0 3px; }
+.tb-tray { position: absolute; right: 16px; display: flex; gap: 12px; align-items: center; color: #d6d6d6; text-align: right; }
+.tb-tray .clock { line-height: 1.25; }
+.tb-hint { position: absolute; left: 16px; color: #8b8f96; font-size: 11px; }
+.shellbar {
+  position: absolute; left: 0; right: 0; top: 0; height: 32px; z-index: 55; padding-inline: 16px;
+  display: flex; align-items: center; gap: 14px; font: 12px/1 ui-monospace, Consolas, monospace; color: #d8dbe0;
+  background: rgba(16, 17, 20, .9); border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.shellbar .ws { display: flex; gap: 4px; }
+.shellbar .ws span { padding: 3px 7px; border-radius: 4px; background: rgba(255, 255, 255, .06); }
+.shellbar .ws span.on { background: rgba(var(--glow-rgb), .25); color: #fff; }
+.shellbar .wid { margin-inline: auto; display: flex; gap: 10px; align-items: center; padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+.shellbar .wid .sep { opacity: .4; }
+.shellbar.mac { background: rgba(236, 236, 240, .82); color: #1d1d1f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 13px; height: 28px; }
+.shellbar.mac .menus { display: flex; gap: 16px; }
+.shellbar.mac .menus b { font-weight: 700; }
+.shellbar.mac .stat { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+.shellbar.mac .mi { display: flex; gap: 6px; align-items: center; padding: 2px 8px; border-radius: 5px; background: rgba(0, 0, 0, .08); font-variant-numeric: tabular-nums; cursor: pointer; }
+
+/* phones and narrow windows: no desk preview, the drawer becomes a sheet (lab.css) */
+@media (max-width: 760px) {
+  .desk[data-mode="desk"] { padding: 0; background: none; place-items: stretch; }
+  .desk[data-mode="desk"] .monitor { max-width: none; max-height: none; }
+  .island, .taskbar, .shellbar { display: none !important; }
+  body.lab-open .desk, body.lab-open .desk[data-mode="desk"] { padding-right: 0; }
+}
+
+/* ───────────── print and PDF ─────────────
+   A note prints from #printArea (app.js printNote fills it with the note and notes.js PRINT_CSS, and sets
+   html.printing for the moment it prints); everything else on the page stays off the paper. */
+#printArea { display: none; }
+@media print {
+  html.printing, html.printing body { height: auto !important; overflow: visible !important; background: #fff !important; color: #1b1915; }
+  html.printing body > :not(#printArea) { display: none !important; }
+  html.printing #printArea { display: block; }
+  html.printing #printArea .doc { max-width: none; margin: 0; padding: 0; }
+  html.printing #printArea :is(h1, h2, h3) { break-after: avoid; }
+  html.printing #printArea :is(pre, table, blockquote, .callout, li) { break-inside: avoid; }
+  @page { margin: 16mm 15mm 18mm; }
+}

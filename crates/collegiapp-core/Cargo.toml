@@ -1,0 +1,17 @@
+[package]
+name = "collegiapp-core"
+description = "Platform-independent core of Collegiapp: unified Item model, quick-add parser, do-first scoring, filter DSL, sync merge, ICS import, presence."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "collegiapp_core"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,85 @@
+[package]
+name = "collegiapp"
+description = "Collegiapp app shell (Tauri 2: Windows, macOS, Linux, iOS, Android)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+default-run = "collegiapp"
+
+[lib]
+# `_lib` suffix avoids a name clash with the bin target on Windows (Tauri convention).
+name = "collegiapp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "collegiapp"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+collegiapp-core = { path = "../crates/collegiapp-core" }
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
+serde.workspace = true
+serde_json.workspace = true
+chrono = { version = "0.4", features = ["serde", "clock"] }
+uuid.workspace = true
+percent-encoding = "2"
+# PKCE for the Google sign-in (cloud.rs); already in the lock through tauri
+# the trash's chunks (trash.rs); already built for tauri-utils' asset compression
+brotli = "9"
+
+# desktop only (lib.rs gates their use with #[cfg(desktop)])
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+sysinfo = { version = "0.40", default-features = false, features = ["system"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+
+# Windows only: the Win-key hook, app launching and power actions of the Pocket Start (start.rs), and
+# the main window's backdrop and top edge (backdrop.rs)
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_Graphics_Gdi",
+  "Win32_Security",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Power",
+  "Win32_System_Registry",
+  "Win32_System_Shutdown",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+# UI Automation for the taskbar's Start key and the shell's app icons (start.rs); already built
+# for WebView2 (webview2-com). png is the encoder tauri's image-png already builds.
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_Storage_EnhancedStorage",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+  "Win32_UI_Accessibility",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_Shell_PropertiesSystem",
+  "Win32_UI_WindowsAndMessaging",
+] }
+png = "0.18"
+# PDF export: WebView2's PrintToPdf (export.rs); the same version wry builds
+webview2-com = "0.39.1"
+
+[features]
+# Tauri convention: `cargo build` without this = dev (devUrl); bundler/tauri-action turns it on.
+# We have no dev server (frontendDist is static), so it is on by default.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

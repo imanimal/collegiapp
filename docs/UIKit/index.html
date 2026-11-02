@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en" data-scheme="light" data-look="pocket" data-motion="2">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pocket UI kit</title>
+  <meta name="description" content="Every part of Collegiapp's Pocket design and its Standard look, drawn by the app's own CSS and icons, in every built-in theme.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600..900&family=Space+Grotesk:wght@400..700&family=Space+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="../../ui/fonts/fonts.css">
+  <link rel="stylesheet" href="../../ui/css/core.css">
+  <link rel="stylesheet" href="../../ui/css/pocket.css">
+  <link rel="stylesheet" href="../../ui/css/standard.css">
+  <style>
+    /* Collegiapp — the UI kit sheet. Every specimen is real markup on the app's own core.css and pocket.css, so it
+       shows what ships. Only the sheet's frame below (uk-*) is local. Reference: docs/UIKit/README.md. */
+    .screen.uk-page {
+      height: 100%; overflow: hidden auto; font-size: var(--fs); line-height: 1.45; color: var(--text-2);
+      background: radial-gradient(color-mix(in srgb, var(--text) 12%, transparent) 1px, transparent 1.5px) 0 0 / 16px 16px, var(--bg);
+    }
+    .uk-wrap { max-width: 74em; margin: 0 auto; padding: 1.4em max(1em, env(safe-area-inset-right)) 5em max(1em, env(safe-area-inset-left)); }
+    .uk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 1em 1.4em; }
+    .uk-head .brandmark { font-size: 1.1em; }
+    .uk-title { display: flex; flex-direction: column; gap: .15em; min-width: 0; flex: 1 1 18em; }
+    .uk-title h1 { margin: 0; font-size: 1.7em; line-height: 1.15; font-weight: 700; color: var(--text); letter-spacing: -.015em; }
+    .uk-title span { color: var(--text-3); font-size: .9em; }
+    .uk-code { flex: 0 1 30em; min-width: 0; }
+    .uk-code .uk-ct { font: 700 .82em/1.4 var(--font-mono); color: var(--disp-fg); overflow-wrap: anywhere; }
+    .uk-bar {
+      position: sticky; top: 0; z-index: 5; margin: 1.2em -1em 0; padding: .6em 1em;
+      display: flex; flex-wrap: wrap; align-items: center; gap: .6em 1.2em;
+      background: color-mix(in srgb, var(--bg) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      box-shadow: 0 1px 0 var(--line);
+    }
+    .uk-ctl { display: flex; align-items: center; gap: .5em; font-size: .86em; color: var(--text-3); }
+    .uk-idx { display: flex; gap: .35em; overflow-x: auto; scrollbar-width: none; flex: 1 1 20em; min-width: 0; padding: 2px; }
+    .uk-idx::-webkit-scrollbar { display: none; }
+    .uk-idx a { text-decoration: none; }
+    .uk-sec { margin-top: 2.8em; scroll-margin-top: 5.5em; }
+    .uk-sh { display: flex; align-items: baseline; flex-wrap: wrap; gap: .3em .9em; }
+    .uk-sh h2 { margin: 0; font-size: 1.3em; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+    .uk-ref { font: .78em var(--font-mono); color: var(--text-3); }
+    .uk-p { max-width: 48em; margin: .4em 0 1em; }
+    .uk-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 1.1em 1.2em 1.2em; min-width: 0; }
+    .uk-card + .uk-card, .uk-card + .uk-frame, .uk-frame + .uk-card, .uk-frame + .uk-frame { margin-top: 1em; }
+    .uk-h3 { font-size: .86em; font-weight: 600; color: var(--text-3); margin: 1.4em 0 .6em; }
+    .uk-h3:first-child { margin-top: 0; }
+    .uk-row { display: flex; flex-wrap: wrap; align-items: center; gap: .6em; }
+    .uk-specs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(17em, 100%), 1fr)); gap: 1.3em 1.5em; }
+    .uk-spec { margin: 0; display: flex; flex-direction: column; gap: .55em; min-width: 0; }
+    .uk-spec > figcaption, .uk-cap { font-size: .8em; color: var(--text-3); line-height: 1.4; }
+    .uk-spec > figcaption code, .uk-cap code { font-size: .95em; }
+    /* drag the corner: the specimen is a region (a container), so its container queries respond */
+    .uk-frame { resize: horizontal; overflow: auto; width: 100%; max-width: 100%; min-width: 15em; padding: .3em .3em .7em; position: relative; }
+    .uk-frame::after { content: "drag ↘"; position: absolute; right: 1.4em; bottom: .05em; font: .66em var(--font-mono); color: var(--text-3); opacity: .8; pointer-events: none; }
+    .uk-frame > .region > .panel { height: auto; }
+    .uk-tile { background: var(--surface); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 1em; }
+    /* colour */
+    .uk-sws { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(15em, 100%), 1fr)); gap: .7em 1.2em; }
+    .uk-sw { display: flex; align-items: center; gap: .7em; min-width: 0; }
+    .uk-sw i { width: 2.6em; height: 2.6em; flex: none; border-radius: 8px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent); }
+    .uk-sw span { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+    .uk-sw b { font: 700 .8em var(--font-mono); color: var(--text); }
+    .uk-sw small { font-size: .78em; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .uk-sw em { font: normal .74em var(--font-mono); color: var(--text-2); }
+    /* type */
+    .uk-type { display: grid; grid-template-columns: minmax(8em, 13em) minmax(0, 1fr); gap: .9em 1.4em; align-items: baseline; }
+    .uk-type > .uk-cap { padding-top: .2em; }
+    .uk-fam { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(15em, 100%), 1fr)); gap: 1em; }
+    .uk-fam > div { display: flex; flex-direction: column; gap: .3em; padding: .9em 1em; border-radius: 10px; background: var(--surface-2); }
+    .uk-fam .s1 { font: 600 1.5em/1.2 var(--font-ui); color: var(--text); }
+    .uk-fam .s2 { font: 700 1.25em/1.2 var(--font-mono); color: var(--text); }
+    .uk-fam .s3 { font: 800 calc(2.4em * var(--num-scale))/1.1 var(--font-num); color: var(--text); }
+    @container screen (max-width: 760px) { .uk-type { grid-template-columns: minmax(0, 1fr); gap: .2em; } .uk-type > .uk-cap { padding-top: .8em; } }
+    /* icons */
+    .uk-ics { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.8em, 1fr)); gap: .5em; }
+    .uk-ic { display: flex; flex-direction: column; align-items: center; gap: .45em; padding: .8em .3em .6em; border-radius: 9px; background: var(--surface-2); color: var(--text); min-width: 0; }
+    .uk-ic code { background: none; padding: 0; font-size: .74em; color: var(--text-3); }
+    .uk-ic .i { width: 27px; height: 27px; }
+    .uk-sizes { display: flex; align-items: end; gap: 1.4em; color: var(--text); }
+    .uk-sizes span { display: flex; flex-direction: column; align-items: center; gap: .4em; }
+    .uk-sizes .z18 .i { width: 18px; height: 18px; } .uk-sizes .z27 .i { width: 27px; height: 27px; } .uk-sizes .z36 .i { width: 36px; height: 36px; }
+    .uk-zoom { display: inline-grid; grid-template-columns: repeat(9, 1.1em); gap: 1px; padding: 6px; border-radius: 8px; background: var(--surface-2); }
+    .uk-zoom b { height: 1.1em; border-radius: 2px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+    .uk-zoom b.on { background: var(--text); }
+    /* overlays shown in place */
+    .uk-dots { background: radial-gradient(color-mix(in srgb, var(--text) 10%, transparent) 1px, transparent 1.5px) 0 0 / 16px 16px, var(--bg); border-radius: var(--radius); box-shadow: inset 0 0 0 1px var(--line); padding: 1.6em 1.2em; }
+    .uk-dots .focus, .uk-dots .takeover { height: auto; }
+    .uk-radial { position: relative; height: 15em; }
+    .uk-radial .radial { left: 50%; top: 50%; }
+    .uk-tips { display: flex; flex-wrap: wrap; align-items: center; gap: 1.6em; }
+    .uk-tips > span { position: relative; display: inline-flex; }
+    .uk-tips .tip { position: absolute; left: 0; top: 0; animation: none; }
+    .uk-island { display: flex; flex-direction: column; gap: 1em; align-items: flex-start; }
+    .uk-island .island { position: relative; top: auto; left: auto; transform: none; min-width: 0; width: min(24em, 100%); max-width: 100%; }
+    .uk-island .island.open { width: min(30em, 100%); }
+    /* layout diagrams */
+    .uk-lays { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(15em, 100%), 1fr)); gap: 1.2em; align-items: start; }
+    .uk-lay { display: grid; gap: 4px; padding: 6px; border-radius: 10px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); height: 13em; font: 700 .7em var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+    .uk-lay > b { display: grid; place-items: center; border-radius: 5px; background: var(--surface-2); color: var(--text-3); font-weight: 700; }
+    .uk-lay > .t { grid-area: t; } .uk-lay > .k { grid-area: k; } .uk-lay > .n { grid-area: n; background: var(--accent); color: var(--on-accent); }
+    .uk-lay > .s { grid-area: s; } .uk-lay > .l { grid-area: l; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); } .uk-lay > .d { grid-area: d; background: var(--chrome-bg); color: var(--chrome-fg); }
+    .uk-l1 { grid-template: "t t" 1.6em "k k" 1.4em "n l" 1fr "s l" 1fr "d d" 1.6em / 1fr 1.3fr; }
+    .uk-l2 { grid-template: "t t" 1.6em "k k" 1.4em "n n" 1fr "s l" 1.4fr "d d" 1.6em / 1fr 1.35fr; }
+    .uk-l3 { grid-template: "t" 1.4em "k" 1.4em "n" 1fr "s" .7fr "l" 1.2fr "d" 1.8em / 1fr; width: 8.5em; justify-self: center; }
+    .uk-note { padding: .8em 1em; border-radius: 10px; background: var(--accent-soft); color: var(--text); font-size: .9em; }
+    /* the Standard look (L8) has no dot grid */
+    html[data-look="standard"] :is(.screen.uk-page, .uk-dots) { background: var(--bg); }
+  </style>
+</head>
+<body>
+<div class="screen bset-b8 fset-f3 uk-page" id="screen" data-guide="g2">
+ <div class="uk-wrap">
+
+  <header class="uk-head">
+    <span class="brandmark"><span class="logo" aria-hidden="true">C</span><span>Collegiapp</span></span>
+    <div class="uk-title"><h1>Pocket UI kit</h1><span>Every part of the app, drawn with its own CSS and icons. Reference: README.md in this folder.</span></div>
+    <div class="display uk-code"><span class="d-lbl">Final design · style code</span><span class="uk-ct">CAPP1 L6 P9 B8 F3 T6 G2 M2 D3 C2 s4 g0 f0 n0 a0 v0 mN bN S1</span></div>
+  </header>
+
+  <div class="uk-bar">
+    <div class="uk-ctl"><span>Theme</span><div class="seg" id="ukThemes"></div></div>
+    <div class="uk-ctl"><span>Key legends</span><div class="seg"><button class="chip" data-uk="guide" data-v="g2">G2 · hold Alt</button><button class="chip" data-uk="guide" data-v="g1">G1 · shown</button></div></div>
+    <nav class="uk-idx" aria-label="Sections">
+      <a class="chip" href="#colour">Colour</a><a class="chip" href="#type">Type</a><a class="chip" href="#icons">Icons</a><a class="chip" href="#keys">Keys</a>
+      <a class="chip" href="#modules">Modules</a><a class="chip" href="#lcd">LCD</a><a class="chip" href="#place">Places</a><a class="chip" href="#rows">Rows</a>
+      <a class="chip" href="#chips">Chips</a><a class="chip" href="#fields">Fields</a><a class="chip" href="#next">Up next</a><a class="chip" href="#lenses">Lenses</a>
+      <a class="chip" href="#insp">Inspector</a><a class="chip" href="#overlays">Overlays</a><a class="chip" href="#focus">Focus</a><a class="chip" href="#deck">Deck</a>
+      <a class="chip" href="#island">Island</a><a class="chip" href="#motion">Motion</a><a class="chip" href="#layout">Layout</a>
+    </nav>
+  </div>
+
+  <p class="uk-note" id="icNote" hidden>Icons didn't load: this sheet draws them with <code>ui/js/app.js</code>, so open it from <code>docs/UIKit/</code> inside the repository.</p>
+
+  <!-- ───────────── colour ───────────── -->
+  <section class="uk-sec" id="colour">
+    <div class="uk-sh"><h2>Colour</h2><span class="uk-ref">PALETTES in ui/js/lab.js → :root · pocket.css derives the short names</span></div>
+    <p class="uk-p">Values are read live from the page, so they follow the palette switch above. Orange means "do this": one primary per region, the Do first band, selection and focus rings.</p>
+    <div class="uk-card">
+      <div class="uk-h3">Surfaces and text</div><div class="uk-sws" data-sw="bg:Device body|bg2:Recessed fields|surface:Module fill|surface-2:Key faces, wells|line:Hairlines, lips|chrome-bg:Bands, dark keys|chrome-fg:Text on bands|desk-c:Outside the screen|text:Titles|text-2:Body|text-3:Meta, placeholders"></div>
+      <div class="uk-h3">Accent and states</div><div class="uk-sws" data-sw="accent:The one thing to do|on-accent:Text on accent|accent-soft:Selection wash|warn:Due soon, priority|warn-ink:Due soon text on its wash|bad:Overdue, destructive|on-bad:Text on a bad fill|ok:Done|acc2:Events, course tokens"></div>
+      <div class="uk-h3">LCD and presence</div><div class="uk-sws" data-sw="disp-bg:LCD panel|disp-fg:LCD digits|disp-hot:Backlight · due soon|disp-bad:Backlight · late|p-island:Island accent"></div>
+      <div class="uk-h3">Course colours · a course's color picks one, read as --kc</div><div class="uk-sws" data-sw="k1:Course 1|k2:Course 2|k3:Course 3|k4:Course 4|k5:Course 5|k6:Course 6"></div>
+    </div>
+  </section>
+
+  <!-- ───────────── type ───────────── -->
+  <section class="uk-sec" id="type">
+    <div class="uk-sh"><h2>Type</h2><span class="uk-ref">T6 · Space Grotesk + Space Mono + Doto · sizes in em of --fs</span></div>
+    <p class="uk-p">Sentence case in the source. Uppercase comes only from CSS: band labels, LCD labels, room codes and key tips.</p>
+    <div class="uk-card">
+      <div class="uk-fam">
+        <div><span class="s1">Do the thing first</span><span class="uk-cap"><code>--font-ui</code> Space Grotesk 400–700 · everything you read</span></div>
+        <div><span class="s2">course:130a ~4h</span><span class="uk-cap"><code>--font-mono</code> Space Mono · legends, counts, codes, filter terms</span></div>
+        <div><span class="s3">12:04:59</span><span class="uk-cap"><code>--font-num</code> Doto · LCD numerals only, × <code>--num-scale</code> .74</span></div>
+      </div>
+      <div class="uk-h3" style="margin-top:1.6em">Ramp</div>
+      <div class="uk-type">
+        <span class="uk-cap"><code>.hero-t</code> 1.6em · 700</span><h2 class="hero-t">PA3: heaps and hash tables</h2>
+        <span class="uk-cap"><code>.fo-task</code> 1.5em · 700</span><div class="fo-task">Read chapter 3: regular languages</div>
+        <span class="uk-cap"><code>.f-title</code> 1.35em · 700</span><div class="f-title">Email TA about the regrade</div>
+        <span class="uk-cap"><code>.nx-t</code> 1.2em · 700</span><div class="nx-t">CMPSC 154 lecture</div>
+        <span class="uk-cap"><code>.crumb .v</code> 1.15em · 700</span><div class="crumb"><span class="v">Monday, Nov 2</span><span class="ctx">Fall 2026 · Week 6 of 10 · Finals in 33 days</span></div>
+        <span class="uk-cap">body 1em · 400 · <code>--text-2</code></span><div>One ranked item at a time, with the reason it's first. Every other view is a saved filter over the same list.</div>
+        <span class="uk-cap"><code>.m-t</code> .98em · 500</span><div><span class="m-t">Lab 4 writeup: pipelined datapath</span></div>
+        <span class="uk-cap"><code>.btn</code> .92em · 600</span><div><button class="btn">Snooze</button></div>
+        <span class="uk-cap"><code>.m-meta</code> .82em</span><div class="m-meta"><span>CMPSC 130A</span><span>Assignment</span><span>~4h</span><span>Canvas</span></div>
+        <span class="uk-cap"><code>.grp</code> .8em · 600</span><div class="grp">Today<span>3</span></div>
+        <span class="uk-cap"><code>.ph .pt</code> .78em · 700 · caps</span><div class="panel" style="height:auto"><div class="ph"><span class="pt"><i data-ic="clock"></i>Up next</span><span class="sp"></span><span class="cnt">Mon, Nov 2</span></div></div>
+        <span class="uk-cap"><code>.d-lbl</code> + <code>.d-num</code></span><div><div class="display" style="display:inline-flex"><span class="d-lbl">Starts in</span><span class="d-num num">12:04</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── icons ───────────── -->
+  <section class="uk-sec" id="icons">
+    <div class="uk-sh"><h2>Icons</h2><span class="uk-ref">PIX (Pocket, 9×9) and LINE (Standard, 24 px strokes) in ui/js/app.js · ic(name, cls) · currentColor</span></div>
+    <p class="uk-p">Sized in whole 9 px steps so every icon pixel lands on whole screen pixels. Always next to a word, or with a <code>title</code> and <code>aria-label</code>.</p>
+    <div class="uk-card">
+      <div class="uk-row" style="gap:2.2em;align-items:flex-end">
+        <div class="uk-spec"><div class="uk-zoom" id="icZoom" aria-hidden="true"></div><span class="uk-cap"><code>focus</code> on its 9×9 grid</span></div>
+        <div class="uk-spec"><div class="uk-sizes"><span class="z18"><i data-ic="focus"></i><code>18</code></span><span class="z27"><i data-ic="focus"></i><code>27</code></span><span class="z36"><i data-ic="focus"></i><code>36</code></span></div><span class="uk-cap"><code>.i</code> rounds 1.1em to 18 / 27 / 36 px · <code>.i.big</code> 2.4em</span></div>
+      </div>
+      <div class="uk-h3" style="margin-top:1.6em">All icons</div>
+      <div class="uk-ics" id="icGrid"></div>
+    </div>
+  </section>
+
+  <!-- ───────────── keys ───────────── -->
+  <section class="uk-sec" id="keys">
+    <div class="uk-sh"><h2>Keys</h2><span class="uk-ref">B8 · .btn · .nv · .wk · .search · .fpill · .cloudkey</span></div>
+    <p class="uk-p">Raised plastic keys that travel 3 px when pressed. Labels are verbs. Switch key legends to G1 above to see the keyboard key on each.</p>
+    <div class="uk-card">
+      <div class="uk-specs">
+        <figure class="uk-spec"><div class="uk-row"><button class="btn primary lg"><i data-ic="play"></i>Start focus · 25 min<kbd>F</kbd></button></div><figcaption><code>.btn.primary.lg</code> the one main action of a region</figcaption></figure>
+        <figure class="uk-spec"><div class="uk-row"><button class="btn primary"><i data-ic="plus"></i>Add<kbd>Q</kbd></button><button class="btn"><i data-ic="check"></i>Done<kbd>X</kbd></button><button class="btn"><i data-ic="clock"></i>Snooze<kbd>S</kbd></button></div><figcaption><code>.btn.primary</code> · <code>.btn</code></figcaption></figure>
+        <figure class="uk-spec"><div class="uk-row"><button class="btn dark"><i data-ic="focus"></i>Focus 25<kbd>F</kbd></button><button class="btn ghost">Details</button><button class="btn ghost">Clear<kbd>Esc</kbd></button></div><figcaption><code>.btn.dark</code> a second strong action · <code>.btn.ghost</code> quiet ones</figcaption></figure>
+        <figure class="uk-spec"><div class="uk-row"><button class="btn sm">Canvas<i data-ic="ext"></i></button><button class="btn sm">Gradescope<i data-ic="ext"></i></button><button class="btn primary" disabled><i data-ic="check"></i>Install and restart</button></div><figcaption><code>.btn.sm</code> links and dense rows · <code>[disabled]</code></figcaption></figure>
+      </div>
+      <div class="uk-h3" style="margin-top:1.6em">Program keys · every view is a saved filter</div>
+      <div class="uk-frame"><div class="region"><div class="mnav"><div class="nkeys" role="tablist" aria-label="Views">
+        <button class="nv on" role="tab" aria-selected="true"><i data-ic="now"></i><span class="lb">Do first</span><span class="ct">5</span><kbd>1</kbd></button>
+        <button class="nv" role="tab"><i data-ic="today"></i><span class="lb">Today</span><span class="ct">3</span><kbd>2</kbd></button>
+        <button class="nv" role="tab"><i data-ic="inbox"></i><span class="lb">Inbox</span><span class="ct">2</span><kbd>3</kbd></button>
+        <button class="nv" role="tab"><i data-ic="work"></i><span class="lb">Work</span><kbd>4</kbd></button>
+        <button class="nv" role="tab"><i data-ic="exams"></i><span class="lb">Exams</span><span class="ct">1</span><kbd>5</kbd></button>
+        <button class="nv" role="tab"><i data-ic="week"></i><span class="lb">Week</span><kbd>6</kbd></button>
+        <button class="nv" role="tab"><i data-ic="classes"></i><span class="lb">Classes</span><kbd>7</kbd></button>
+        <button class="nv" role="tab"><i data-ic="events"></i><span class="lb">Events</span><kbd>8</kbd></button>
+        <button class="nv" role="tab"><i data-ic="links"></i><span class="lb">Links</span><kbd>9</kbd></button>
+        <button class="nv" role="tab"><i data-ic="all"></i><span class="lb">All</span><kbd>0</kbd></button>
+      </div><div class="nfoot"><button class="nv" aria-label="Appearance"><i data-ic="lab"></i><span class="lb">Appearance</span><kbd>Ctrl .</kbd></button><button class="nv" aria-label="Keyboard shortcuts"><i data-ic="help"></i><span class="lb">Shortcuts</span><kbd>?</kbd></button></div></div></div></div>
+      <div class="uk-specs" style="margin-top:1em">
+        <figure class="uk-spec"><div class="uk-row"><button class="nv on mod"><i data-ic="today"></i><span class="lb">Today</span><span class="ct">2</span></button></div><figcaption><code>.nv.on.mod</code> the view's query was changed</figcaption></figure>
+        <figure class="uk-spec"><div class="uk-row"><span class="winkeys" role="group" aria-label="Window"><button class="wk" title="Minimize"><i data-ic="wmin"></i></button><button class="wk" title="Maximize"><i data-ic="wmax"></i></button><button class="wk wk-x" title="Close"><i data-ic="close"></i></button></span><span class="winkeys"><button class="wk" title="Restore"><i data-ic="wrest"></i></button></span></div><figcaption><code>.winkeys .wk</code> Windows and Linux title bar · <code>.wk-x</code> turns red when pressed</figcaption></figure>
+        <figure class="uk-spec"><div class="uk-row"><button class="fpill"><i data-ic="focus"></i>Focus · <span class="num">18:42</span></button></div><figcaption><code>.fpill</code> the running focus timer in the top bar</figcaption></figure>
+        <figure class="uk-spec"><div class="uk-row"><button class="btn cloudkey" data-st="out"><i data-ic="cloud"></i><span class="bl">Sign in</span><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="ok"><i data-ic="cloud"></i><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="busy"><i data-ic="cloud"></i><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="off"><i data-ic="cloud"></i><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="bad"><i data-ic="cloud"></i><i class="ck-dot"></i></button></div><figcaption><code>.cloudkey</code> sync: <code>out</code> (one click signs in) · <code>ok</code> · <code>busy</code> · <code>off</code> · <code>bad</code>; <code>wait</code> blinks "Signing in"</figcaption></figure>
+      </div>
+      <div class="uk-h3" style="margin-top:1.6em">Top bar · the window's title bar on Windows and Linux</div>
+      <div class="uk-frame"><div class="region"><div class="mtop">
+        <span class="brandmark"><span class="logo" aria-hidden="true">C</span><span>Collegiapp</span></span>
+        <div class="crumb"><span class="v"><span class="dl">Monday</span><span class="ds">Mon</span>, Nov 2</span><span class="ctx">Fall 2026 · Week 6 of 10 · Finals in 33 days</span></div>
+        <button class="search"><i data-ic="search"></i><span class="ph-t">Search items, classes, links, commands</span><kbd>Ctrl K</kbd></button>
+        <button class="btn cloudkey" data-st="ok" title="Synced just now"><i data-ic="cloud"></i><i class="ck-dot"></i></button>
+        <button class="btn"><i data-ic="focus"></i><span class="bl">Focus</span><kbd>F</kbd></button>
+        <button class="btn primary"><i data-ic="plus"></i>Add<kbd>Q</kbd></button>
+        <div class="display clock"><span class="d-num num">14:07:32</span></div>
+        <span class="winkeys" role="group" aria-label="Window"><button class="wk" title="Minimize"><i data-ic="wmin"></i></button><button class="wk" title="Maximize"><i data-ic="wmax"></i></button><button class="wk wk-x" title="Close"><i data-ic="close"></i></button></span>
+      </div></div></div>
+      <p class="uk-cap">Narrower than 64em the clock goes, then search shrinks to its icon (50em), then key labels and the name (34em).</p>
+    </div>
+  </section>
+
+  <!-- ───────────── modules ───────────── -->
+  <section class="uk-sec" id="modules">
+    <div class="uk-sh"><h2>Modules</h2><span class="uk-ref">F3 · .panel › .ph (band) + .pb (body)</span></div>
+    <p class="uk-p">A card with a printed label band: icon and name on the left, a count in mono on the right, an engraved grille at the end. Do first is the only orange band; alerts are red.</p>
+    <div class="uk-frame"><section class="region" id="now"><div class="panel hero">
+      <div class="ph"><span class="pt"><i data-ic="now"></i>Do first</span><span class="sp"></span><button class="btn ghost sm"><i data-ic="prev"></i><span class="bl">Back</span><kbd>Shift N</kbd></button><span class="cnt">1 of 5</span><button class="btn ghost sm"><span class="bl">Next</span><i data-ic="next"></i><kbd>N</kbd></button></div>
+      <div class="pb"><div class="hero-grid"><div class="hero-main">
+        <div class="meta-row"><span class="cchip" style="--kc: var(--k1)">CMPSC 130A</span><span>Assignment</span><span class="srcl">from Canvas</span><span class="prio p2"><i data-ic="flag"></i>High priority</span></div>
+        <h2 class="hero-t">PA3: heaps and hash tables</h2>
+        <div class="why"><span class="why-l">Why first:</span><span class="why-chip">Due in 2h 14m</span><span class="why-chip">4h of work in 2h</span><span class="why-chip">Worth 8% of grade</span></div>
+        <div class="actions"><button class="btn primary lg"><i data-ic="play"></i>Start focus · 25 min<kbd>F</kbd></button><button class="btn"><i data-ic="check"></i>Done<kbd>X</kbd></button><button class="btn"><i data-ic="clock"></i>Snooze<kbd>S</kbd></button><button class="btn ghost">Details</button></div>
+      </div><div class="display hot"><span class="d-lbl">Due in</span><span class="d-num num">2:14:08</span><span class="d-sub">Today 11:59 PM · ~4h of work</span><span class="d-bar"><i style="width:82%"></i></span></div></div></div>
+    </div></section></div>
+    <p class="uk-cap">Below 52em the LCD moves above the title; below 36em the ghost key goes.</p>
+    <div class="uk-specs" style="margin-top:1em">
+      <figure class="uk-spec"><div class="region"><div class="panel"><div class="ph"><span class="pt"><i data-ic="clock"></i>Up next</span><span class="sp"></span><span class="cnt">Mon, Nov 2</span></div><div class="pb"><div class="m-empty"><i data-ic="today big"></i><b>Nothing scheduled</b><span>in the next few days.</span></div></div></div></div><figcaption>graphite band · <code>.m-empty</code> empty state</figcaption></figure>
+      <figure class="uk-spec"><div class="dialog panel alertbox sm"><div class="ph"><span class="pt"><i data-ic="bell"></i>Class soon</span><span class="sp"></span><span class="cnt">Alert</span></div><div class="pb"><div class="nx-t">CS154 Lecture</div><div class="display"><span class="d-lbl">Starts in</span><span class="d-num num">09:48</span></div><div class="actions"><button class="btn primary"><i data-ic="walk"></i>On my way</button><button class="btn"><i data-ic="video"></i>Join Zoom</button><button class="btn">Skipping…</button></div></div></div><figcaption><code>.alertbox</code> red band, red ring</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ───────────── LCD ───────────── -->
+  <section class="uk-sec" id="lcd">
+    <div class="uk-sh"><h2>LCD inlays</h2><span class="uk-ref">.display › .d-lbl .d-num .d-sub .d-bar</span></div>
+    <p class="uk-p">The device's display: numbers and their short labels only. The backlight turns amber when something is close and red when it's late.</p>
+    <div class="uk-card"><div class="uk-specs">
+      <figure class="uk-spec"><div class="display"><span class="d-lbl">Starts in</span><span class="d-num num">12:04</span><span class="d-sub">Tue 9:30 AM</span></div><figcaption><code>.display</code></figcaption></figure>
+      <figure class="uk-spec"><div class="display hot"><span class="d-lbl">Due in</span><span class="d-num num">2:14:08</span><span class="d-sub">Today 11:59 PM</span><span class="d-bar"><i style="width:82%"></i></span></div><figcaption><code>.display.hot</code> urgent · <code>.d-bar</code> urgency</figcaption></figure>
+      <figure class="uk-spec"><div class="display bad"><span class="d-lbl">Overdue by</span><span class="d-num num">2:10:33</span><span class="d-sub">Today 10:00 AM</span></div><figcaption><code>.display.bad</code> late</figcaption></figure>
+      <figure class="uk-spec"><div class="display"><span class="d-lbl">Due</span><span class="d-num">--:--</span><span class="d-sub">No due date</span></div><figcaption>no date</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><div class="mtop" style="min-height:0"><div class="display clock"><span class="d-num num">14:07:32</span></div></div><span class="logo" aria-hidden="true">C</span></div><figcaption><code>.display.clock</code> · <code>.logo</code></figcaption></figure>
+      <figure class="uk-spec"><div class="display"><span class="d-lbl">New version</span><span class="d-num num">0.4.2</span><span class="d-sub">Downloading · 64%</span><span class="d-bar"><i style="width:64%"></i></span></div><figcaption>update progress</figcaption></figure>
+    </div>
+    <div class="uk-h3" style="margin-top:1.6em"><code>.display.big</code> · focus timer and takeover</div>
+    <div class="uk-row"><div class="display big"><span class="d-lbl">Time left</span><span class="d-num num">24:59</span></div><div class="display big bad"><span class="d-lbl">Starts in</span><span class="d-num num">04:12</span></div></div>
+    </div>
+  </section>
+
+  <!-- ───────────── places ───────────── -->
+  <section class="uk-sec" id="place">
+    <div class="uk-sh"><h2>Location banner</h2><span class="uk-ref">.locban · locBanner(it, trip) in app.js</span></div>
+    <p class="uk-p">A departures placard for anything with a place: course-colour stub, building behind a tear line, room code, the walk, and an LCD <i>leave by</i> that turns red when you're late.</p>
+    <div class="uk-frame"><div class="region" style="display:flex;flex-direction:column;gap:.8em">
+      <div class="locban" style="--kc: var(--k1)"><i data-ic="building lb-ic"></i><span class="lb-main"><span class="lb-name">Phelps Hall</span><span class="lb-room">PHELP 1160</span></span><span class="lb-trip"><i data-ic="walk"></i><span>9 min walk from home</span></span><span class="lb-leave"><span class="lb-k">Leave by</span><b class="num">9:18 AM</b></span></div>
+      <div class="locban" style="--kc: var(--k2)"><i data-ic="building lb-ic"></i><span class="lb-main"><span class="lb-name">Phelps Hall</span><span class="lb-room">PHELP 3526</span></span><span class="lb-trip"><i data-ic="walk"></i><span>4 min walk from Girvetz Hall</span></span><span class="lb-leave late"><span class="lb-k">Leave</span><b class="num">now</b></span></div>
+      <div class="locban" style="--kc: var(--k3)"><i data-ic="video lb-ic"></i><span class="lb-main"><span class="lb-name">Zoom</span><span class="lb-room">or Zoom</span></span></div>
+    </div></div>
+    <p class="uk-cap">Below 24em the leave-by chip drops under the walk.</p>
+  </section>
+
+  <!-- ───────────── rows ───────────── -->
+  <section class="uk-sec" id="rows">
+    <div class="uk-sh"><h2>List rows</h2><span class="uk-ref">.row.mrow · mRowHTML() · .grp · .duepill</span></div>
+    <p class="uk-p">Check · title and meta · priority · due. Groups by due date. On touch screens swipe right for done and left for snooze.</p>
+    <div class="uk-frame"><section class="region" id="list"><div class="panel">
+      <div class="ph"><span class="pt"><i data-ic="all"></i>Everything</span><span class="sp"></span><span class="cnt">6 items<span class="cnt-x"> · by due date</span></span></div>
+      <div class="fbar m"><div class="fbox"><i data-ic="filter"></i><button class="chip on">is:open<span class="x">×</span></button><input class="finput" placeholder="Add a filter…" aria-label="Filter"></div><button class="btn ghost">Clear<kbd>Esc</kbd></button></div>
+      <div class="qstrip"><button class="chip course" style="--kc: var(--k1)">CMPSC 130A</button><button class="chip course" style="--kc: var(--k2)">CMPSC 154</button><button class="chip course" style="--kc: var(--k3)">CMPSC 138</button><button class="chip">Due today</button><button class="chip">This week</button><button class="chip">Overdue</button><button class="chip">High priority</button><button class="chip">From Canvas</button></div>
+      <div class="pb rows">
+        <div class="grp">Overdue<span>1</span></div>
+        <div class="row mrow overdue" style="--kc: var(--k2)"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t">Lab 4 writeup: pipelined datapath</span><span class="m-meta"><span><span class="cdot"></span>CMPSC 154</span><span>Lab</span><span>~1h</span><span>Canvas</span></span></span><span class="m-pri p3">!!!</span><span class="m-due"><span class="duepill over">2h overdue</span><span class="m-abs">Today 10:00 AM</span></span></div>
+        <div class="grp">Today<span>3</span></div>
+        <div class="row mrow sel" style="--kc: var(--k1)"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t">PA3: heaps and hash tables</span><span class="m-meta"><span><span class="cdot"></span>CMPSC 130A</span><span>Assignment</span><span>~4h</span><span>Canvas</span></span></span><span class="m-pri p2">!!</span><span class="m-due"><span class="duepill hot">in 2h</span><span class="m-abs">Today 11:59 PM</span></span></div>
+        <div class="row mrow cls live" style="--kc: var(--k2)"><span class="chk sched" title="Scheduled"><i data-ic="clock"></i></span><span class="m-main"><span class="m-t">Lecture</span><span class="m-meta"><span><span class="cdot"></span>CMPSC 154</span><span>Class</span><span><span class="m-loc"><i data-ic="pin"></i>PHELP 3526</span></span><span>Google Calendar</span></span></span><span class="m-pri p0"></span><span class="m-due"><span class="duepill live">Now</span><span class="m-abs">until 3:15 PM</span></span></div>
+        <div class="row mrow doing" style="--kc: var(--k3)"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t"><span class="doing-tag">In progress</span>Read chapter 3: regular languages</span><span class="m-meta"><span><span class="cdot"></span>CMPSC 138</span><span>Reading</span><span>~45m</span></span></span><span class="m-pri p1">!</span><span class="m-due"><span class="duepill soon">in 6h</span><span class="m-abs">Today 9:00 PM</span></span></div>
+        <div class="grp">Tomorrow<span>1</span></div>
+        <div class="row mrow done"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t">Email TA about the regrade</span><span class="m-meta"><span>Personal</span><span>Task</span></span></span><span class="m-pri p0"></span><span class="m-due"><span class="duepill">Tomorrow</span><span class="m-abs">Tomorrow 11:59 PM</span></span></div>
+        <div class="grp">No date<span>2</span></div>
+        <div class="row mrow"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t">Buy blue books</span><span class="m-meta"><span>Personal</span><span>Errand</span></span></span><span class="m-pri p0"></span><span class="m-due"><span class="duepill">No date</span></span></div>
+        <div class="row mrow" style="--kc: var(--k4)"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t">Midterm 2 (25%)</span><span class="m-meta"><span><span class="cdot"></span>CMPSC 16</span><span>Info</span><span>Canvas</span></span><span class="m-sort" role="group" aria-label="What is it?"><span>Is it</span><button class="chip">Homework</button><button class="chip">Exam</button><button class="chip">Just info</button></span></span><span class="m-pri p0"></span><span class="m-due"><span class="duepill">No date</span></span></div>
+      </div>
+    </div></section></div>
+    <p class="uk-cap">States: overdue · <code>.sel</code> · <code>.cls.live</code> · <code>.doing</code> · <code>.done</code> · plain · unsorted Canvas info (<code>.m-sort</code>). Below 30em the absolute date hides; below 24em the due pill moves under the title.</p>
+    <div class="uk-card"><div class="uk-h3">Due pills · the words carry the meaning</div>
+      <div class="uk-row"><span class="duepill">Mon</span><span class="duepill soon">in 9h</span><span class="duepill hot">in 2h</span><span class="duepill over">2h overdue</span><span class="duepill live">Now</span><span class="duepill">No date</span></div>
+      <p class="uk-cap" style="margin-bottom:0"><code>.duepill</code> · <code>.soon</code> within 24h · <code>.hot</code> within 3h · <code>.over</code> · <code>.live</code> a class happening now</p></div>
+  </section>
+
+  <!-- ───────────── chips ───────────── -->
+  <section class="uk-sec" id="chips">
+    <div class="uk-sh"><h2>Chips</h2><span class="uk-ref">.chip · .cchip · .why-chip · .pc · .seg · .prio</span></div>
+    <div class="uk-card"><div class="uk-specs">
+      <figure class="uk-spec"><div class="uk-row"><button class="chip">Due today</button><button class="chip on">This week</button><button class="chip course" style="--kc: var(--k1)">CMPSC 130A</button><button class="chip course on" style="--kc: var(--k4)">PSTAT 120A</button></div><figcaption><code>.chip</code> toggles · <code>.on</code> · <code>.course</code></figcaption></figure>
+      <figure class="uk-spec"><div class="fbox"><i data-ic="filter"></i><button class="chip on">course:cs130a<span class="x">×</span></button><button class="chip on">due&lt;fri<span class="x">×</span></button><button class="chip on bad">kind:hwk<span class="x">×</span></button></div><figcaption><code>.fbox .chip</code> an active filter term, removable; <code>.bad</code> one it couldn't read (ignored)</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><span class="cchip" style="--kc: var(--k1)">CMPSC 130A</span><span class="cchip" style="--kc: var(--k2)">CMPSC 154</span><span class="cchip none">Personal</span></div><figcaption><code>.cchip</code> course with its dot · <code>.none</code></figcaption></figure>
+      <figure class="uk-spec"><div class="why" style="height:auto"><span class="why-l">Why first:</span><span class="why-chip">Overdue 3h</span><span class="why-chip">Worth 15% of grade</span></div><figcaption><code>.why-chip</code> reasons, one line</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><span class="pc">Kind <b>Assignment</b></span><span class="pc course" style="--kc: var(--k1)">Course <b>CMPSC 130A</b> <i>auto · class starting</i></span><span class="pc">Due <b>Fri 11:59 PM · in 4d</b></span></div><figcaption><code>.pc</code> quick-add parse chips · <code>&lt;i&gt;</code> an inferred value</figcaption></figure>
+      <figure class="uk-spec"><div class="seg"><button class="chip">15m</button><button class="chip">30m</button><button class="chip on">1h</button><button class="chip">2h</button><button class="chip">4h</button></div><figcaption><code>.seg</code> segmented control</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><span class="prio p2"><i data-ic="flag"></i>High priority</span><span class="prio p3"><i data-ic="flag"></i>Urgent</span><span class="m-pri p1">!</span><span class="m-pri p2">!!</span><span class="m-pri p3">!!!</span></div><figcaption><code>.prio</code> · <code>.m-pri</code> 1–3</figcaption></figure>
+    </div></div>
+  </section>
+
+  <!-- ───────────── fields ───────────── -->
+  <section class="uk-sec" id="fields">
+    <div class="uk-sh"><h2>Fields</h2><span class="uk-ref">inputs in .screen · .qa-wrap · .fbox · .fgrid</span></div>
+    <p class="uk-p">Fields are recessed into the body (<code>--bg2</code>). The command line pairs an orange mono prompt with one key; what the parser understood shows as chips and colour before you press Enter.</p>
+    <div class="uk-card">
+      <div class="qa-wrap"><span class="qa-prompt">+</span><input value="pa3 130a fri 11:59p ~4h !!" aria-label="Quick add" spellcheck="false"><button class="btn primary"><i data-ic="plus"></i>Add<kbd>Enter</kbd></button></div>
+      <div class="qa-parse"><span class="pc">Title <b>pa3</b></span><span class="pc">Kind <b>Assignment</b></span><span class="pc course" style="--kc: var(--k1)">Course <b>CMPSC 130A</b></span><span class="pc">Due <b>Fri 11:59 PM · in 4d</b></span><span class="pc">Estimate <b>4h</b></span><span class="pc">Priority <b>!!</b></span></div>
+      <div class="qa-hl"><span class="tk tk-kindhint">pa3</span> <span class="tk tk-course">130a</span> <span class="tk tk-date">fri</span> <span class="tk tk-time">11:59p</span> <span class="tk tk-estimate">~4h</span> <span class="tk tk-priority">!!</span> <span class="tk tk-tag">#heaps</span> <span class="tk tk-location">@csil</span> <span class="tk tk-text">plain words</span></div>
+      <div class="uk-h3" style="margin-top:1.4em">Plain fields</div>
+      <div class="fgrid" style="max-width:36em">
+        <label for="ukIn">Title</label><input id="ukIn" placeholder="What is it?">
+        <label for="ukSel">Kind</label><select id="ukSel"><option>Assignment</option><option>Exam</option><option>Reading</option></select>
+        <label for="ukDue">Due</label><input id="ukDue" type="datetime-local" value="2026-11-06T23:59">
+        <label for="ukNotes">Notes</label><textarea id="ukNotes" class="notes" placeholder="Notes… (saved on blur)"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── up next ───────────── -->
+  <section class="uk-sec" id="next">
+    <div class="uk-sh"><h2>Up next</h2><span class="uk-ref">mSched() · .live .nx-head .timeline .agenda</span></div>
+    <div class="uk-frame"><section class="region" id="sched"><div class="panel">
+      <div class="ph"><span class="pt"><i data-ic="clock"></i>Up next</span><span class="sp"></span><span class="cnt">Mon, Nov 2</span></div>
+      <div class="pb">
+        <div class="live"><span class="ldot"></span><span class="lt">Now: <b>CMPSC 154 Lecture</b></span><span class="sp"></span><span class="num">ends in <b>48:10</b></span></div>
+        <div class="next"><div class="nx-head"><div class="nx-id"><div class="meta-row"><span class="cchip" style="--kc: var(--k1)">CMPSC 130A</span><span>Class</span></div><div class="nx-t">Section</div><div class="facts"><span><i data-ic="clock"></i>Today 4:00 PM – 4:50 PM</span></div></div>
+          <div class="display"><span class="d-lbl">Starts in</span><span class="d-num num">1:12:40</span></div></div>
+          <div class="locban" style="--kc: var(--k1)"><i data-ic="building lb-ic"></i><span class="lb-main"><span class="lb-name">Girvetz Hall</span><span class="lb-room">GIRV 1115</span></span><span class="lb-trip"><i data-ic="walk"></i><span>4 min walk from Phelps Hall</span></span><span class="lb-leave"><span class="lb-k">Leave by</span><b class="num">3:53 PM</b></span></div>
+          <div class="actions sm"><button class="btn">Canvas<i data-ic="ext"></i></button><button class="btn">Zoom<i data-ic="ext"></i></button><button class="btn ghost">Details</button></div></div>
+        <div class="timeline" title="Today, 7 AM to midnight"><span class="blk" style="left:14.7%;width:7.4%"></span><span class="blk" style="left:41%;width:7.4%"></span><span class="blk" style="left:52.9%;width:4.9%"></span><span class="blk ev" style="left:70.6%;width:11.8%"></span><span class="nowln" style="left:46%"></span></div>
+        <div class="tl-scale"><span>7a</span><span>11a</span><span>3p</span><span>7p</span><span>11p</span></div>
+        <div class="sub-h">Coming up</div>
+        <div class="agenda">
+          <div class="ag" style="--kc: var(--k4)"><span class="ag-when"><b>Today</b>7:00 PM</span><span class="ag-bar"></span><span class="ag-main"><span class="ag-t">Shoreline: ACM game night</span><span class="ag-s">Event<span class="ag-loc"><i data-ic="pin"></i>HFH 1132</span></span></span></div>
+          <div class="ag" style="--kc: var(--k1)"><span class="ag-when"><b>Tue</b>9:30 AM</span><span class="ag-bar"></span><span class="ag-main"><span class="ag-t">Lecture</span><span class="ag-s">CMPSC 130A<span class="ag-loc"><i data-ic="pin"></i>PHELP 1160</span></span></span></div>
+        </div>
+      </div>
+    </div></section></div>
+  </section>
+
+  <!-- ───────────── lenses ───────────── -->
+  <section class="uk-sec" id="lenses">
+    <div class="uk-sh"><h2>Lenses</h2><span class="uk-ref">day · week · month · classes · links · notes</span></div>
+    <p class="uk-p">Other ways to look at the same items. The week scrolls sideways below 60em and stacks below 30em.</p>
+    <div class="uk-frame"><div class="region"><div class="calbar"><span class="seg"><button class="chip">Day</button><button class="chip">Week</button><button class="chip on">Month</button></span><span class="cal-pg"><button class="btn sm">‹<kbd>[</kbd></button><span class="cal-t">November 2026</span><button class="btn sm">›<kbd>]</kbd></button></span><button class="btn ghost sm">Today</button></div>
+      <div class="month" style="min-height:0;grid-auto-rows:6.4em"><div class="mhd">Sun</div><div class="mhd">Mon</div><div class="mhd">Tue</div><div class="mhd">Wed</div><div class="mhd">Thu</div><div class="mhd">Fri</div><div class="mhd">Sat</div>
+        <div class="mday out"><button class="md-n">26</button></div><div class="mday past"><button class="md-n">27</button><div class="mi cls" style="--kc: var(--k1)"><span class="mt">9:30a</span><span class="mn">CS130A lecture</span></div></div><div class="mday today"><button class="md-n">28</button><div class="mi" style="--kc: var(--k1)"><span class="mt">11:59p</span><span class="mn">PA3: heaps and hash tables</span></div><span class="mdots"><i style="--kc: var(--k1)"></i></span></div>
+        <div class="mday"><button class="md-n">29</button><div class="mi exam" style="--kc: var(--k3)"><span class="mt">8a</span><span class="mn">Midterm 2</span></div><div class="mi" style="--kc: var(--k2)"><span class="mt">5p</span><span class="mn">Lab 4</span></div><button class="mmore">+3 more</button><span class="mdots"><i style="--kc: var(--k3)"></i><i style="--kc: var(--k2)"></i></span></div>
+        <div class="mday"><button class="md-n">30</button></div><div class="mday"><button class="md-n">31</button></div><div class="mday"><button class="md-n">1</button></div>
+      </div></div></div>
+    <div class="uk-frame"><div class="region"><div class="calbar"><span class="seg"><button class="chip on">Day</button><button class="chip">Week</button><button class="chip">Month</button></span><span class="cal-pg"><button class="btn sm">‹<kbd>[</kbd></button><span class="cal-t">Mon Nov 2</span><button class="btn sm">›<kbd>]</kbd></button></span></div>
+      <div class="dv-head"><div class="dv-day"><b>Today</b><span>Monday, November 2</span><span class="dim">3 on the calendar · 3h 30m booked · 1 due</span></div><div class="display dv-lcd"><span class="d-lbl">Starts in</span><span class="d-num num">40:00</span><span class="d-sub">Lecture</span></div></div>
+      <div class="dayv"><div class="dv-grid" style="height:calc(7 * var(--hh))"><button class="dv-hr" style="--t:0"><span>8 AM</span></button><button class="dv-hr" style="--t:1"><span>9 AM</span></button><button class="dv-hr" style="--t:2"><span>10 AM</span></button><button class="dv-hr cur" style="--t:3"><span>11 AM</span></button><button class="dv-hr" style="--t:4"><span>Noon</span></button><button class="dv-hr" style="--t:5"><span>1 PM</span></button><button class="dv-hr" style="--t:6"><span>2 PM</span></button>
+        <div class="dv-col">
+          <div class="dv-ev cls past" style="--t:1.5;--d:1.25;--lane:0;--lanes:1;--kc: var(--k1)"><div class="dv-eb"><span class="dv-et">9:30 AM–10:45 AM · CS130A</span><span class="dv-en">Lecture</span><span class="dv-el"><i data-ic="pin"></i>PHELP 1160</span></div></div>
+          <div class="dv-ev cls" style="--t:4;--d:1.25;--lane:0;--lanes:1;--kc: var(--k2)"><div class="dv-eb"><span class="dv-et">12:00 PM–1:15 PM · CS154</span><span class="dv-en">Lecture</span><span class="dv-el"><i data-ic="pin"></i>HSSB 1174</span><span class="dv-rel">in 40m</span></div></div>
+          <div class="dv-ev plan" style="--t:5.5;--d:1;--lane:0;--lanes:2;--kc: var(--k1)"><div class="dv-eb"><span class="dv-et">1:30 PM–2:30 PM · CS130A</span><span class="dv-en">Read ch. 4 (when free)</span><span class="dv-rel">in 2h 10m</span></div></div>
+          <div class="dv-ev cls" style="--t:5.5;--d:0.5;--lane:1;--lanes:2;--kc: var(--k3)"><div class="dv-eb"><span class="dv-et">1:30 PM–2:00 PM</span><span class="dv-en">Office hours</span><span class="dv-rel">in 2h 10m</span></div></div>
+          <div class="dv-flag" style="--t:6"><button class="dv-fi" style="--kc: var(--k2)"><b>2:00 PM</b> due · HW 6 <span class="dim">CS154</span> · <span data-rel>in 2h 40m</span> <span class="dim">· ~1h of work, start by 1:00 PM</span></button></div>
+        </div>
+        <div class="dv-past" style="--t:3.333"></div><div class="dv-now" style="--t:3.333"><span class="dv-nt">11:20 AM</span></div>
+        <div class="dv-gap" style="--t:3.333;--d:0.667"><span><b>40m</b> free until Lecture</span></div>
+      </div></div></div></div>
+    <p class="uk-cap"><code>.dayv</code> (8 AM to 2 PM of the 24 hours) · <code>.dv-ev.cls</code> · <code>.past</code> · <code>.plan</code> · <code>.dv-eb</code> layouts by height · lanes · <code>.dv-flag</code> · <code>.dv-now</code> · <code>.dv-past</code> · <code>.dv-gap</code></p>
+    <div class="uk-frame"><div class="region"><div class="week" style="min-height:0">
+      <div class="wcol today"><div class="wh"><b>Today</b><span>Nov 2</span></div><div class="wi cls" style="--kc: var(--k2)"><span class="wt">2:00 PM · CS154</span><span class="wn">Lecture</span><span class="wl"><i data-ic="pin"></i>PHELP 3526</span></div><div class="wi" style="--kc: var(--k1)"><span class="wt">11:59 PM · CS130A</span><span class="wn">PA3: heaps and hash tables</span></div></div>
+      <div class="wcol"><div class="wh"><b>Tue</b><span>Nov 3</span></div><div class="wi cls" style="--kc: var(--k1)"><span class="wt">9:30 AM · CS130A</span><span class="wn">Lecture</span><span class="wl"><i data-ic="pin"></i>PHELP 1160</span></div></div>
+      <div class="wcol"><div class="wh"><b>Wed</b><span>Nov 4</span></div><div class="wi exam" style="--kc: var(--k3)"><span class="wt">8:00 AM · CS138</span><span class="wn">Midterm 2</span></div></div>
+      <div class="wcol"><div class="wh"><b>Thu</b><span>Nov 5</span></div><div class="wnone">Free</div></div>
+      <div class="wcol"><div class="wh"><b>Fri</b><span>Nov 6</span></div><div class="wi" style="--kc: var(--k2)"><span class="wt">5:00 PM · CS154</span><span class="wn">Lab 5</span></div></div>
+      <div class="wcol"><div class="wh"><b>Sat</b><span>Nov 7</span></div><div class="wnone">Free</div></div>
+      <div class="wcol"><div class="wh"><b>Sun</b><span>Nov 8</span></div><div class="wnone">Free</div></div>
+    </div></div></div>
+    <div class="uk-card"><div class="cgrid">
+      <div class="ccard" style="--kc: var(--k1)"><h4>CMPSC 130A <span class="dim">CS130A</span></h4><div class="meta">Data Structures &amp; Algorithms I</div><div class="meta">TR 9:30 PHELP 1160 · F 13:00 GIRV 1115</div><div class="meta">4 open · 2 due this week</div><div class="row2"><button class="btn">Canvas</button><button class="btn">Gradescope</button><button class="btn">Piazza</button></div><div class="row2"><button class="btn primary">Items<i data-ic="go"></i></button><button class="btn">Edit</button><button class="btn">Exclude</button></div></div>
+      <div class="ccard excluded" style="--kc: var(--k6)"><h4>WRIT 2 <span class="dim">WRIT2</span></h4><div class="meta">Academic Writing</div><div class="meta">Excluded · items hidden everywhere</div><div class="row2"><button class="btn">Include</button></div></div>
+      <div class="lgroup" style="--kc: var(--k2)"><h4>CMPSC 154</h4><div class="row2"><button class="btn">Canvas<i data-ic="ext"></i></button><button class="btn">PyRTL docs<i data-ic="ext"></i></button></div></div>
+    </div><p class="uk-cap" style="margin-bottom:0"><code>.ccard</code> · <code>.ccard.excluded</code> · <code>.lgroup</code></p></div>
+    <div class="uk-frame"><div class="region"><div class="ngrid">
+      <div class="ncard" style="--kc: var(--k1)"><div class="nc-top"><span class="cchip" style="--kc: var(--k1)">CMPSC 130A</span><span class="nc-pin" title="Pinned"><i data-ic="pin"></i></span><span class="sp"></span><span class="nc-when">2m ago</span></div>
+        <h4 class="nc-t">Midterm 2 review</h4><p class="nc-p">Heaps: insert and delete-min are O(log n). Hash tables: load factor, chaining vs. probing.</p>
+        <div class="nc-ck"><span class="nc-bar"><i style="width:60%"></i></span><span class="num">3/5</span></div><div class="nc-tags"><span>#exam</span></div></div>
+      <div class="ncard"><div class="nc-top"><span class="cchip none">Personal</span><span class="sp"></span><span class="nc-when">1h ago</span></div>
+        <h4 class="nc-t">App ideas</h4><p class="nc-p">Whenfree for quick add. A per-hour day view. Notes that sync to the phone.</p><div class="nc-tags"><span>#ideas</span></div></div>
+    </div></div></div>
+    <p class="uk-cap"><code>.ngrid</code> › <code>.ncard</code> · <code>.nc-top</code> <code>.nc-pin</code> <code>.nc-when</code> · <code>.nc-t</code> · <code>.nc-p</code> · <code>.nc-ck</code> › <code>.nc-bar</code> (segmented) · <code>.nc-tags</code></p>
+  </section>
+
+  <!-- ───────────── inspector ───────────── -->
+  <section class="uk-sec" id="insp">
+    <div class="uk-sh"><h2>Inspector</h2><span class="uk-ref">.insp · renderInsp() · column, drawer or sheet by width</span></div>
+    <div class="uk-frame" style="max-width:32em"><div class="region insp"><div class="panel" role="dialog" aria-label="Inspect">
+      <div class="ph"><span class="pt">Inspect</span><span class="sp"></span><button class="btn ghost sm" aria-label="Close details"><i data-ic="close"></i><span class="bl">Close</span><kbd>Esc</kbd></button></div>
+      <div class="pb">
+        <div class="f-title" contenteditable="true" spellcheck="false">PA3: heaps and hash tables</div>
+        <div class="fgrid">
+          <label>Kind</label><select><option>Assignment</option></select>
+          <label>Course</label><select><option>CMPSC 130A</option></select>
+          <label>Due</label><input type="datetime-local" value="2026-11-02T23:59">
+          <label>Estimate</label><div class="seg"><button class="chip">15m</button><button class="chip">30m</button><button class="chip">1h</button><button class="chip">2h</button><button class="chip on">4h</button></div>
+          <label>Priority</label><div class="seg"><button class="chip">–</button><button class="chip">!</button><button class="chip on">!!</button><button class="chip">!!!</button></div>
+          <label>Status</label><div class="seg"><button class="chip">inbox</button><button class="chip on">todo</button><button class="chip">doing</button><button class="chip">done</button></div>
+        </div>
+        <div class="links"><span class="lk"><button class="btn">Canvas<i data-ic="ext"></i></button><button class="btn ghost lk-x" aria-label="Remove the Canvas link"><i data-ic="close"></i></button></span><span class="lk"><button class="btn">Google Docs<i data-ic="ext"></i></button><button class="btn ghost lk-x" aria-label="Remove the Google Docs link"><i data-ic="close"></i></button></span><button class="btn ghost">CS130A Canvas<i data-ic="ext"></i></button></div>
+        <label class="fbox lnk"><i data-ic="links"></i><input class="finput" placeholder="Paste a link · Enter adds it" aria-label="Add a link"></label>
+        <textarea class="notes" placeholder="Notes… (saved on blur)"></textarea>
+        <div class="srcinfo">Source: Canvas · checked 3m ago · your edits are kept as overrides on re-sync</div>
+        <div class="acts"><button class="btn primary"><i data-ic="play"></i>Focus 25</button><button class="btn"><i data-ic="check"></i>Done</button><button class="btn"><i data-ic="clock"></i>Snooze</button><button class="btn ghost"><i data-ic="trash"></i>Delete</button></div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ───────────── overlays ───────────── -->
+  <section class="uk-sec" id="overlays">
+    <div class="uk-sh"><h2>Overlays</h2><span class="uk-ref">.dialog.panel · .pal-it · .toast · .radial · .tip</span></div>
+    <p class="uk-p">Shown in place here; in the app they sit on <code>#layer</code> over a blurred scrim. Destructive actions never ask first: they toast with Undo.</p>
+    <div class="uk-specs" style="grid-template-columns:repeat(auto-fill,minmax(min(26em,100%),1fr))">
+      <figure class="uk-spec"><div class="dialog panel"><div class="ph"><span class="pt">Search · commands</span><span class="sp"></span><span class="cnt">↑↓ Enter · Esc</span><button class="btn ghost sm ov-x" aria-label="Close"><i data-ic="close"></i></button></div><div class="pb">
+        <div class="qa-wrap"><span class="qa-prompt">&gt;</span><input placeholder="commands, items, classes, links…" aria-label="Search commands"></div>
+        <div class="pal-res"><div class="pal-sec">Commands</div><div class="pal-it on"><span>Quick add…</span><span class="dim"></span><span class="sp"></span><kbd>Q</kbd></div><div class="pal-it"><span>Focus 25 min on Do first</span><span class="dim"></span><span class="sp"></span><kbd>F</kbd></div><div class="pal-sec">Views</div><div class="pal-it"><span>Go to Today</span><span class="dim">is:open due&lt;=today</span><span class="sp"></span><kbd>2</kbd></div></div>
+      </div></div><figcaption><code>.dialog.panel</code> with the palette list</figcaption></figure>
+      <figure class="uk-spec"><div class="dialog panel sm"><div class="ph"><span class="pt">Snooze · PA3</span><span class="sp"></span><span class="cnt">1–4 · Esc</span><button class="btn ghost sm ov-x" aria-label="Close"><i data-ic="close"></i></button></div><div class="pb"><div class="pal-res">
+        <div class="pal-it"><kbd>1</kbd><span>In 1 hour</span><span class="sp"></span><span class="dim">Today 3:12 PM</span></div><div class="pal-it"><kbd>2</kbd><span>After next class (CS130A)</span><span class="sp"></span><span class="dim">Today 5:00 PM</span></div><div class="pal-it"><kbd>3</kbd><span>Tomorrow 9 AM</span><span class="sp"></span><span class="dim">Tomorrow 9:00 AM</span></div><div class="pal-it"><kbd>4</kbd><span>This weekend (Sat 10 AM)</span><span class="sp"></span><span class="dim">Sat 10:00 AM</span></div>
+      </div></div></div><figcaption><code>.dialog.sm</code> a pick list</figcaption></figure>
+      <figure class="uk-spec"><div style="display:flex;flex-direction:column;gap:.45em;align-items:flex-start">
+        <div class="toast"><span class="msg">Done · PA3: heaps and hash tables</span><button class="btn">Undo<kbd>Ctrl+Z</kbd></button></div>
+        <div class="toast"><span class="msg"><i data-ic="bell"></i>CS130A Lecture in 9:48 · PHELP 1160 · leave by 9:18 AM</span><button class="btn">Zoom</button><button class="btn">Snooze 5m</button></div>
+      </div><figcaption><code>.toast</code> what happened, then Undo or one action</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-radial"><div class="radial"><div class="ring"></div><div class="hub">Item</div>
+        <button class="btn rb" style="--x:0.000;--y:-1.000"><i data-ic="check"></i>Done</button><button class="btn rb" style="--x:0.866;--y:-0.500"><i data-ic="play"></i>Focus</button><button class="btn rb" style="--x:0.866;--y:0.500"><i data-ic="clock"></i>Snooze</button><button class="btn rb" style="--x:0.000;--y:1.000"><i data-ic="all"></i>Details</button><button class="btn rb" style="--x:-0.866;--y:0.500"><i data-ic="flag"></i>Priority +</button><button class="btn rb" style="--x:-0.866;--y:-0.500"><i data-ic="trash"></i>Delete</button>
+      </div></div><figcaption><code>.radial</code> right-click or long-press · keys grow outward from the hub, so any label fits</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-tips"><span><button class="btn primary"><i data-ic="plus"></i>Add</button><span class="tip">q</span></span><span><button class="nv"><i data-ic="today"></i><span class="lb">Today</span></button><span class="tip">2</span></span><span><button class="btn"><i data-ic="check"></i>Done</button><span class="tip">x</span></span></div><figcaption><code>.tip</code> hold Alt: every <code>data-hint</code> shows its key</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-tile"><div class="m-empty"><i data-ic="done big"></i><b>Nothing here.</b><span>No items match <code>course:cs138 is:overdue</code>.</span><span class="actions sm"><button class="btn">Clear filter<kbd>Esc</kbd></button><button class="btn primary"><i data-ic="plus"></i>Add<kbd>Q</kbd></button></span></div></div><figcaption><code>.m-empty</code> say what's missing, then offer the next step</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ───────────── focus ───────────── -->
+  <section class="uk-sec" id="focus">
+    <div class="uk-sh"><h2>Focus and takeover</h2><span class="uk-ref">.ov.full › .focus / .takeover · .meter · .fo-log</span></div>
+    <div class="uk-specs" style="grid-template-columns:repeat(auto-fill,minmax(min(28em,100%),1fr))">
+      <figure class="uk-spec"><div class="uk-dots"><div class="focus">
+        <div class="fo-top">Focus · Hard level · ends 3:37 PM</div>
+        <div class="fo-task"><span style="--kc: var(--k1);color:var(--kc)">CS130A</span> PA3: heaps and hash tables</div>
+        <div class="display big"><span class="d-lbl">Time left</span><span class="d-num fo-time num">17:42</span></div>
+        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="fo-log"><span class="ok">&gt; FOCUS ARMED · HARD · 25:00</span>
+<span>&gt; CLOSING ON SIGHT: STEAM.EXE · DISCORD.EXE</span>
+<span class="ok">&gt; discord.exe............... CLOSED</span>
+<span>&gt; ESC MINIMIZES · IT DOES NOT END THE SESSION</span></div>
+        <div class="nb"><button class="btn">+5 min</button><button class="btn">Minimize to island<kbd>Esc</kbd></button><button class="btn primary"><i data-ic="check"></i>Task done</button><button class="btn">End early…</button></div>
+      </div></div><figcaption>focus session · the log is the device's terminal voice</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-dots"><div class="takeover">
+        <div class="fo-top">Interrupt · takeover</div><div class="big">Get up.</div><div class="fo-task">CS154 Lecture</div>
+        <div class="display big bad"><span class="d-lbl">Starts in</span><span class="d-num num">04:12</span></div>
+        <div class="locban" style="--kc: var(--k2)"><i data-ic="building lb-ic"></i><span class="lb-main"><span class="lb-name">Phelps Hall</span><span class="lb-room">PHELP 3526</span></span><span class="lb-trip"><i data-ic="walk"></i><span>9 min walk from home</span></span><span class="lb-leave late"><span class="lb-k">Leave</span><b class="num">now</b></span></div>
+        <div class="dim">This screen stays until you answer</div>
+        <div class="actions"><button class="btn primary"><i data-ic="walk"></i>On my way</button><button class="btn"><i data-ic="video"></i>Join Zoom</button><button class="btn">Skipping…</button></div>
+      </div></div><figcaption>takeover · stays until answered</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ───────────── deck ───────────── -->
+  <section class="uk-sec" id="deck">
+    <div class="uk-sh"><h2>Key deck</h2><span class="uk-ref">.deck · mBottom()</span></div>
+    <p class="uk-p">The device's bottom row. In windows at least 900 px tall the keys become legend keys (symbol over label). On phones it sticks to the bottom like a tab bar.</p>
+    <div class="uk-frame"><div class="region">
+      <div class="deck" role="toolbar" aria-label="Actions"><button class="btn primary"><i data-ic="plus"></i><span class="kl">Add</span><kbd>Q</kbd></button><button class="btn dark"><i data-ic="focus"></i><span class="kl">Focus 25</span><kbd>F</kbd></button><button class="btn"><i data-ic="check"></i><span class="kl">Done</span><kbd>X</kbd></button><button class="btn"><i data-ic="clock"></i><span class="kl">Snooze</span><kbd>S</kbd></button><button class="btn k-next"><i data-ic="next"></i><span class="kl">Next</span><kbd>N</kbd></button><button class="btn"><i data-ic="search"></i><span class="kl">Search</span><kbd>Ctrl K</kbd></button><span class="deck-sp"></span><span class="speaker" aria-hidden="true"></span></div>
+      <span class="coach">Tip: Press <b>Q</b> anywhere to add. Try “pa3 130a fri ~4h !!”.</span>
+    </div></div>
+    <p class="uk-cap">Below 66em the grille and engraving go; below 52em the keys share the width.</p>
+  </section>
+
+  <!-- ───────────── island ───────────── -->
+  <section class="uk-sec" id="island">
+    <div class="uk-sh"><h2>Island</h2><span class="uk-ref">ui/island.html (the real window) · .island (desk preview)</span></div>
+    <p class="uk-p">The live activity outside the window: graphite pill, orange progress ring, Doto countdown. Always dark. Desktop only, so it hides on phone widths.</p>
+    <div class="uk-dots"><div class="uk-island">
+      <div class="island bset-b8"><div class="is-pill"><svg class="is-ring" viewBox="0 0 30 30" aria-hidden="true"><circle class="tr" cx="15" cy="15" r="12"/><circle class="pr" cx="15" cy="15" r="12" stroke-dasharray="75.4" stroke-dashoffset="22"/></svg><span class="is-lbl">CS130A Section</span><span class="is-dot"></span><span class="is-cd num">09:48</span></div></div>
+      <div class="island bset-b8 open"><div class="is-pill"><svg class="is-ring" viewBox="0 0 30 30" aria-hidden="true"><circle class="tr" cx="15" cy="15" r="12"/><circle class="pr" cx="15" cy="15" r="12" stroke-dasharray="75.4" stroke-dashoffset="22"/></svg><span class="is-lbl">CS130A Section</span><span class="is-cd num">09:48</span></div>
+        <div class="is-more"><div class="is-row"><span class="dim">Next</span><span class="t">GIRV 1115 · leave by 3:53 PM</span><button class="btn">Zoom</button></div><div class="is-row"><span class="dim">Do first</span><span class="t">PA3: heaps and hash tables</span><button class="btn" aria-label="Done"><i data-ic="check"></i></button><button class="btn"><i data-ic="play"></i>25</button></div><div class="is-row"><span class="dim">3 due today</span><input placeholder="quick add… (enter)" aria-label="Quick add"></div></div></div>
+    </div></div>
+  </section>
+
+  <!-- ───────────── motion ───────────── -->
+  <section class="uk-sec" id="motion">
+    <div class="uk-sh"><h2>Motion and feedback</h2><span class="uk-ref">ui/js/motion.js (CA.motion) · the motion section of pocket.css · M2</span></div>
+    <p class="uk-p">Every input answers where it was made. Keys travel and spring back, LCDs switch on in steps, pixel icons move a pixel at a time, rows settle into place. Each replay key plays one piece on its specimen, through the same <code>CA.motion</code> the app uses.</p>
+    <div class="uk-card"><div class="uk-specs">
+      <figure class="uk-spec"><div class="uk-row"><button class="btn" id="moKey"><i data-ic="check"></i>Done<kbd>X</kbd></button><button class="btn ghost sm" data-mo="key">Replay</button></div><figcaption><code>.down</code> then <code>.ack</code> · a key pressed from the keyboard sinks onto its lip and springs back past the top (<code>--press</code>)</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><div class="display" id="moLcd"><span class="d-lbl">Due in</span><span class="d-num num">2:14:08</span><span class="d-bar"><i style="width:64%"></i></span></div><button class="btn ghost sm" data-mo="boot">Replay</button></div><figcaption><code>.boot</code> · a backlight flash, the segments flicker on, the bar fills in 12 steps</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><div class="display"><span class="d-lbl">Starts in</span><span class="d-num num" data-cd id="moZero">NOW</span></div><button class="btn ghost sm" data-mo="blink">Toggle</button></div><figcaption><code>.blink</code> · a countdown at zero blinks once a second, stepped</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><button class="btn" id="moNope"><i data-ic="clock"></i>Snooze<kbd>S</kbd></button><button class="btn ghost sm" data-mo="nope">Replay</button></div><figcaption><code>.nope</code> · refused (nothing to snooze): a 2 px shake and a low buzz</figcaption></figure>
+      <figure class="uk-spec"><div class="rows"><div class="row mrow" id="moRow"><button class="chk" aria-label="Toggle done"><i data-ic="check"></i></button><span class="m-main"><span class="m-t"><span class="tt">PA3: heaps and hash tables</span></span><span class="m-meta"><span>CS 130A</span><span>Homework</span></span></span><span class="m-pri p2">!!</span><span class="m-due"><span class="duepill soon">Fri</span></span></div></div><div class="uk-row"><button class="btn ghost sm" data-mo="done">Toggle done</button></div><figcaption><code>.stamp</code> and <code>.strike</code> · done in place; where the list hides done items the row leaves as a ghost (<code>.gone.x-done</code>)</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-row"><div class="panel" style="height:auto;width:15em"><div class="ph"><span class="pt" id="moPrint"><i data-ic="today"></i>Today</span><span class="sp"></span><span class="cnt" id="moCnt">4</span></div></div><button class="btn ghost sm" data-mo="print">Print</button><button class="btn ghost sm" data-mo="bump">+1</button></div><figcaption><code>.print</code> · a band label prints in · <code>.bump</code> · a count rolls the way it moved</figcaption></figure>
+    </div></div>
+  </section>
+
+  <!-- ───────────── layout ───────────── -->
+  <section class="uk-sec" id="layout">
+    <div class="uk-sh"><h2>Layout</h2><span class="uk-ref">@container screen in pocket.css · regions #top #nav #now #sched #list #bottom</span></div>
+    <p class="uk-p">Widths follow the screen container, so an open drawer, split view or Slide Over counts. Heights use the window.</p>
+    <div class="uk-card"><div class="uk-lays">
+      <figure class="uk-spec"><div class="uk-lay uk-l1"><b class="t">Top</b><b class="k">Keys</b><b class="n">Do first</b><b class="s">Up next</b><b class="l">List</b><b class="d">Deck</b></div><figcaption><b>≥ 1100 px</b> two columns, 1 : 1.3. The inspector covers the left column.</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-lay uk-l2"><b class="t">Top</b><b class="k">Keys</b><b class="n">Do first</b><b class="s">Up next</b><b class="l">List</b><b class="d">Deck</b></div><figcaption><b>761–1099 px</b> Do first spans the top. The inspector is a drawer.</figcaption></figure>
+      <figure class="uk-spec"><div class="uk-lay uk-l3"><b class="t">Top</b><b class="k">Keys</b><b class="n">Do first</b><b class="s">Next</b><b class="l">List</b><b class="d">Deck</b></div><figcaption><b>≤ 760 px</b> one scrolling column: keys stick under the top bar, the deck sticks to the bottom, the inspector is a sheet.</figcaption></figure>
+    </div></div>
+  </section>
+
+ </div>
+</div>
+
+<!-- the app's own scripts, for the icons (CA.app.ic) and the themes (CA.themes); app.js loads without booting (lab.js boots it) -->
+<script src="../../ui/js/data.js"></script>
+<script src="../../ui/js/engine.js"></script>
+<script src="../../ui/js/store.js"></script>
+<script src="../../ui/js/motion.js"></script>
+<script src="../../ui/js/app.js"></script>
+<script src="../../ui/js/themes.js"></script>
+<script>
+(function () {
+  const CA = window.CA || {}, root = document.documentElement, $$ = (s) => Array.from(document.querySelectorAll(s));
+  // Every built-in theme, from ui/js/themes.js (the source of truth); a theme's look sets html[data-look] as in the app
+  const TH = CA.themes;
+  let applied = [];
+  const keep = { get(k, d) { try { const v = localStorage.getItem("capp.uikit." + k); return v == null ? d : v; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("capp.uikit." + k, v); } catch (e) { /* storage off: the choice lasts this visit */ } } };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function mark(axis, v) { $$(`[data-uk="${axis}"]`).forEach((b) => { const on = b.dataset.v === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); }
+  function theme(id) {
+    const th = TH.find(id) || TH.find("P9"), t = TH.palette(th), ty = TH.TYPES[th.look], keys = Object.keys(t).filter((k) => k !== "scheme");
+    applied.filter((k) => !(k in t)).forEach((k) => root.style.removeProperty("--" + k));
+    keys.forEach((k) => root.style.setProperty("--" + k, t[k])); applied = keys;
+    [["font-body", ty.body], ["font-ui", ty.body], ["font-mono", ty.mono], ["font-num", ty.num], ["num-scale", ty.ns]].forEach(([k, v]) => root.style.setProperty("--" + k, v));
+    root.dataset.scheme = t.scheme; root.dataset.look = th.look; root.style.colorScheme = t.scheme;
+    mark("theme", th.pid); keep.set("theme", th.pid); swatches(); icons();
+  }
+  function guide(g) { document.getElementById("screen").dataset.guide = g; mark("guide", g); keep.set("guide", g); }
+
+  // swatches read the live custom properties, so they always show what the CSS resolves to; mixes get a short recipe
+  const MIX = { "accent-soft": "accent 16% · see-through", "warn-ink": "warn 75% · text 25%" };
+  function swatches() {
+    const cs = getComputedStyle(root);
+    $$("[data-sw]").forEach((el) => {
+      el.innerHTML = el.dataset.sw.split("|").map((pair) => {
+        const [tok, label] = pair.split(":"), v = cs.getPropertyValue("--" + tok).trim();
+        const shown = /^color-mix/.test(v) ? MIX[tok] || "a mix" : v;
+        return `<div class="uk-sw"><i style="background:var(--${tok})"></i><span><b>--${tok}</b><small>${esc(label)}</small><em>${esc(shown)}</em></span></div>`;
+      }).join("");
+    });
+  }
+
+  // icons follow the look: each placeholder keeps its data-ic, so a theme switch redraws it in the other set
+  function icons() {
+    if (!CA.app || !CA.app.ic) { document.getElementById("icNote").hidden = false; return; }
+    $$("[data-ic]").forEach((el) => { const [n, ...c] = el.dataset.ic.split(" "); el.outerHTML = CA.app.ic(n, c.join(" ")).replace("<svg ", `<svg data-ic="${esc(el.dataset.ic)}" `); });
+    document.getElementById("icGrid").innerHTML = CA.app.icons.map((n) => `<div class="uk-ic" title="ic(&quot;${n}&quot;)">${CA.app.ic(n)}<code>${n}</code></div>`).join("");
+    // the focus icon blown up to its 9×9 grid, read back from the pixel SVG it draws
+    const tmp = document.createElement("div"); tmp.innerHTML = CA.app.ic("focus", "", "pocket");
+    const on = new Set(), d = tmp.querySelector("path").getAttribute("d");
+    for (const m of d.matchAll(/M(\d+) (\d+)h(\d+)/g)) for (let x = +m[1]; x < +m[1] + +m[3]; x++) on.add(+m[2] * 9 + x);
+    document.getElementById("icZoom").innerHTML = Array.from({ length: 81 }, (_, i) => `<b class="${on.has(i) ? "on" : ""}"></b>`).join("");
+  }
+
+  // the Motion section: replay each piece of feedback on its specimen
+  function replay(k) {
+    const M = CA.motion, el = (id) => document.getElementById(id);
+    if (k === "key") M.press(() => [el("moKey")]);
+    else if (k === "boot") M.ack(el("moLcd"), "boot");
+    else if (k === "blink") el("moZero").classList.toggle("blink");
+    else if (k === "nope") M.nope(el("moNope"));
+    else if (k === "print") M.ack(el("moPrint"), "print");
+    else if (k === "bump") { const c = el("moCnt"); c.textContent = +c.textContent + 1; c.dataset.dir = "up"; M.ack(c, "bump"); }
+    else if (k === "done") {
+      const r = el("moRow"); r.classList.toggle("done");
+      if (r.classList.contains("done")) { M.ack(r.querySelector(".chk"), "stamp"); M.ack(r.querySelector(".tt"), "strike"); }
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const mo = e.target.closest("[data-mo]");
+    if (mo && CA.motion) { e.preventDefault(); return replay(mo.dataset.mo); }
+    const b = e.target.closest("[data-uk]");
+    if (b) return b.dataset.uk === "theme" ? theme(b.dataset.v) : guide(b.dataset.v);
+    if (e.target.closest("button") && !e.target.closest(".seg, .chk")) e.preventDefault(); // specimens are inert
+  });
+  // Alt shows the key tips, as in the app (G2)
+  const dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.getElementById("ukThemes").innerHTML = TH.BUILTIN.map((t) => `<button class="chip" data-uk="theme" data-v="${t.pid}" title="${esc(t.note)}">${t.pid} ${esc(t.name)}</button>`).join("");
+  theme(keep.get("theme", dark ? "P11" : "P9"));
+  guide(keep.get("guide", "g2"));
+})();
+</script>
+</body>
+</html>

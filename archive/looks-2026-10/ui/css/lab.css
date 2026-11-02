@@ -1,0 +1,116 @@
+/* Design Lab — the monitor's "service mode" drawer. Deliberately theme-independent
+   (fixed hardware colours) so it stays a stable control surface while the screen changes. */
+
+.lab {
+  --lab-bg: #17181b; --lab-bg2: #202226; --lab-ink: #dcd6c8; --lab-dim: #8a877f; --lab-line: #34363b;
+  --lab-led: #ffb000; --lab-led-rgb: 255, 176, 0;
+  position: fixed; top: 0; right: 0; bottom: 0; width: 400px; z-index: 100;
+  display: flex; flex-direction: column;
+  background: linear-gradient(90deg, #121315, var(--lab-bg) 8%);
+  color: var(--lab-ink); border-left: 1px solid #000;
+  box-shadow: -18px 0 40px rgba(0,0,0,.5), inset 1px 0 0 rgba(255,255,255,.04);
+  font: 13px/1.5 "Inter", "Segoe UI", system-ui, sans-serif;
+  animation: labIn 260ms cubic-bezier(.2, .9, .3, 1);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+@keyframes labIn { from { transform: translateX(40px); opacity: 0; } }
+.lab-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--lab-line); flex: none; }
+.lab-head h2 { margin: 0; font: 700 15px/1.2 inherit; letter-spacing: -.01em; }
+.lab-head .led { width: 8px; height: 8px; border-radius: 50%; background: var(--lab-led); box-shadow: 0 0 8px var(--lab-led); }
+.lab-head .sub { color: var(--lab-dim); font-size: 12px; }
+.lab-x { margin-left: auto; }
+.lab-body { flex: 1; overflow: auto; padding: 4px 16px 24px; scrollbar-color: #444 transparent; }
+.lab-sec { padding: 14px 0 10px; border-bottom: 1px solid var(--lab-line); }
+.lab-sec > h3 { margin: 0 0 10px; font: 650 13px/1.2 inherit; color: var(--lab-ink); display: flex; gap: 8px; align-items: center; }
+.lab-sec > h3::after { content: ""; flex: 1; border-bottom: 1px dashed var(--lab-line); }
+.lab-sec > p { margin: 0 0 8px; color: var(--lab-dim); font-size: 12px; }
+.lab button { font: inherit; color: inherit; }
+.lab button:focus-visible, .lab input:focus-visible, .lab textarea:focus-visible { outline: 2px solid var(--lab-led); outline-offset: 1px; }
+.lab-btn {
+  border: 0; cursor: pointer; padding: 6px 11px; border-radius: 6px; font-weight: 500;
+  background: linear-gradient(#34373d, #26282d); color: var(--lab-ink);
+  box-shadow: 0 2px 0 #0a0a0b, 0 0 0 1px rgba(0,0,0,.6);
+}
+.lab-btn:hover { background: linear-gradient(#3e4249, #2d3036); }
+.lab-btn:active { transform: translateY(2px); box-shadow: none; }
+.lab-btn.hot { background: linear-gradient(#ffc23a, #e09a00); color: #1a1205; font-weight: 600; box-shadow: 0 2px 0 #7a5200, 0 0 14px rgba(var(--lab-led-rgb), .35); }
+.lab-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* rendition cards */
+.rcards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rcard {
+  all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px;
+  background: var(--lab-bg2); box-shadow: 0 0 0 1px var(--lab-line); position: relative;
+}
+.rcard:hover { box-shadow: 0 0 0 1px #5a5d64; }
+.rcard.on { box-shadow: 0 0 0 2px var(--lab-led), 0 0 18px rgba(var(--lab-led-rgb), .2); }
+.rcard .thumb { height: 58px; border-radius: 6px / 9px; overflow: hidden; position: relative; }
+.rcard .thumb::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, rgba(0,0,0,.35) 0 1px, transparent 1px 3px); }
+.rcard .nm { font-weight: 650; font-size: 13.5px; display: flex; gap: 6px; }
+.rcard .nm .id { color: var(--lab-led); }
+.rcard .ds { color: var(--lab-dim); font-size: 11.5px; line-height: 1.4; }
+.thumb.t-phosphor { background: #030805; }
+.thumb.t-phosphor i { position: absolute; left: 8px; right: 8px; height: 3px; background: #41ff7a; box-shadow: 0 0 6px #41ff7a; }
+.thumb.t-teletext { background: #000; }
+.thumb.t-mainframe { background: radial-gradient(#3b4bd0 1px, transparent 1.3px) 0 0 / 4px 4px, #0a1a8a; }
+.thumb.t-vector { background: #02040b; }
+.thumb.t-signal { background: #0c0f13; }
+.thumb.t-pocket { background: radial-gradient(rgba(0,0,0,.12) 1px, transparent 1.4px) 0 0 / 8px 8px, #e6e2d8; }
+.thumb.t-ledger { background: #e9e4d6; }
+.rcard .thumb:is(.t-signal, .t-pocket, .t-ledger)::after { display: none; }
+.rgroup + .rgroup { margin-top: 14px; }
+.rg-h { font-weight: 650; color: var(--lab-led); margin-bottom: 2px; }
+.rgroup > p { margin: 0 0 8px; color: var(--lab-dim); font-size: 12px; }
+
+/* option chips with IDs */
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt {
+  all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 5px;
+  background: var(--lab-bg2); box-shadow: 0 0 0 1px var(--lab-line); white-space: nowrap;
+}
+.opt:hover { box-shadow: 0 0 0 1px #5a5d64; }
+.opt.on { box-shadow: 0 0 0 2px var(--lab-led); color: #fff; }
+.opt .id { color: var(--lab-led); font-weight: 600; font: 600 11.5px "JetBrains Mono", "IBM Plex Mono", monospace; }
+.opt .sw { width: 12px; height: 12px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); }
+.opt.final::after { content: "★"; color: var(--lab-led); }
+.opt-desc { color: var(--lab-dim); font-size: 12px; margin-top: 6px; min-height: 1.4em; }
+
+/* live previews of buttons / frames rendered with the current palette */
+.prev { border-radius: 6px; padding: 10px; background: var(--desk-c); color: var(--fg); font-family: var(--font-ui, var(--font-body)); font-size: calc(14px * var(--font-scale)); text-shadow: var(--ts); display: grid; gap: 8px; }
+html[data-fam="modern"] .prev { text-shadow: none; background: var(--bg); color: var(--text-2); }
+.prev .pv-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 4px; }
+.prev .pv-row:hover { background: rgba(255,255,255,.04); }
+.prev .pv-row.on { box-shadow: 0 0 0 1px var(--lab-led); }
+.prev .pv-id { font: 600 11px "IBM Plex Mono", monospace; color: var(--lab-led); width: 2.2em; text-shadow: none; }
+.prev .pv-fr { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.prev .pv-fr > div { cursor: pointer; padding-top: 8px; }
+.prev .pv-fr .panel { height: 64px; }
+.prev .pv-fr .pv-id { margin-top: 2px; }
+.prev .pv-fr > div.on .panel { outline: 1px solid var(--lab-led); outline-offset: 3px; }
+
+/* sliders */
+.sl { display: grid; grid-template-columns: 86px minmax(0, 1fr) 34px; gap: 8px; align-items: center; margin: 4px 0; }
+.sl label { color: var(--lab-dim); font-size: 12px; }
+.sl output { text-align: right; color: var(--lab-ink); font-variant-numeric: tabular-nums; }
+.sl input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: #0c0c0d; box-shadow: inset 0 1px 2px #000; }
+.sl input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 20px; border-radius: 3px; background: linear-gradient(#e6e1d3, #a9a493); box-shadow: 0 2px 2px #000; cursor: pointer; }
+.sl input[type="range"]::-moz-range-thumb { width: 14px; height: 20px; border-radius: 3px; background: linear-gradient(#e6e1d3, #a9a493); border: 0; }
+
+/* lock-in */
+.code { background: #0b0b0c; color: var(--lab-led); padding: 8px 10px; border-radius: 5px; font: 12.5px/1.5 "JetBrains Mono", "IBM Plex Mono", monospace; word-break: break-all; box-shadow: inset 0 1px 3px #000; user-select: all; }
+.final-card { border: 1px solid var(--lab-led); border-radius: 8px; padding: 10px; background: rgba(var(--lab-led-rgb), .06); display: grid; gap: 8px; }
+.final-card .lbl { color: var(--lab-led); font-size: 12px; font-weight: 650; }
+.final-card ul { margin: 0; padding-left: 16px; color: var(--lab-ink); }
+.cands { display: grid; gap: 6px; margin-top: 8px; }
+.cand { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 6px 8px; border-radius: 5px; background: var(--lab-bg2); align-items: center; }
+.cand .cn { font-weight: 600; }
+.cand .cc { grid-column: 1 / -1; color: var(--lab-dim); font: 11px "JetBrains Mono", monospace; word-break: break-all; }
+.cand.final { box-shadow: 0 0 0 1px var(--lab-led); }
+.lab input[type="text"], .lab textarea { width: 100%; font: inherit; color: var(--lab-ink); background: #0b0b0c; border: 1px solid var(--lab-line); border-radius: 4px; padding: 5px 7px; }
+.lab textarea { height: 120px; resize: vertical; font: 11px "JetBrains Mono", monospace; }
+.lab .note { color: var(--lab-dim); font-size: 12px; }
+.lab .ok { color: #7bd88f; }
+
+@media (max-width: 760px) {
+  .lab { top: auto; width: 100%; height: 72%; border-left: 0; border-top: 1px solid #000; border-radius: 14px 14px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); }
+}

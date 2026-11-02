@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Collegiapp Island</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600..900&family=Space+Grotesk:wght@400..700&display=swap">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    /* Collegiapp — the always-on-top "live activity" window (380×64, transparent, no frame), desktop only.
+       The Pocket device in miniature: graphite pill, orange progress ring, LCD countdown, at 60% until hovered.
+       Tokens come from the main window's theme via localStorage "capp.tokens", --m (motion) too. It moves like the
+       device: the pill pops in, a new label rolls up, the LCD flickers on when the countdown turns amber and
+       blinks at NOW. Stepped, like every LCD in Pocket. */
+    :root {
+      --fg: #ff7a3d; --warn: #f0b54a; --lcd-bg: #b1bd93; --lcd-fg: #1f2a17; --font-scale: .95; --m: 1;
+      --font-body: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      --font-num: "Doto", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
+    .pill {
+      position: absolute; inset: 6px; border-radius: 999px; background: #1b1a17; color: #f1ece2;
+      display: flex; align-items: center; gap: 10px; padding: 0 7px 0 9px; cursor: default;
+      font: 600 calc(14px * var(--font-scale) / .95) / 1.15 var(--font-body); -webkit-font-smoothing: antialiased;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1px rgba(0, 0, 0, .6), 0 6px 16px rgba(0, 0, 0, .35);
+    }
+    svg { width: 30px; height: 30px; flex: none; }
+    circle { fill: none; stroke-width: 3.5; }
+    .tr { stroke: rgba(255, 255, 255, .14); }
+    .pr { stroke: var(--fg); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s linear; }
+    .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .lbl, .det { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .det { font-size: .8em; font-weight: 400; color: #a7a094; }
+    .cd {
+      flex: none; min-width: 4.4em; text-align: center; padding: 6px 9px 5px; border-radius: 999px;
+      background: linear-gradient(170deg, color-mix(in srgb, #fff 18%, var(--lcd-bg)), var(--lcd-bg) 60%); color: var(--lcd-fg);
+      font: 900 calc(19px * var(--font-scale) / .95) / 1 var(--font-num); font-variant-numeric: tabular-nums; box-shadow: inset 0 1px 3px rgba(0, 0, 0, .35);
+    }
+    .cd:empty { display: none; }
+    .soon .cd { --lcd-bg: var(--warn); --lcd-fg: #2a1a00; }
+    /* idles see-through so it doesn't hide what's under it; the pointer brings it up to full */
+    .pill { animation: pillIn calc(var(--m) * 380ms + 1ms) cubic-bezier(.3, 1.45, .5, 1); transition: opacity calc(var(--m) * 160ms + 1ms) ease-out; }
+    @media (hover: hover) { .pill:not(:hover) { opacity: .6; } }
+    @keyframes pillIn { from { transform: scale(.82); opacity: 0; } }
+    .lbl.roll { animation: roll calc(var(--m) * 260ms + 1ms) steps(3, end); }
+    @keyframes roll { from { transform: translateY(.6em); opacity: 0; } }
+    .cd.boot { animation: lcdOn calc(var(--m) * 460ms + 1ms) steps(1, end); }
+    @keyframes lcdOn { 0% { opacity: 0; } 30% { opacity: .35; } 45% { opacity: .1; } 60% { opacity: .75; } 75%, 100% { opacity: 1; } }
+    .cd.now { animation: blink calc(var(--m) * 1000ms + 1ms) steps(1, end) infinite; }
+    @keyframes blink { 50% { color: transparent; } }
+    html[data-still] *, html[data-still] .pr { animation: none !important; transition: none !important; }
+    @media (prefers-reduced-motion: reduce) { *, .pr { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="pill" id="pill" data-tauri-drag-region title="Drag to move · double-click opens Collegiapp">
+    <svg viewBox="0 0 30 30" aria-hidden="true"><circle class="tr" cx="15" cy="15" r="12"/><circle class="pr" id="ring" cx="15" cy="15" r="12" stroke-dasharray="75.4" stroke-dashoffset="75.4"/></svg>
+    <div class="txt" data-tauri-drag-region><span class="lbl" id="lbl" data-tauri-drag-region>Collegiapp</span><span class="det" id="det" data-tauri-drag-region>Nothing scheduled in the next 12 hours</span></div>
+    <span class="cd" id="cd" data-tauri-drag-region></span>
+  </div>
+  <script>
+    (function () {
+      const T = window.__TAURI__, $ = (id) => document.getElementById(id);
+      let p = null;
+      try { const t = JSON.parse(localStorage.getItem("capp.tokens") || "null"); if (t) for (const k in t) document.documentElement.style.setProperty("--" + k, t[k]); if (t && t.m === 0) document.documentElement.dataset.still = ""; } catch (e) {}
+      // restart a one-shot class; `was` is what the last draw showed
+      const ack = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+      const was = {};
+      const two = (n) => String(n).padStart(2, "0");
+      function clock(ms) {
+        if (ms <= 0) return "NOW";
+        const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+        return h >= 24 ? Math.floor(h / 24) + "d " + (h % 24) + "h" : (h ? h + ":" + two(m) : m) + ":" + two(s % 60);
+      }
+      function draw() {
+        const now = Date.now();
+        if (!p) { $("lbl").textContent = "Collegiapp"; $("det").textContent = "Nothing scheduled in the next 12 hours"; $("cd").textContent = ""; $("ring").setAttribute("stroke-dashoffset", "75.4"); return; }
+        const start = Date.parse(p.starts_at), end = p.ends_at ? Date.parse(p.ends_at) : null, live = now >= start && end && now < end;
+        const lbl = (live ? "In class · " : "") + p.label, cd = clock((live ? end : start) - now);
+        if (was.lbl != null && was.lbl !== lbl) ack($("lbl"), "roll");
+        $("lbl").textContent = was.lbl = lbl;
+        $("det").textContent = p.detail || p.location || "";
+        $("cd").textContent = cd; $("cd").classList.toggle("now", cd === "NOW");
+        const frac = live ? (now - start) / (end - start) : Math.max(0, 1 - (start - now) / 3600000);
+        $("ring").setAttribute("stroke-dashoffset", (75.4 * (1 - Math.max(0, Math.min(1, frac)))).toFixed(1));
+        const soon = !live && start - now < 10 * 60000;
+        if (soon && !was.soon) ack($("cd"), "boot");
+        $("pill").classList.toggle("soon", (was.soon = soon));
+      }
+      if (T) {
+        T.event.listen("presence", (e) => { p = e.payload; draw(); });
+        T.core.invoke("get_presence").then((v) => { p = v; draw(); }, () => {});
+        $("pill").addEventListener("dblclick", async () => {
+          try { const main = await T.webviewWindow.WebviewWindow.getByLabel("main"); if (main) { await main.show(); await main.unminimize(); await main.setFocus(); } } catch (e) {}
+        });
+      }
+      draw(); setInterval(draw, 1000);
+    })();
+  </script>
+</body>
+</html>

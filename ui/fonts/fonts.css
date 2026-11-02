@@ -1,0 +1,2 @@
+/* Local copies of the web fonts. Empty until you run: python tools/vendor_fonts.py
+   (it downloads the woff2 files from Google Fonts into this folder so the app works offline). */

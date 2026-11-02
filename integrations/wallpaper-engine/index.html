@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Collegiapp Pocket</title>
+  <link rel="stylesheet" href="wallpaper.css">
+</head>
+<body data-scheme="cream" data-layout="right">
+  <canvas class="layer" id="desk" aria-hidden="true"></canvas>
+  <canvas class="layer" id="fx" aria-hidden="true"></canvas>
+
+  <main class="col" id="col">
+    <section class="lcd clock" id="clock" style="--i: 0">
+      <span class="ll" id="date"></span>
+      <span class="ln"><span id="hh"></span><span class="colon" id="colon">:</span><span id="mm"></span><span class="ap" id="ap"></span></span>
+      <span class="ls" id="term"></span>
+      <span class="lbar"><i id="sec"></i></span>
+    </section>
+
+    <div class="mods">
+      <section class="mod" id="df" hidden style="--i: 1">
+        <div class="band hot"><span class="bt"><svg class="i" data-ic="now" viewBox="0 0 9 9" aria-hidden="true"><path/></svg>Do first</span><span class="cnt" id="dfw"></span></div>
+        <div class="mb df-b">
+          <div class="dfm" id="dfm"><span class="cc" id="dfc" hidden></span><span class="dfs" id="dfs"></span></div>
+          <h2 class="dft" id="dft"></h2>
+          <div class="lcd dfl" id="dfl" hidden>
+            <div class="lrow"><span class="ll" id="dfk">Due in</span><span class="ln" id="dfn"></span></div>
+            <span class="lbar"><i id="dfbar"></i></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="mod" id="wk" style="--i: 2">
+        <div class="band"><span class="bt"><svg class="i" data-ic="week" viewBox="0 0 9 9" aria-hidden="true"><path/></svg>This week</span><span class="cnt" id="wkc"></span></div>
+        <div class="mb">
+          <div class="cal" id="cal"></div>
+          <div id="qm">
+            <div class="sub-h"><span id="qn"></span><span id="qs"></span></div>
+            <div class="meter" id="meter"></div>
+          </div>
+          <div class="sub-h"><span>Today</span><span id="left"></span></div>
+          <div class="timeline"><i id="tlf"></i><b id="tln"></b></div>
+          <div class="tl-scale" id="scale"></div>
+        </div>
+      </section>
+
+      <section class="mod" id="np" hidden style="--i: 3">
+        <div class="band"><span class="bt"><svg class="i" data-ic="music" viewBox="0 0 9 9" aria-hidden="true"><path/></svg>Now playing</span><span class="cnt" id="npc"></span></div>
+        <div class="mb">
+          <div class="npt" id="npt"></div>
+          <div class="npa" id="npa"></div>
+          <div class="lcd spec"><canvas id="spec"></canvas><span class="lbar" id="npl"><i id="npb"></i></span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="feed.js"></script>
+  <script src="wallpaper.js"></script>
+</body>
+</html>

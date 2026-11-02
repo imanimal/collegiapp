@@ -1,0 +1,303 @@
+# Pocket for Windows: quick settings, media, notifications and the calendar. Settings for the Windhawk mod
+# "Windows 11 Notification Center Styler" (windows-11-notification-center-styler): run apply.ps1, or Settings tab ›
+# Textual mode › paste › Save settings (then set Assets below to your copy of the assets folder). Night (P11).
+# The flyouts from the design canvas: warm boards with modules under printed label bands; quick-setting toggles are
+# raised keys that go dark with an orange icon when on; sliders are segmented LCD meters; footers are work decks;
+# notifications are cards; today is an LCD chip.
+styleConstants:
+  - Bg=#1A1917
+  - Bg2=#2A2926
+  - Surface=#262522
+  - Surface2=#302E2A
+  - Line=#3F3C36
+  - Chrome=#0F0E0D
+  - ChromeFg=#ECE6DA
+  - Accent=#FF6A2B
+  - OnAccent=#1B1915
+  - Text=#F4EFE5
+  - Text2=#D0C9BA
+  - Text3=#A39C8D
+  - WellDeck=#252421
+  - KeyEdge=#2A2824
+  - Lcd=#45B3A1
+  - LcdInk=#04211C
+  - KeyBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#4D4B48" Offset="0"/><GradientStop Color="#302E2A" Offset="1"/></LinearGradientBrush>
+  - KeyBrushHover=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#666461" Offset="0"/><GradientStop Color="#302E2A" Offset="1"/></LinearGradientBrush>
+  - ChromeBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#2C2B2A" Offset="0"/><GradientStop Color="#0F0E0D" Offset="1"/></LinearGradientBrush>
+  - ChromeBrushHover=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#3A3937" Offset="0"/><GradientStop Color="#1A1918" Offset="1"/></LinearGradientBrush>
+  - LcdBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0.25,1"><GradientStop Color="#67C1B2" Offset="0"/><GradientStop Color="#45B3A1" Offset="0.6"/></LinearGradientBrush>
+  # LCD level meters: 7 px segments, 5 lit and 2 dark.
+  - MeterOff=<LinearGradientBrush MappingMode="Absolute" StartPoint="0,0" EndPoint="7,0" SpreadMethod="Repeat"><GradientStop Color="#3CA090" Offset="0"/><GradientStop Color="#3CA090" Offset="0.7"/><GradientStop Color="#45B3A1" Offset="0.7"/><GradientStop Color="#45B3A1" Offset="1"/></LinearGradientBrush>
+  - MeterOn=<LinearGradientBrush MappingMode="Absolute" StartPoint="0,0" EndPoint="7,0" SpreadMethod="Repeat"><GradientStop Color="#04211C" Offset="0"/><GradientStop Color="#04211C" Offset="0.7"/><GradientStop Color="#45B3A1" Offset="0.7"/><GradientStop Color="#45B3A1" Offset="1"/></LinearGradientBrush>
+  - Assets=file:///C:/collegiapp/integrations/windhawk-pocket/assets
+controlStyles:
+  # Boards: quick settings, media, notifications and calendar.
+  - target: Grid#ControlCenterRegion, Grid#NotificationCenterGrid, Grid#CalendarCenterGrid
+    styles:
+      - Background=$Bg
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=18
+  - target: Grid#MediaTransportControlsRegion
+    styles:
+      - Background=$Bg
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=18
+  - target: Grid#MediaTransportControlsRoot
+    styles:
+      - Background=Transparent
+  # Quick settings: the toggles and sliders sit in a surface module under a "Quick settings" band.
+  - target: Grid#L1Grid > Border
+    styles:
+      - Background=$Surface
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=14
+      - Margin=12,12,12,6
+      - Child:=<Border VerticalAlignment="Top" Height="38.4" CornerRadius="14,14,0,0" BorderBrush="#40000000" BorderThickness="0,0,0,1" Padding="38,0,8,0"><Border.Background><ImageBrush Stretch="UniformToFill" AlignmentX="Left" ImageSource="$Assets/band-quick.png"/></Border.Background><TextBlock Text="QUICK SETTINGS" VerticalAlignment="Center" FontFamily="Space Grotesk" FontWeight="Bold" FontSize="11.5" CharacterSpacing="110" Foreground="$ChromeFg"/></Border>
+  - target: ContentControl#TogglesGroup
+    styles:
+      - Margin=0,52,0,0
+  # Toggles: raised keys; on is the dark key with an orange icon. A click pushes the key down 3 px onto a 1 px lip,
+  # glyph and all. Sizes are whole screen pixels at 125% (0.8 px each).
+  - target: ControlCenter.PaginatedToggleButton > ContentPresenter#ContentPresenter@CommonStates, QuickActions.AccessibleToggleButton > ContentPresenter#ContentPresenter@CommonStates
+    styles:
+      - CornerRadius=10
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - BorderBrush=$KeyEdge
+      - BackgroundSizing=InnerBorderEdge
+      - Foreground=$Text2
+      - Background:=$KeyBrush
+      - Background@Normal:=$KeyBrush
+      - Background@PointerOver:=$KeyBrushHover
+      - Background@Pressed:=$KeyBrush
+      - Background@Disabled:=$KeyBrush
+      - Background@Checked:=$ChromeBrush
+      - Background@CheckedPointerOver:=$ChromeBrushHover
+      - Background@CheckedPressed:=$ChromeBrush
+      - Background@CheckedDisabled:=$ChromeBrush
+      - BorderBrush@Checked=#000000
+      - BorderBrush@CheckedPointerOver=#000000
+      - BorderBrush@CheckedPressed=#000000
+      - Foreground@Normal=$Text2
+      - Foreground@PointerOver=$Text
+      - Foreground@Checked=$Accent
+      - Foreground@CheckedPointerOver=$Accent
+      - Foreground@CheckedPressed=$Accent
+      - BorderThickness@Pressed=0.8
+      - BorderThickness@CheckedPressed=0.8
+      - Margin@Pressed=0,2.4,0,0
+      - Margin@CheckedPressed=0,2.4,0,0
+  - target: ControlCenter.PaginatedToggleButton#ToggleButton, ControlCenter.PaginatedToggleButton#SplitL2Button, QuickActions.AccessibleToggleButton#ToggleButton, QuickActions.AccessibleToggleButton#SplitL2Button
+    styles:
+      - CornerRadius=10
+      - BorderThickness=0
+      - Background=Transparent
+  # Sliders: segmented LCD meters in a graphite bezel, without a thumb.
+  - target: Rectangle#HorizontalTrackRect
+    styles:
+      - Height=14
+      - RadiusX=4
+      - RadiusY=4
+      - Fill:=$MeterOff
+      - Stroke=$Chrome
+      - StrokeThickness=2
+  - target: Rectangle#HorizontalDecreaseRect
+    styles:
+      - Height=10
+      - RadiusX=1
+      - RadiusY=1
+      - Margin=2,0,0,0
+      - Fill:=$MeterOn
+  - target: Windows.UI.Xaml.Controls.Primitives.Thumb#HorizontalThumb
+    styles:
+      - Opacity=0
+  # Footer: a work deck. The battery reads out on an LCD chip; the buttons are small keys.
+  - target: Grid#FooterGrid
+    styles:
+      - Background=$WellDeck
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=14
+      - Margin=12,6,12,12
+  - target: Button#FooterButton, Button#VolumeL2Button
+    styles:
+      - Background:=$KeyBrush
+      - BorderBrush=$KeyEdge
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - CornerRadius=9
+  - target: Button#FooterButton > ContentPresenter#ContentPresenter@CommonStates, Button#VolumeL2Button > ContentPresenter#ContentPresenter@CommonStates
+    styles:
+      - Background:=$KeyBrush
+      - BorderBrush=$KeyEdge
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - CornerRadius=9
+      - Background@PointerOver:=$KeyBrushHover
+      - BorderThickness@Pressed=0.8
+      - Margin@Pressed=0,2.4,0,0
+  - target: Button[AutomationProperties.AutomationId=Microsoft.QuickAction.Battery]
+    styles:
+      - Background:=$LcdBrush
+      - BorderBrush=$Chrome
+      - BorderThickness=2
+      - CornerRadius=5
+      - Foreground=$LcdInk
+  - target: Button[AutomationProperties.AutomationId=Microsoft.QuickAction.Battery] > ContentPresenter#ContentPresenter > StackPanel > TextBlock
+    styles:
+      - FontFamily=Doto
+      - FontWeight=ExtraBold
+      - FontSize=16
+      - Foreground=$LcdInk
+  # Media: transport buttons are keys; play/pause is the dark key. Each goes down 3 px when clicked.
+  - target: Windows.UI.Xaml.Controls.Primitives.RepeatButton#PreviousButton > ContentPresenter#ContentPresenter@CommonStates, Windows.UI.Xaml.Controls.Primitives.RepeatButton#NextButton > ContentPresenter#ContentPresenter@CommonStates
+    styles:
+      - Background:=$KeyBrush
+      - BorderBrush=$KeyEdge
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - CornerRadius=9
+      - Background@Normal:=$KeyBrush
+      - Background@PointerOver:=$KeyBrushHover
+      - Background@Pressed:=$KeyBrush
+      - BorderThickness@Pressed=0.8
+      - Margin@Pressed=0,2.4,0,0
+  - target: Button#PlayPauseButton > ContentPresenter#ContentPresenter@CommonStates
+    styles:
+      - Background:=$ChromeBrush
+      - BorderBrush=#000000
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - CornerRadius=9
+      - Foreground=$Accent
+      - Background@Normal:=$ChromeBrush
+      - Background@PointerOver:=$ChromeBrushHover
+      - Background@Pressed:=$ChromeBrush
+      - BorderThickness@Pressed=0.8
+      - Margin@Pressed=0,2.4,0,0
+  - target: Button#PlayPauseButton > ContentPresenter#ContentPresenter > TextBlock
+    styles:
+      - Foreground=$Accent
+  - target: Grid#ThumbnailImage
+    styles:
+      - CornerRadius=10
+  # Notifications: a "Notifications" band over cards.
+  - target: Grid#NotificationCenterTopBanner
+    styles:
+      - CornerRadius=14
+      - Margin=12,12,12,6
+      - BorderBrush=#40000000
+      - BorderThickness=0,0,0,1
+      - MinHeight=38.4
+      - Padding=26,0,0,0
+      - Background:=<ImageBrush Stretch="UniformToFill" AlignmentX="Left" ImageSource="$Assets/band-notes.png"/>
+  - target: TextBlock#NotificationsTextBlock
+    styles:
+      - Text=NOTIFICATIONS
+      - FontFamily=Space Grotesk
+      - FontWeight=Bold
+      - FontSize=11.5
+      - CharacterSpacing=110
+      - Foreground=$ChromeFg
+  - target: Grid#NotificationCenterTopBanner > * > TextBlock, Grid#NotificationCenterTopBanner > * > FontIcon, Button#ClearAll
+    styles:
+      - Foreground=$ChromeFg
+  - target: Border#ItemOpaquePlating
+    styles:
+      - Background=$Bg2
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=10
+  - target: ActionCenter.FlexibleItemView
+    styles:
+      - CornerRadius=10
+  - target: Grid#GroupTitleGrid > TextBlock#Title
+    styles:
+      - FontWeight=SemiBold
+      - Foreground=$Text2
+  # Toasts: the same cards, floating.
+  - target: Border#ToastBackgroundBorder, Border#ToastBackgroundBorder2
+    styles:
+      - Background=$Bg2
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=14
+  # Calendar: the date band, the month on a surface card, and today as an LCD chip.
+  - target: StackPanel#CalendarHeader
+    styles:
+      - CornerRadius=14,14,0,0
+      - Margin=12,12,12,0
+      - Padding=26,0,8,0
+      - MinHeight=38.4
+      - BorderBrush=#40000000
+      - BorderThickness=0,0,0,1
+      - Background:=<ImageBrush Stretch="UniformToFill" AlignmentX="Left" ImageSource="$Assets/band-cal.png"/>
+  - target: StackPanel#CalendarHeader > Button#DateTextButton > Grid > Border#Border > ContentPresenter#ContentPresenter > TextBlock, StackPanel#CalendarHeader > * > TextBlock
+    styles:
+      - FontFamily=Space Grotesk
+      - FontWeight=Bold
+      - FontSize=12.5
+      - CharacterSpacing=60
+      - Foreground=$ChromeFg
+  - target: Button#ExpandCollapseButton
+    styles:
+      - Foreground=$ChromeFg
+  - target: ScrollViewer#CalendarControlScrollViewer
+    styles:
+      - Background=$Surface
+      - CornerRadius=0,0,14,14
+      - Margin=12,0,12,12
+  - target: CalendarView#CalendarControl
+    styles:
+      - TodayForeground=$LcdInk
+      - TodayFontWeight=ExtraBold
+      - CalendarItemForeground=$Text
+      - OutOfScopeForeground=$Text3
+      - SelectedBorderBrush=$Accent
+      - HoverBorderBrush=$Line
+  - target: CalendarViewDayItem > Border
+    styles:
+      - CornerRadius=7
+  - target: Border#CalendarHeaderMinimizedOverlay
+    styles:
+      - CornerRadius=14
+      - Background=$Chrome
+  # Focus: a work deck under the calendar.
+  - target: ActionCenter.FocusSessionControl#FocusSessionControl > Grid#FocusGrid
+    styles:
+      - Background=$WellDeck
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=14
+      - Margin=12,0,12,12
+  # Full-page panels (Wi-Fi list, sound output, ...).
+  - target: QuickActions.ControlCenter.AccessibleWindow#PageWindow > ContentPresenter > Grid#FullScreenPageRoot
+    styles:
+      - Background=$Bg
+      - CornerRadius=18
+  - target: QuickActions.ControlCenter.AccessibleWindow#PageWindow > ContentPresenter > Grid#FullScreenPageRoot > ContentPresenter#PageHeader
+    styles:
+      - Background=$Chrome
+      - CornerRadius=14
+      - Margin=12,12,12,6
+  - target: ScrollViewer#ListContent
+    styles:
+      - Background=$Surface
+      - CornerRadius=14
+      - Margin=12,0,12,6
+  # Right-click menus on taskbar apps.
+  - target: Border#JumpListRestyledAcrylic
+    styles:
+      - Background=$Surface
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=12
+  - target: JumpViewUI.SystemItemListViewItem > Grid#LayoutRoot > Border#BackgroundBorder, JumpViewUI.JumpListListViewItem > Grid#LayoutRoot > Border#BackgroundBorder
+    styles:
+      - CornerRadius=8
+  - target: MenuFlyoutPresenter > Border
+    styles:
+      - Background=$Surface
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=12
+themeResourceVariables:
+  - ContentControlThemeFontFamily=Space Grotesk

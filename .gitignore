@@ -1,0 +1,25 @@
+# Rust / Tauri build output
+/target/
+/src-tauri/target/
+/src-tauri/gen/schemas/
+**/*.rs.bk
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.swp
+
+# Firebase CLI cache
+.firebase/
+
+# Python (icon generator)
+__pycache__/
+
+# Local secrets / env (Firebase keys etc. never get committed). The updater signing key lives in ~/.tauri.
+*.key
+.env
+.env.*
+*.local.json

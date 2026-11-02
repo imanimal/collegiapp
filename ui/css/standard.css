@@ -1,0 +1,223 @@
+/* Collegiapp — the Standard look (L8): the Pocket app with the handheld taken out. Same regions, layouts and container
+   queries as pocket.css; this file only restyles parts, and only under html[data-look="standard"] (lab.js sets it from
+   the theme's look), so Pocket (L6) is untouched. Flat surfaces with one hairline each, 6–8 px radii, the system font
+   for everything (numbers in plain tabular figures, no LCD face), line icons (app.js ic(), .i.ln), flat keys and plain
+   section headers. No gradients, glow, glass, blur, CRT layers or coloured side stripes: course colour is a dot.
+   Fonts are themes.js TYPES.standard, which lab.js writes inline on :root. Animations still scale with --m. */
+
+/* line icons: 24 px paths drawn as strokes, sized like the pixel icons (.i) */
+.i.ln { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; shape-rendering: geometricPrecision; }
+
+:root[data-look="standard"] {
+  --radius: 8px; --btn-r: 6px;
+  --hl: transparent;
+  --card-shadow: 0 0 0 1px var(--line);
+  --drop: 0 10px 30px rgba(0, 0, 0, .14), 0 0 0 1px var(--line);
+  --scrim: rgba(0, 0, 0, .3);
+  --code-font: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+:root[data-look="standard"][data-scheme="dark"] { --card-shadow: 0 0 0 1px var(--line); --drop: 0 10px 30px rgba(0, 0, 0, .5), 0 0 0 1px var(--line); --scrim: rgba(0, 0, 0, .5); }
+:root[data-look="standard"] .screen { font-variant-numeric: tabular-nums; }
+:root[data-look="standard"] :is(.screen code, .code, .lab textarea) { font-family: var(--code-font); }
+
+/* no CRT: no effect layers, no warp, no tube animations; plain backgrounds instead of the dot grid */
+:root[data-look="standard"] .fx { display: none; }
+:root[data-look="standard"] .screen.off { background: var(--bg); }
+:root[data-look="standard"] .warp { filter: none; }
+:root[data-look="standard"] .content { translate: none; animation: none; }
+:root[data-look="standard"] :is(.content, .screen, .ov.full) { background: var(--bg); }
+:root[data-look="standard"] .ov { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* radii: small and few */
+:root[data-look="standard"] :is(.row, .live, .search, .fbox, .nv, .wk, .pal-it, .seg, .chip, .duepill, .why-chip, .fpill, .pc, .ag) { border-radius: 6px; }
+:root[data-look="standard"] :is(.locban, .wcol, .ccard, .lgroup, .qa-wrap, .toast, .deck, .winkeys) { border-radius: 8px; }
+:root[data-look="standard"] :is(.timeline, .timeline .blk, .seg .chip, .wi, .mi) { border-radius: 4px; }
+
+/* ── keys: flat, one hairline, no travel. Hover sits before the pressed states so a press shows under the pointer. ── */
+:root[data-look="standard"] .bset-b8 .btn {
+  --travel: 0px; margin-bottom: 0; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  transition: background calc(var(--m) * 120ms), color calc(var(--m) * 120ms);
+}
+:root[data-look="standard"] .bset-b8 .btn.primary { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+:root[data-look="standard"] .cloudkey { --ck-ring: var(--surface); }
+:root[data-look="standard"] .bset-b8 .cloudkey[data-st="out"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-look="standard"] .bset-b8 .btn.dark { background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: none; }
+:root[data-look="standard"] .bset-b8 .btn.dark .i { color: inherit; }
+:root[data-look="standard"] .bset-b8 .btn.ghost { background: transparent; box-shadow: none; color: var(--text-2); }
+@media (hover: hover) {
+  :root[data-look="standard"] .bset-b8 .btn:hover { background: var(--surface-2); }
+  :root[data-look="standard"] .bset-b8 .btn.primary:hover { background: color-mix(in srgb, var(--accent) 90%, #000); }
+  :root[data-look="standard"] .bset-b8 .btn.dark:hover { background: color-mix(in srgb, var(--chrome-bg) 88%, var(--chrome-fg)); }
+  :root[data-look="standard"] .bset-b8 .btn.ghost:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+}
+:root[data-look="standard"] .bset-b8 .btn:is(:active, .down) { background: color-mix(in srgb, var(--text) 9%, var(--surface)); }
+:root[data-look="standard"] .bset-b8 .btn.primary:is(:active, .down) { background: color-mix(in srgb, var(--accent) 82%, #000); }
+:root[data-look="standard"] .bset-b8 .btn.dark:is(:active, .down) { background: color-mix(in srgb, var(--chrome-bg) 80%, var(--chrome-fg)); }
+:root[data-look="standard"] .bset-b8 .btn.ghost:is(:active, .down) { background: color-mix(in srgb, currentColor 14%, transparent); }
+:root[data-look="standard"] :is(.search kbd, .nv kbd, .pal-it kbd, .helpgrid kbd) { border-bottom-width: 1px; }
+
+/* window keys: plain caption buttons */
+:root[data-look="standard"] .winkeys { background: none; box-shadow: none; padding: 0; gap: .15em; }
+:root[data-look="standard"] .wk { background: transparent; box-shadow: none; margin-bottom: 0; transform: none; }
+:root[data-look="standard"] .wk:active { background: var(--surface-2); }
+:root[data-look="standard"] .wk-x:active { background: var(--bad); color: var(--on-bad); }
+
+/* views: flat tabs; the current one is a solid chrome tab */
+:root[data-look="standard"] .nv { background: transparent; box-shadow: none; transform: none; }
+:root[data-look="standard"] .nv.on { background: var(--chrome-bg); color: var(--chrome-fg); }
+:root[data-look="standard"] .nv.on .i { color: inherit; }
+:root[data-look="standard"] .nv.on.ack .i { animation: none; }
+:root[data-look="standard"] .nv .ct { font-weight: 600; }
+:root[data-look="standard"] .nv.on .ct { background: color-mix(in srgb, var(--chrome-fg) 18%, transparent); color: inherit; }
+:root[data-look="standard"] .nv.on kbd { border-color: color-mix(in srgb, var(--chrome-fg) 30%, transparent); }
+
+/* top bar */
+:root[data-look="standard"] .logo { background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: none; padding-top: 0; font: 700 1em/1 var(--font-ui); }
+:root[data-look="standard"] .search { box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .mtop .display.clock { background: none; box-shadow: none; padding-inline: .3em; }
+:root[data-look="standard"] .mtop .display.clock .d-num { color: var(--text-2); font-weight: 500; }
+
+/* ── modules: a card with a plain header ── */
+:root[data-look="standard"] .fset-f3 .ph { --band: transparent; --band-fg: var(--text); min-height: 2.6em; box-shadow: inset 0 -1px 0 var(--line); }
+:root[data-look="standard"] .fset-f3 #now .ph { --band: transparent; --band-fg: var(--text); }
+:root[data-look="standard"] .fset-f3 .ph .pt { font-size: .95em; font-weight: 600; text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .fset-f3 .ph .pt .i { color: var(--text-3); }
+:root[data-look="standard"] .fset-f3 #now .ph .pt .i { color: var(--accent); }
+:root[data-look="standard"] .fset-f3 .ph .cnt { font-size: .84em; color: var(--text-3); opacity: 1; }
+:root[data-look="standard"] .fset-f3 .region > .panel > .ph::after { content: none; }
+:root[data-look="standard"] .fset-f3 .alertbox .ph { --band: transparent; --band-fg: var(--bad); }
+:root[data-look="standard"] .fset-f3 .alertbox .ph .pt .i { color: inherit; }
+:root[data-look="standard"] .fset-f3 .dialog.panel { box-shadow: var(--drop); }
+:root[data-look="standard"] .fset-f3 .dialog.alertbox { box-shadow: 0 0 0 1px var(--bad), var(--drop); }
+
+/* ── numbers: a plain panel in place of the LCD (disp-* tokens, no bezel, texture or segment font) ── */
+:root[data-look="standard"] .display { background: var(--disp-bg); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .display::after { content: none; }
+:root[data-look="standard"] .display .d-lbl { font: 500 .8em/1.2 var(--font-ui); text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .display .d-num { font-weight: 600; text-shadow: none; letter-spacing: -.01em; }
+:root[data-look="standard"] .display .d-bar { background: color-mix(in srgb, var(--disp-fg) 14%, transparent); }
+:root[data-look="standard"] :is(.display.boot > *, .screen.booting .display > *, .screen.booting .logo) { animation: none; }
+:root[data-look="standard"] .display.boot::before { content: none; }
+/* no tube between programmes either (fx.js skips the blips): plain now lines, a deleted row fades, a thin caret, no modem
+   lights, and "No signal" is a quiet red tag */
+:root[data-look="standard"] .dv-now, :root[data-look="standard"] .dv-now::before { box-shadow: none; }
+:root[data-look="standard"] .timeline .nowln { box-shadow: 0 0 0 2px var(--surface); }
+:root[data-look="standard"] :is(.dv-now.blip, .nowln.blip, .nosig > span) { animation: none; }
+:root[data-look="standard"] .gone.x-del { animation: xOut calc(var(--m) * 200ms + 1ms) var(--ease-in) forwards; }
+:root[data-look="standard"] .gone.x-del::after { content: none; }
+:root[data-look="standard"] :is(.ai-msg.tty > :last-child, .ai-act .tty)::after { width: 2px; background: var(--text); }
+:root[data-look="standard"] .modem { display: none; }
+:root[data-look="standard"] .nosig { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); font: 600 .8em/1.25 var(--font-ui); text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .focus > .fo-time { font-weight: 600; }
+:root[data-look="standard"] .fo-log { background: var(--bg2); color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .fo-log::after { content: none; }
+
+/* places: a bordered row, course colour on the icon instead of a stub and tear line */
+:root[data-look="standard"] .locban { box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .locban > .lb-ic { border-right: 0; color: var(--kc, var(--text-3)); }
+:root[data-look="standard"] .lb-leave { background: var(--disp-bg); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .lb-leave .lb-k { font: 500 .7em/1 var(--font-ui); text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .lb-leave b { font-weight: 600; }
+
+/* course colour as a dot, never a stripe */
+:root[data-look="standard"] .row.sel { box-shadow: none; }
+:root[data-look="standard"] :is(.wi, .mi) { border-left: 0; }
+:root[data-look="standard"] .wi { box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] :is(.wi .wt, :is(.ccard, .lgroup) h4)::before,
+:root[data-look="standard"] :is(.mi, .pc.course)::before {
+  content: ""; display: inline-block; flex: none; align-self: center; width: .55em; height: .55em; border-radius: 50%; background: var(--kc, var(--line));
+}
+:root[data-look="standard"] :is(.wi .wt, :is(.ccard, .lgroup) h4)::before { margin-right: .4em; vertical-align: .06em; }
+:root[data-look="standard"] .pc.course { box-shadow: none; }
+:root[data-look="standard"] :is(.ccard, .lgroup) { border-left-width: 1px; border-left-color: var(--line); }
+:root[data-look="standard"] .ccard.excluded { border-style: dashed; }
+:root[data-look="standard"] .ag { grid-template-columns: 4.8em .5em minmax(0, 1fr); }
+:root[data-look="standard"] .ag-bar { align-self: center; height: .5em; border-radius: 50%; }
+
+/* calendar: today is a wash with a hairline; today's date is an accent circle */
+:root[data-look="standard"] :is(.wcol, .mday).today { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-look="standard"] .wcol.today .wh b { font: inherit; font-weight: 700; text-transform: none; letter-spacing: 0; padding: 0; background: none; color: var(--text); box-shadow: none; }
+:root[data-look="standard"] .mday.today .md-n { background: var(--accent); color: var(--on-accent); box-shadow: none; border-radius: 99px; }
+:root[data-look="standard"] .cal-t { font: 600 .92em/1.3 var(--font-ui); letter-spacing: 0; background: none; color: var(--text); box-shadow: none; }
+:root[data-look="standard"] :is(.dv-ev, .dv-fi) { border-radius: 4px; }
+:root[data-look="standard"] .dv-ev.plan { background: color-mix(in srgb, var(--kc, var(--ok)) 9%, var(--surface)); }
+:root[data-look="standard"] :is(.dv-et, .dv-rel, .dv-hr span, .dv-fi b, .dv-fi [data-rel], .dv-gap b) { font-family: var(--font-ui); }
+:root[data-look="standard"] .dv-nt { font-family: var(--font-ui); font-weight: 600; }
+:root[data-look="standard"] .dv-ev.live .dv-et::before { animation: none; }
+:root[data-look="standard"] .timeline { box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .seg .chip.on { box-shadow: 0 0 0 1px var(--line); }
+
+/* overlays */
+:root[data-look="standard"] .tip { font-weight: 600; text-transform: none; box-shadow: 0 0 0 1px var(--line); }
+:root[data-look="standard"] .radial .ring { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgba(0, 0, 0, .14); }
+:root[data-look="standard"] .radial .hub { font: 600 .72em var(--font-ui); text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .layer > .px { border-radius: 50%; }
+:root[data-look="standard"] .island { -webkit-backdrop-filter: none; backdrop-filter: none; background: #1b1b1a; }
+
+/* key deck: a plain toolbar, no engraving or speaker grille, one-line keys at every height */
+:root[data-look="standard"] .deck { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .deck .deck-sp::after { content: none; }
+:root[data-look="standard"] .deck .speaker { display: none; }
+@media (min-height: 900px) {
+  @container screen (min-width: 761px) {
+    :root[data-look="standard"] .deck .btn { flex-direction: row; align-items: center; justify-content: flex-start; gap: .5em; padding: .5em .85em .46em; }
+    :root[data-look="standard"] .deck .btn kbd { align-self: auto; margin-left: auto; }
+  }
+}
+/* phones: the sticky key row and deck sit on solid colour, not blurred glass */
+:root[data-look="standard"] :is(#nav, #bottom) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+@container screen (max-width: 760px) {
+  :root[data-look="standard"] :is(#nav, #bottom) { background: var(--bg); }
+  :root[data-look="standard"] .deck { border-radius: 8px; }
+  :root[data-look="standard"] :is(.insp.float, .content[data-wide="1"] .insp.float) { border-radius: 8px 8px 0 0; }
+}
+
+/* notes and AI: flat cards with a course dot, plain status text, flat toolbar keys, no LCD or meter segments */
+:root[data-look="standard"] .ncard { border-top: 0; border-radius: 8px; background: var(--surface); }
+:root[data-look="standard"] .ncard .nc-t::before { content: ""; display: inline-block; width: .55em; height: .55em; margin-right: .4em; vertical-align: .08em; border-radius: 50%; background: var(--kc, var(--line)); }
+:root[data-look="standard"] .nc-bar { border-radius: 99px; }
+:root[data-look="standard"] .nc-bar i { background: var(--ok); }
+:root[data-look="standard"] .nc-when { font-family: inherit; }
+:root[data-look="standard"] .ns-st { font: 500 .8em/1.3 var(--font-ui); text-transform: none; letter-spacing: 0; padding: 0; background: none; color: var(--text-3); box-shadow: none; }
+:root[data-look="standard"] .bset-b8 .btn.ns-t { box-shadow: none; background: transparent; }
+:root[data-look="standard"] .bset-b8 .btn.ns-t.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-look="standard"] :is(.ns-menu, .ai-act, .ai-tool, .ai :is(#aiIn, #aiPaste), .ai-err, .ned pre, .ned .callout) { border-radius: 6px; }
+:root[data-look="standard"] :is(.ned, .ai-doc, .ai-msg) .callout::before { font: 600 .8em/1.4 var(--font-ui); text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] :is(.ned, .ai-doc, .ai-msg) code, :root[data-look="standard"] :is(.ned, .ai-doc, .ai-msg) pre { font-family: var(--code-font); }
+:root[data-look="standard"] :is(.ned, .ai-doc, .ai-msg) hr { border-top-style: solid; border-top-width: 1px; }
+:root[data-look="standard"] .ai-dots i { border-radius: 50%; }
+:root[data-look="standard"] .nsheet { box-shadow: var(--drop); }
+@media (hover: hover) {
+  :root[data-look="standard"] .bset-b8 .btn.ns-t:not(.on):hover { background: var(--surface-2); }
+  :root[data-look="standard"] .ncard:not(.sel):hover { background: var(--surface-2); }
+}
+
+/* the Appearance drawer, flattened the same way */
+:root[data-look="standard"] .lab { box-shadow: none; }
+:root[data-look="standard"] .lab-head { background: var(--surface); color: var(--text); box-shadow: inset 0 -1px 0 var(--line); }
+:root[data-look="standard"] .lab-head h2 { font-size: 14px; text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .lab-head .led { display: none; }
+:root[data-look="standard"] .lab-btn { margin-bottom: 0; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .lab-btn:active { transform: none; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .lab-head .lab-btn { background: transparent; }
+:root[data-look="standard"] .lab-sec > h3::after { content: none; }
+:root[data-look="standard"] .code { background: var(--bg2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .sl input[type="range"] { box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-look="standard"] .sl input[type="range"]::-webkit-slider-thumb { box-shadow: none; border-radius: 6px; }
+:root[data-look="standard"] .slot { border-radius: 8px; }
+:root[data-look="standard"] .slot:active { translate: none; }
+:root[data-look="standard"] .slot.on .slot-h .i { color: inherit; }
+:root[data-look="standard"] .thm-mark .i { width: 13px; height: 13px; }
+@media (max-width: 760px) { :root[data-look="standard"] .lab { border-radius: 8px 8px 0 0; } }
+
+/* the whole-screen theme swap fades instead of redrawing like an LCD */
+html[data-look="standard"][data-vt="theme"]::view-transition-new(root) { animation: stdFade calc(var(--m) * 220ms + 1ms) ease-out both; }
+@keyframes stdFade { from { opacity: 0; } }
+
+@media (hover: hover) {
+  :root[data-look="standard"] .nv:not(.on):hover { background: var(--surface-2); }
+  :root[data-look="standard"] .wk:hover { background: var(--surface-2); }
+  :root[data-look="standard"] .wk-x:hover { background: var(--bad); color: var(--on-bad); }
+  :root[data-look="standard"] .lab-btn:hover { background: var(--surface-2); }
+  :root[data-look="standard"] .lab-head .lab-btn:hover { background: var(--surface-2); }
+}

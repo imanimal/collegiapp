@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Collegiapp</title>
+  <meta name="description" content="Collegiapp: one do-first list for UCSB classes, Canvas work, events and focus, on a pocket device with LCD countdowns.">
+  <meta name="theme-color" content="#e6e2d8">
+  <meta name="color-scheme" content="light dark">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600..900&family=Space+Grotesk:wght@400..700&family=Space+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="css/core.css">
+  <link rel="stylesheet" href="css/crt.css">
+  <link rel="stylesheet" href="css/pocket.css">
+  <link rel="stylesheet" href="css/standard.css">
+  <link rel="stylesheet" href="css/lab.css">
+</head>
+<body>
+  <div class="desk" id="desk">
+    <div class="shellbar" id="shellbar" hidden></div>
+    <div class="island" id="island" hidden></div>
+
+    <div class="monitor" id="monitor">
+      <div class="bezel" data-bezel="N">
+        <div class="screen" id="screen" data-r="pocket">
+          <div class="warp" id="warp">
+            <div class="content" id="content">
+              <header class="region top" id="top"></header>
+              <nav class="region nav" id="nav" aria-label="Views"></nav>
+              <section class="region now" id="now" aria-label="Do first"></section>
+              <section class="region sched" id="sched" aria-label="Up next"></section>
+              <section class="region list" id="list" aria-label="Items"></section>
+              <aside class="region insp" id="insp" aria-label="Details"></aside>
+              <footer class="region bottom" id="bottom"></footer>
+            </div>
+          </div>
+          <div class="layer" id="layer">
+            <div class="ov" id="ov" hidden></div>
+            <div class="radial" id="radial" hidden></div>
+            <div class="tips" id="tips" hidden></div>
+            <div class="toasts" id="toasts" aria-live="polite"></div>
+          </div>
+          <div class="fx" aria-hidden="true">
+            <div class="fx-scan"></div><div class="fx-mask"></div><div class="fx-noise"></div><div class="fx-roll"></div>
+            <div class="fx-flick"></div><div class="fx-vignette"></div><div class="fx-glass"></div><div class="fx-flash"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="taskbar" id="taskbar" hidden></div>
+  </div>
+
+  <aside class="lab" id="lab" hidden aria-label="Appearance"></aside>
+  <!-- a note being printed or saved as a PDF (core.css @media print shows only this) -->
+  <div id="printArea" aria-hidden="true"></div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <!-- C2 warped glass. feDisplacementMap samples with nearest-neighbour, which stair-steps every edge, so the warp is
+         supersampled: four copies with the map nudged ±¼ px on each axis (fx.js sets the intercepts), averaged. -->
+    <filter id="crtWarp" filterUnits="objectBoundingBox" primitiveUnits="objectBoundingBox" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feImage id="warpMap" result="map" preserveAspectRatio="none" x="0" y="0" width="1" height="1"/>
+      <feComponentTransfer in="map" result="m1"><feFuncR type="linear" slope="1" data-n="-1"/><feFuncG type="linear" slope="1" data-n="-1"/></feComponentTransfer>
+      <feComponentTransfer in="map" result="m2"><feFuncR type="linear" slope="1" data-n="1"/><feFuncG type="linear" slope="1" data-n="-1"/></feComponentTransfer>
+      <feComponentTransfer in="map" result="m3"><feFuncR type="linear" slope="1" data-n="-1"/><feFuncG type="linear" slope="1" data-n="1"/></feComponentTransfer>
+      <feComponentTransfer in="map" result="m4"><feFuncR type="linear" slope="1" data-n="1"/><feFuncG type="linear" slope="1" data-n="1"/></feComponentTransfer>
+      <feDisplacementMap class="warpDisp" in="SourceGraphic" in2="m1" result="d1" scale="0.022" xChannelSelector="R" yChannelSelector="G"/>
+      <feDisplacementMap class="warpDisp" in="SourceGraphic" in2="m2" result="d2" scale="0.022" xChannelSelector="R" yChannelSelector="G"/>
+      <feDisplacementMap class="warpDisp" in="SourceGraphic" in2="m3" result="d3" scale="0.022" xChannelSelector="R" yChannelSelector="G"/>
+      <feDisplacementMap class="warpDisp" in="SourceGraphic" in2="m4" result="d4" scale="0.022" xChannelSelector="R" yChannelSelector="G"/>
+      <feComposite in="d1" in2="d2" operator="arithmetic" k2="0.5" k3="0.5" result="d12"/>
+      <feComposite in="d3" in2="d4" operator="arithmetic" k2="0.5" k3="0.5" result="d34"/>
+      <feComposite in="d12" in2="d34" operator="arithmetic" k2="0.5" k3="0.5"/>
+    </filter>
+    <!-- Runs before #crtWarp: the content slides under the pointer by the warp's offset there (fx.js follow), so clicks
+         land on what's drawn; this slides the picture back by the same whole device pixels, in CSS px. -->
+    <filter id="crtShift" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" x="-.05" y="-.1" width="1.1" height="1.2" color-interpolation-filters="sRGB">
+      <feOffset id="warpBack" dx="0" dy="0"/>
+    </filter>
+  </svg>
+
+  <script src="js/data.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/notes.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/cloud-config.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/motion.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/lab.js"></script>
+</body>
+</html>

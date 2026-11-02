@@ -1,0 +1,15 @@
+{
+  "hosting": {
+    "public": "ui",
+    "ignore": ["**/.*", "island.html", "start.html", "js/start.js", "css/start.css"],
+    "headers": [
+      {
+        "source": "**/*.@(html|js|css|webmanifest)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

@@ -1,0 +1,370 @@
+# Pocket for Windows: taskbar. Settings for the Windhawk mod "Windows 11 Taskbar Styler" (windows-11-taskbar-styler):
+# Settings tab › Textual mode › paste › Save settings, or run apply.ps1. Night (P11) colours; README.md has Cream.
+# The key deck from the design canvas: a full-width deck, an orange Start key, a recessed search field, every app as a
+# raised B8 key while it runs (the focused one pressed graphite, a pinned one that isn't running just an outline), and
+# the tray and clock as green LCD inlays in a graphite bezel. Every stock element stays; only its look changes.
+styleConstants:
+  - Deck=#2E2D2A
+  - Line=#3F3C36
+  - Field=#262522
+  - KeyEdge=#1C1B18
+  - Chrome=#0F0E0D
+  - ChromeEdge=#B34A1E
+  - Accent=#FF6A2B
+  - AccentEdge=#853716
+  - AccentBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#FF824D" Offset="0"/><GradientStop Color="#FF6A2B" Offset="1"/></LinearGradientBrush>
+  - AccentBrushHover=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#FF9A6E" Offset="0"/><GradientStop Color="#FF7A40" Offset="1"/></LinearGradientBrush>
+  - KeyBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#4D4B48" Offset="0"/><GradientStop Color="#302E2A" Offset="1"/></LinearGradientBrush>
+  - KeyBrushHover=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#5E5C57" Offset="0"/><GradientStop Color="#3A3833" Offset="1"/></LinearGradientBrush>
+  - ChromeBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#2C2B2A" Offset="0"/><GradientStop Color="#0F0E0D" Offset="1"/></LinearGradientBrush>
+  - LcdBrush=<LinearGradientBrush StartPoint="0,0" EndPoint="0.25,1"><GradientStop Color="#67C1B2" Offset="0"/><GradientStop Color="#45B3A1" Offset="0.6"/></LinearGradientBrush>
+  - LcdBrushHover=<LinearGradientBrush StartPoint="0,0" EndPoint="0.25,1"><GradientStop Color="#7FCCBF" Offset="0"/><GradientStop Color="#56BBAA" Offset="0.6"/></LinearGradientBrush>
+  - LcdInk=#04211C
+  - LcdInk2=#15473F
+  - Text3=#A39C8D
+  - ChromeFg=#ECE6DA
+  - Warn=#F0B54A
+  - Bad=#FF7A5C
+  # The progress meter's see-through fills (accent, warn and bad at 40%).
+  - Fill=#66FF6A2B
+  - FillWarn=#66F0B54A
+  - FillBad=#66FF7A5C
+  # The folder holding build_assets.py's images. apply.ps1 fills in the real path; if you paste this file by hand,
+  # point it at your copy of integrations/windhawk-pocket/assets.
+  - Assets=file:///C:/collegiapp/integrations/windhawk-pocket/assets
+controlStyles:
+  # The deck: fills the whole taskbar edge to edge (a margin lets the window behind show through), with a hairline on top.
+  - target: Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill
+    styles:
+      - Fill=$Deck
+      - StrokeThickness=0
+      - RadiusX=0
+      - RadiusY=0
+      - Margin=0
+  - target: Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundStroke
+    styles:
+      - Fill=$Line
+      - Opacity=1
+  - target: Taskbar.TaskbarBackground#HoverFlyoutBackgroundControl > Grid > Rectangle#BackgroundFill
+    styles:
+      - Fill=$Deck
+  # Start: the canvas's orange key with the pixel Start icon and its label, drawn by build_assets.py because Windhawk
+  # can't add text to a button. It sits down (no lip) while Start is open, like a key held down.
+  # The left margin puts the key 4 px from the screen edge, the same gap it has to the taskbar's top and bottom, when
+  # the taskbar is left-aligned. It sits inside the button, so the screen corner still opens Start.
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel
+    styles:
+      - Width=92
+      - Padding=0
+      - Margin=1.6,0,0,0
+  # The Start button's states are Inactive* (Start closed) and Active* (Start open); newer builds put a Grid between
+  # the panel and the key. The key goes down only while the mouse button is held, whether or not Start is open.
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel@CommonStates > Border#BackgroundElement, Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel@CommonStates > Grid > Border#BackgroundElement
+    styles:
+      - Width=88
+      - Height=40
+      - BorderThickness=0
+      - CornerRadius=0
+      - Background:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key.png"/>
+      - Background@InactiveNormal:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key.png"/>
+      - Background@InactivePointerOver:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key-hover.png"/>
+      - Background@InactivePressed:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key-down.png"/>
+      - Background@ActiveNormal:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key.png"/>
+      - Background@ActivePointerOver:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key-hover.png"/>
+      - Background@ActivePressed:=<ImageBrush Stretch="Fill" ImageSource="$Assets/start-key-down.png"/>
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel > Microsoft.UI.Xaml.Controls.AnimatedVisualPlayer#Icon, Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel > Grid > Microsoft.UI.Xaml.Controls.AnimatedVisualPlayer#Icon
+    styles:
+      - Visibility=Collapsed
+  # Search: a recessed field.
+  - target: SearchUx.SearchUI.SearchButtonRootGrid > Grid > Border#BackgroundElement, SearchUx.SearchUI.SearchButtonRootGrid > Border#BackgroundElement
+    styles:
+      - Background=$Field
+      - BorderBrush=$Line
+      - BorderThickness=1,2,1,1
+      - CornerRadius=9
+  - target: TextBlock#SearchBoxTextBlock
+    styles:
+      - FontFamily=Space Grotesk
+      - Foreground=$Text3
+  # Program keys. Whether an app is running sets the key's colours (RunningIndicatorStates): a running app is a raised
+  # B8 key, the focused app is a dark key with an orange rim, and a pinned app that isn't running has no key at all,
+  # just its icon on the deck.
+  - target: Grid#IconPanel@RunningIndicatorStates > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel@RunningIndicatorStates > Border#BackgroundElement
+    styles:
+      - CornerRadius=9
+      - Background:=$KeyBrush
+      - BorderBrush=$KeyEdge
+      - Background@NoRunningIndicator=Transparent
+      - BorderBrush@NoRunningIndicator=Transparent
+      - Background@ActiveRunningIndicator:=$ChromeBrush
+      - BorderBrush@ActiveRunningIndicator=$ChromeEdge
+      - BorderBrush@RequestingAttentionRunningIndicator=$Accent
+  # The pointer sets the key's depth (CommonStates), so the two groups never set the same property. Raised keys have a
+  # 4 px lip and rise 1 px under the pointer; holding the mouse button pushes the key down 3 px onto a 1 px lip. The
+  # focused app's key sits level with an even 2 px rim and goes down only while clicked, like the rest. Sizes are whole
+  # screen pixels at 125% (0.8 px each).
+  - target: Grid#IconPanel@CommonStates > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel@CommonStates > Border#BackgroundElement
+    styles:
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - Margin=0,0.8,0,0
+      - BorderThickness@PointerOver=0.8,0.8,0.8,4
+      - BorderThickness@InactivePointerOver=0.8,0.8,0.8,4
+      - BorderThickness@MultiWindowPointerOver=0.8,0.8,0.8,4
+      - BorderThickness@RequestingAttentionPointerOver=0.8,0.8,0.8,4
+      - Margin@PointerOver=0
+      - Margin@InactivePointerOver=0
+      - Margin@MultiWindowPointerOver=0
+      - Margin@RequestingAttentionPointerOver=0
+      - BorderThickness@Pressed=0.8
+      - BorderThickness@InactivePressed=0.8
+      - BorderThickness@MultiWindowPressed=0.8
+      - BorderThickness@RequestingAttentionPressed=0.8
+      - Margin@Pressed=0,3.2,0,0
+      - Margin@InactivePressed=0,3.2,0,0
+      - Margin@MultiWindowPressed=0,3.2,0,0
+      - Margin@RequestingAttentionPressed=0,3.2,0,0
+      - BorderThickness@ActiveNormal=1.6
+      - BorderThickness@ActivePointerOver=1.6
+      - BorderThickness@ActivePressed=1.6
+      - BorderThickness@MultiWindowActive=1.6
+      - Margin@ActiveNormal=0,0.8,0,0
+      - Margin@ActivePointerOver=0,0.8,0,0
+      - Margin@ActivePressed=0,3.2,0,0
+      - Margin@MultiWindowActive=0,0.8,0,0
+  # The icon rides on the key's face: its margin keeps it centred on the face as the key rises and goes down.
+  - target: Grid#IconPanel@CommonStates > Image#Icon, Taskbar.TaskListLabeledButtonPanel@CommonStates > Image#Icon
+    styles:
+      - Margin=0,0,0,1.6
+      - Margin@PointerOver=0,0,0,3.2
+      - Margin@InactivePointerOver=0,0,0,3.2
+      - Margin@MultiWindowPointerOver=0,0,0,3.2
+      - Margin@RequestingAttentionPointerOver=0,0,0,3.2
+      - Margin@Pressed=0,3.2,0,0
+      - Margin@InactivePressed=0,3.2,0,0
+      - Margin@MultiWindowPressed=0,3.2,0,0
+      - Margin@RequestingAttentionPressed=0,3.2,0,0
+      - Margin@ActiveNormal=0,0.8,0,0
+      - Margin@ActivePointerOver=0,0.8,0,0
+      - Margin@ActivePressed=0,3.2,0,0
+      - Margin@MultiWindowActive=0,0.8,0,0
+  # Progress (downloads, installs). While an app shows progress, Windows hides its running indicator, which turns its
+  # key off (see the program keys above). So the progress bar becomes the whole key: the same 40 x 38 px shell, drawn
+  # between the key and the icon, whose face fills from left to right with a see-through orange (amber when paused, red
+  # on error). Nothing runs under the icon, so the icon can move with the key without covering the meter. The shell
+  # follows the pointer and focus exactly like a key. It's drawn above the stock key (z-index -1 over -2), so it looks
+  # the same whichever running state Windows reports.
+  - target: Grid#IconPanel > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel > Border#BackgroundElement
+    styles:
+      - Canvas.ZIndex=-2
+  - target: Grid#IconPanel > Border#MultiWindowElement, Taskbar.TaskListLabeledButtonPanel > Border#MultiWindowElement, Grid#IconPanel > Border#SharedWindowElement, Taskbar.TaskListLabeledButtonPanel > Border#SharedWindowElement
+    styles:
+      - Canvas.ZIndex=-3
+  - target: Grid#IconPanel@CommonStates > Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator, Taskbar.TaskListLabeledButtonPanel@CommonStates > Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator
+    styles:
+      - Canvas.ZIndex=-1
+      - Width=40
+      - Height=38
+      - MinHeight=0
+      - HorizontalAlignment=Center
+      - VerticalAlignment=Center
+      - Margin=0,0.8,0,0
+      - Margin@InactivePointerOver=0
+      - Margin@MultiWindowPointerOver=0
+      - Margin@RequestingAttentionPointerOver=0
+      - Margin@InactivePressed=0,3.2,0,0
+      - Margin@MultiWindowPressed=0,3.2,0,0
+      - Margin@RequestingAttentionPressed=0,3.2,0,0
+      - Margin@ActivePressed=0,3.2,0,0
+      - Margin@ActiveNormal=0,0.8,0,0
+      - Margin@ActivePointerOver=0,0.8,0,0
+      - Margin@MultiWindowActive=0,0.8,0,0
+  - target: Grid#IconPanel@CommonStates > Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot, Taskbar.TaskListLabeledButtonPanel@CommonStates > Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot
+    styles:
+      - CornerRadius=9
+      - Background:=$KeyBrush
+      - BorderBrush=$KeyEdge
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - BorderThickness@InactivePointerOver=0.8,0.8,0.8,4
+      - BorderThickness@MultiWindowPointerOver=0.8,0.8,0.8,4
+      - BorderThickness@RequestingAttentionPointerOver=0.8,0.8,0.8,4
+      - BorderThickness@InactivePressed=0.8
+      - BorderThickness@MultiWindowPressed=0.8
+      - BorderThickness@RequestingAttentionPressed=0.8
+      - Background@ActiveNormal:=$ChromeBrush
+      - Background@ActivePointerOver:=$ChromeBrush
+      - Background@MultiWindowActive:=$ChromeBrush
+      - Background@ActivePressed:=$ChromeBrush
+      - BorderBrush@ActiveNormal=$ChromeEdge
+      - BorderBrush@ActivePointerOver=$ChromeEdge
+      - BorderBrush@MultiWindowActive=$ChromeEdge
+      - BorderBrush@ActivePressed=$ChromeEdge
+      - BorderThickness@ActiveNormal=1.6
+      - BorderThickness@ActivePointerOver=1.6
+      - BorderThickness@MultiWindowActive=1.6
+      - BorderThickness@ActivePressed=1.6
+      - BorderBrush@RequestingAttention=$Accent
+      - BorderBrush@RequestingAttentionPointerOver=$Accent
+      - BorderBrush@RequestingAttentionPressed=$Accent
+  # The meter fills the key's face.
+  - target: Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot > Border#ProgressBarRoot
+    styles:
+      - Height=Auto
+      - VerticalAlignment=Stretch
+      - Margin=0
+      - CornerRadius=8
+      - Background=Transparent
+  - target: Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot > Border#ProgressBarRoot > Border, Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot > Border#ProgressBarRoot > Border > Grid
+    styles:
+      - Height=Auto
+      - VerticalAlignment=Stretch
+  - target: Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot > Border#ProgressBarRoot > Border > Grid > Rectangle#ProgressBarTrack
+    styles:
+      - Fill=Transparent
+      - Height=Auto
+      - VerticalAlignment=Stretch
+  - target: Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot@CommonStates > Border#ProgressBarRoot > Border > Grid > Rectangle#DeterminateProgressBarIndicator, Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot@CommonStates > Border#ProgressBarRoot > Border > Grid > Rectangle#IndeterminateProgressBarIndicator, Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator > Grid#LayoutRoot@CommonStates > Border#ProgressBarRoot > Border > Grid > Rectangle#IndeterminateProgressBarIndicator2
+    styles:
+      - Height=Auto
+      - VerticalAlignment=Stretch
+      - RadiusX=8
+      - RadiusY=8
+      - Fill=$Fill
+      - Fill@Determinate=$Fill
+      - Fill@Updating=$Fill
+      - Fill@Indeterminate=$Fill
+      - Fill@Paused=$FillWarn
+      - Fill@IndeterminatePaused=$FillWarn
+      - Fill@Error=$FillBad
+      - Fill@IndeterminateError=$FillBad
+      - Fill@UpdatingError=$FillBad
+  # Running apps: no bar under the icon. The keys themselves show which app is focused.
+  - target: Grid#IconPanel@RunningIndicatorStates > Rectangle#RunningIndicator, Taskbar.TaskListLabeledButtonPanel@RunningIndicatorStates > Rectangle#RunningIndicator
+    styles:
+      - Opacity=0
+      - Opacity@ActiveRunningIndicator=0
+      - Opacity@InactiveRunningIndicator=0
+      - Opacity@RequestingAttentionRunningIndicator=0
+      - Opacity@NoRunningIndicator=0
+  # Notifications (unread counts and app overlay icons): the canvas's badge, on the icon's top-right corner.
+  - target: Grid#IconPanel > Taskbar.Badge#BadgeControl, Taskbar.TaskListLabeledButtonPanel#IconPanel > Taskbar.Badge#BadgeControl, Grid#IconPanel > Image#OverlayIcon, Taskbar.TaskListLabeledButtonPanel#IconPanel > Image#OverlayIcon
+    styles:
+      - HorizontalAlignment=Center
+      - VerticalAlignment=Center
+      - Margin=24,0,0,24
+      - Canvas.ZIndex=3
+  - target: Grid#IconPanel > Taskbar.Badge#BadgeControl, Taskbar.TaskListLabeledButtonPanel#IconPanel > Taskbar.Badge#BadgeControl
+    styles:
+      - Height=16
+      - MinWidth=16
+  - target: Taskbar.Badge > Grid > Rectangle
+    styles:
+      - Fill=$Accent
+      - Stroke=$Deck
+      - StrokeThickness=2
+      - RadiusX=5
+      - RadiusY=5
+  - target: Taskbar.Badge > Grid > TextBlock
+    styles:
+      - FontFamily=Space Mono
+      - FontWeight=Bold
+      - FontSize=10
+      - Foreground=#1B1915
+  # The deck's printed model name and speaker grille, left of the tray.
+  - target: Grid#SystemTrayFrameGrid, StackPanel#SystemTrayFrameGrid
+    styles:
+      - Padding=201,0,0,0
+      - Background:=<ImageBrush Stretch="Uniform" AlignmentX="Left" ImageSource="$Assets/engraving.png"/>
+  # Show desktop: narrowed to a 4 px strip at the screen corner, so the clock sits 4 px from the edge like Start does
+  # on the left. It still works, and the corner is still the place to aim for it.
+  - target: SystemTray.Stack#ShowDesktopStack, SystemTray.Stack#ShowDesktopStack > Grid > SystemTray.StackListView > ItemsPresenter > StackPanel > ContentPresenter, SystemTray.Stack#ShowDesktopStack > Grid > SystemTray.StackListView > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView, SystemTray.Stack#ShowDesktopStack > Grid > SystemTray.StackListView > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView > Grid#ContainerGrid
+    styles:
+      - Width=4
+      - MinWidth=0
+      - Padding=0
+      - Margin=0
+  # Hidden icons: a small raised key, as tall as the clock (4 px from the deck's top and bottom). Its states live in an
+  # unnamed group on ContainerGrid (hence the bare "@"). While the mouse button is held on it, the key goes down 3 px:
+  # the lip shrinks to 1 px and the whole grid, glyph included, moves down.
+  - target: SystemTray.ChevronIconView > Grid#ContainerGrid@ > Border#BackgroundBorder
+    styles:
+      - Background:=$KeyBrush
+      - BorderBrush=$Chrome
+      - CornerRadius=8
+      - BorderThickness=0.8,0.8,0.8,3.2
+      - Margin=0,4,0,4
+      - BorderThickness@Pressed=0.8
+      - BorderThickness@CheckedPressed=0.8
+      - Margin@Pressed=0,4,0,6.4
+      - Margin@CheckedPressed=0,4,0,6.4
+  - target: SystemTray.ChevronIconView > Grid#ContainerGrid@
+    styles:
+      - RenderTransform:=<TranslateTransform Y="0"/>
+      - RenderTransform@Pressed:=<TranslateTransform Y="2.4"/>
+      - RenderTransform@CheckedPressed:=<TranslateTransform Y="2.4"/>
+  # Wi-Fi, volume and battery: a green LCD inlay in a graphite bezel.
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid@CommonStates > Border#BackgroundBorder
+    styles:
+      - Background:=$LcdBrush
+      - BorderBrush=$Chrome
+      - BorderThickness=2
+      - CornerRadius=7
+      - Background@Normal:=$LcdBrush
+      - Background@PointerOver:=$LcdBrushHover
+      - Background@Pressed:=$LcdBrush
+      - Background@Checked:=$LcdBrushHover
+      - Background@CheckedPointerOver:=$LcdBrushHover
+      - Background@CheckedPressed:=$LcdBrush
+  - target: SystemTray.OmniButton#ControlCenterButton > * > TextBlock#InnerTextBlock
+    styles:
+      - Foreground=$LcdInk
+  # Both LCDs sink 3 px into the deck while the mouse button is held on them.
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid@CommonStates, SystemTray.OmniButton#NotificationCenterButton > Grid@CommonStates
+    styles:
+      - RenderTransform:=<TranslateTransform Y="0"/>
+      - RenderTransform@Pressed:=<TranslateTransform Y="2.4"/>
+      - RenderTransform@CheckedPressed:=<TranslateTransform Y="2.4"/>
+  # The clock: an LCD readout, time in Doto with the date under it.
+  - target: SystemTray.OmniButton#NotificationCenterButton > Grid@CommonStates > Border#BackgroundBorder
+    styles:
+      - Background:=$LcdBrush
+      - BorderBrush=$Chrome
+      - BorderThickness=2
+      - CornerRadius=7
+      - Background@Normal:=$LcdBrush
+      - Background@PointerOver:=$LcdBrushHover
+      - Background@Pressed:=$LcdBrush
+      - Background@Checked:=$LcdBrushHover
+      - Background@CheckedPointerOver:=$LcdBrushHover
+      - Background@CheckedPressed:=$LcdBrush
+  - target: SystemTray.OmniButton#NotificationCenterButton > * > TextBlock#InnerTextBlock
+    styles:
+      - Foreground=$LcdInk
+  - target: TextBlock#TimeInnerTextBlock
+    styles:
+      - FontFamily=Doto
+      - FontWeight=ExtraBold
+      - FontSize=16
+      - Foreground=$LcdInk
+      - HorizontalAlignment=Right
+  - target: TextBlock#DateInnerTextBlock
+    styles:
+      - FontFamily=Space Mono
+      - FontWeight=Bold
+      - FontSize=10
+      - Foreground=$LcdInk2
+      - HorizontalAlignment=Right
+  # Menus: graphite cards.
+  - target: MenuFlyoutPresenter > Border
+    styles:
+      - Background=$Field
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=12
+  - target: Border#OverflowFlyoutBackgroundBorder
+    styles:
+      - Background=$Deck
+      - BorderBrush=$Line
+      - BorderThickness=1
+      - CornerRadius=12
+themeResourceVariables:
+  - ContentControlThemeFontFamily=Space Grotesk

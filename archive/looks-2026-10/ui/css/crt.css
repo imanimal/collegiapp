@@ -1,0 +1,104 @@
+/* Collegiapp — CRT effect stack. All intensities are 0..1 custom properties set by fx.js:
+   --scan --glow --flicker --noise --ab --vig ; data-curve 0 flat · 1 rounded tube · 2 warped glass ;
+   data-mask N none · A aperture grille · S shadow mask. Layers never take pointer events. */
+
+.screen { --scan: .55; --flicker: .15; --noise: .12; --vig: .55; }
+.screen[data-curve="1"], .screen[data-curve="2"] {
+  border-radius: 3.4% / 5%;
+  box-shadow: 0 0 0 3px #050505, 0 0 0 5px rgba(255,255,255,.035), inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.screen[data-curve="2"] .content { filter: url(#crtWarp); }
+.screen[data-curve="1"] .content, .screen[data-curve="2"] .content { padding: 3% 3.6%; }
+
+.fx { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 40; overflow: hidden; }
+.fx > div { position: absolute; inset: 0; border-radius: inherit; }
+
+.fx-scan {
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0, calc(var(--scan) * .62)) 0 1px, transparent 1px 3px);
+}
+.fx-mask { opacity: 0; mix-blend-mode: multiply; }
+.screen[data-mask="A"] .fx-mask {
+  opacity: .16;
+  background: repeating-linear-gradient(90deg, #ff4040 0 1px, #40ff40 1px 2px, #4060ff 2px 3px);
+}
+.screen[data-mask="S"] .fx-mask {
+  opacity: .2;
+  background:
+    radial-gradient(circle at 1px 1px, #ff5050 .7px, transparent 1px) 0 0 / 4px 4px,
+    radial-gradient(circle at 3px 1px, #50ff50 .7px, transparent 1px) 0 0 / 4px 4px,
+    radial-gradient(circle at 2px 3px, #5080ff .7px, transparent 1px) 0 0 / 4px 4px,
+    #222;
+}
+.fx-noise {
+  inset: -60px !important; background-image: var(--noise-img, none); background-size: 192px 192px;
+  opacity: calc(var(--noise) * .22); mix-blend-mode: screen;
+  animation: noiseJit calc(var(--m) * .42s + .01s) steps(5) infinite;
+}
+@keyframes noiseJit {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-37px, 21px); } 40% { transform: translate(23px, -45px); }
+  60% { transform: translate(-12px, 33px); } 80% { transform: translate(41px, 9px); } 100% { transform: translate(-5px, -28px); }
+}
+.fx-roll {
+  height: 22% !important; bottom: auto !important;
+  background: linear-gradient(to bottom, transparent, rgba(var(--glow-rgb), calc(var(--flicker) * .14 + .015)) 55%, transparent);
+  animation: roll 8.5s linear infinite; mix-blend-mode: screen;
+}
+@keyframes roll { from { transform: translateY(-110%); } to { transform: translateY(560%); } }
+.fx-flick { opacity: var(--flicker); }
+.fx-flick::before { content: ""; position: absolute; inset: 0; background: rgba(var(--glow-rgb), .07); opacity: 0; animation: flick 3.7s infinite; }
+@keyframes flick {
+  0%, 100% { opacity: 0; } 4% { opacity: .9; } 5% { opacity: .1; } 7% { opacity: .6; } 8% { opacity: 0; }
+  52% { opacity: 0; } 53% { opacity: .5; } 54% { opacity: 0; } 81% { opacity: .25; } 82% { opacity: 0; }
+}
+.fx-vignette {
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 58%, rgba(0,0,0, calc(var(--vig) * .85)) 100%);
+  box-shadow: inset 0 0 calc(var(--vig) * 90px) rgba(0,0,0, calc(var(--vig) * .9));
+}
+.fx-glass { display: none; }
+.screen[data-curve="1"] .fx-glass, .screen[data-curve="2"] .fx-glass {
+  display: block;
+  background:
+    radial-gradient(ellipse 60% 40% at 28% 8%, rgba(255,255,255,.075), transparent 60%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, transparent 70%, rgba(255,255,255,.035) 88%, transparent 100%),
+    linear-gradient(172deg, rgba(255,255,255,.035), transparent 26%);
+}
+.fx-flash { background: #fff; opacity: 0; }
+
+/* motion gates */
+html[data-motion="0"] .fx-noise, html[data-motion="0"] .fx-roll, html[data-motion="0"] .fx-flick::before { animation: none; }
+html[data-motion="0"] .fx-roll { display: none; }
+html[data-motion="1"] .fx-roll { animation-duration: 14s; }
+html[data-motion="3"] .content { animation: jitter 6s infinite; }
+@keyframes jitter { 0%, 96%, 100% { transform: none; } 97% { transform: translateX(1px) skewX(.3deg); } 98% { transform: translateX(-1px); } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-noise, .fx-roll, .fx-flick::before, .content { animation: none !important; }
+}
+
+/* power + degauss + boot sequences */
+.screen.off .content, .screen.off .fx-scan, .screen.off .fx-noise { visibility: hidden; }
+.screen.powering-off .content { animation: powerOff calc(var(--m) * 520ms + 60ms) cubic-bezier(.5, 0, .9, .4) forwards; }
+.screen.powering-on .content { animation: powerOn calc(var(--m) * 760ms + 60ms) cubic-bezier(.2, .8, .3, 1) both; }
+.screen.powering-off .fx-flash, .screen.powering-on .fx-flash { animation: pflash calc(var(--m) * 600ms + 60ms) ease-out; }
+@keyframes powerOff {
+  0% { transform: none; filter: brightness(1); }
+  55% { transform: scale(1, .006); filter: brightness(4); }
+  85% { transform: scale(.004, .006); filter: brightness(8); }
+  100% { transform: scale(0, 0); filter: brightness(10); }
+}
+@keyframes powerOn {
+  0% { transform: scale(.004, .006); filter: brightness(8); }
+  35% { transform: scale(1, .008); filter: brightness(5); }
+  70% { transform: scale(1, 1.02); filter: brightness(1.6) blur(.6px); }
+  100% { transform: none; filter: none; }
+}
+@keyframes pflash { 0% { opacity: 0; } 30% { opacity: .22; } 100% { opacity: 0; } }
+.screen.degauss .content { animation: degauss calc(var(--m) * 700ms + 60ms) ease-out; }
+@keyframes degauss {
+  0% { transform: none; filter: none; }
+  12% { transform: skewX(4deg) scale(1.03, .98); filter: hue-rotate(80deg) saturate(3) blur(1px); }
+  28% { transform: skewX(-3deg) scale(.98, 1.02); filter: hue-rotate(-60deg) saturate(2.4); }
+  46% { transform: skewX(1.6deg); filter: hue-rotate(30deg) saturate(1.6); }
+  64% { transform: skewX(-.8deg); filter: hue-rotate(-12deg); }
+  100% { transform: none; filter: none; }
+}
+html[data-motion="0"] .screen.degauss .content { animation: none; }

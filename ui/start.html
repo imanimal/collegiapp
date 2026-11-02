@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Collegiapp Start</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600..900&family=Space+Grotesk:wght@400..700&family=Space+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="css/start.css">
+</head>
+<body>
+  <!-- Pocket Start (src-tauri/src/start.rs): a frameless window above the taskbar's Start key. start.js fills it. -->
+  <section class="fly" id="fly" aria-label="Start">
+    <div class="sq">
+      <label class="qa"><span class="pr">›</span><input type="text" id="q" placeholder="Open an app, a file or a setting" aria-label="Search or add" spellcheck="false" autocomplete="off"><span class="kb" id="esc">Esc</span></label>
+      <div class="hint" id="hint"></div>
+    </div>
+    <section class="mod" id="m1"></section>
+    <section class="mod grow" id="m2"></section>
+    <footer class="wdeck" id="deck"></footer>
+    <div class="menu" id="menu" role="menu" hidden></div>
+  </section>
+
+  <script src="js/data.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/start.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://github.com/glzr-io/zebar/raw/v3.0.0/resources/zpack-schema.json",
+  "name": "pocket",
+  "version": "1.0.0",
+  "description": "Collegiapp's Pocket key deck as a taskbar: an orange Start key, program keys with running LEDs (or GlazeWM workspaces), now playing, the hidden tray icons, a Collegiapp next-class LCD, an LCD tray and clock. Cream by day, Night after dark.",
+  "tags": ["taskbar", "bottombar", "topbar", "retro"],
+  "repositoryUrl": "",
+  "widgets": [
+    {
+      "name": "bar",
+      "htmlPath": "./bar.html",
+      "zOrder": "normal",
+      "shownInTaskbar": false,
+      "focused": false,
+      "resizable": false,
+      "transparent": true,
+      "includeFiles": ["*.html", "*.css", "*.js"],
+      "caching": {
+        "defaultDuration": 604800,
+        "rules": []
+      },
+      "privileges": {
+        "shellCommands": [
+          { "program": "explorer", "argsRegex": "" },
+          { "program": "explorer", "argsRegex": "^(shell:AppsFolder\\\\|ms-settings:|ms-actioncenter:|https?://|[A-Za-z]:\\\\)" },
+          { "program": "powershell", "argsRegex": "^-NoProfile -NonInteractive -WindowStyle Hidden -Command \\(New-Object -ComObject WScript\\.Shell\\)\\.SendKeys\\('\\^\\{ESC\\}'\\)$" },
+          { "program": "tasklist", "argsRegex": "^/FO CSV /NH$" }
+        ]
+      },
+      "presets": [
+        {
+          "name": "bottom",
+          "anchor": "bottom_left",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "74px",
+          "monitorSelection": { "type": "all" },
+          "dockToEdge": { "enabled": true, "edge": null, "windowMargin": "0px" }
+        },
+        {
+          "name": "top",
+          "anchor": "top_left",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "74px",
+          "monitorSelection": { "type": "all" },
+          "dockToEdge": { "enabled": true, "edge": null, "windowMargin": "0px" }
+        }
+      ]
+    },
+    {
+      "name": "bar-glazewm",
+      "htmlPath": "./bar-glazewm.html",
+      "zOrder": "normal",
+      "shownInTaskbar": false,
+      "focused": false,
+      "resizable": false,
+      "transparent": true,
+      "includeFiles": ["*.html", "*.css", "*.js"],
+      "caching": {
+        "defaultDuration": 604800,
+        "rules": []
+      },
+      "privileges": {
+        "shellCommands": [
+          { "program": "explorer", "argsRegex": "" },
+          { "program": "explorer", "argsRegex": "^(shell:AppsFolder\\\\|ms-settings:|ms-actioncenter:|https?://|[A-Za-z]:\\\\)" },
+          { "program": "powershell", "argsRegex": "^-NoProfile -NonInteractive -WindowStyle Hidden -Command \\(New-Object -ComObject WScript\\.Shell\\)\\.SendKeys\\('\\^\\{ESC\\}'\\)$" },
+          { "program": "tasklist", "argsRegex": "^/FO CSV /NH$" }
+        ]
+      },
+      "presets": [
+        {
+          "name": "top",
+          "anchor": "top_left",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "74px",
+          "monitorSelection": { "type": "all" },
+          "dockToEdge": { "enabled": true, "edge": null, "windowMargin": "0px" }
+        },
+        {
+          "name": "bottom",
+          "anchor": "bottom_left",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "74px",
+          "monitorSelection": { "type": "all" },
+          "dockToEdge": { "enabled": true, "edge": null, "windowMargin": "0px" }
+        }
+      ]
+    }
+  ]
+}

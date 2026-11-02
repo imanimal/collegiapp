@@ -1,0 +1,136 @@
+{
+	"title" : "Collegiapp Pocket",
+	"description" : "The Pocket desk from Collegiapp, live. Its 16 px dot grid ripples each minute and lights up under the cursor. The widgets are an LCD clock with the quarter's week, an optional Do first countdown, this week and today, and a Now playing LCD that follows your music. Cream or Night, following Windows.",
+	"file" : "index.html",
+	"type" : "web",
+	"preview" : "preview.jpg",
+	"contentrating" : "Everyone",
+	"tags" : [ "Minimalist", "Technology" ],
+	"general" :
+	{
+		"supportsaudioprocessing" : true,
+		"properties" :
+		{
+			"schemecolor" :
+			{
+				"order" : 0,
+				"text" : "ui_browse_properties_scheme_color",
+				"type" : "color",
+				"value" : "1 0.35686 0.12157"
+			},
+			"theme" :
+			{
+				"order" : 1,
+				"text" : "Theme",
+				"type" : "combo",
+				"value" : "auto",
+				"options" :
+				[
+					{ "label" : "Follow Windows", "value" : "auto" },
+					{ "label" : "Cream", "value" : "cream" },
+					{ "label" : "Night", "value" : "night" },
+					{ "label" : "Night from 7 PM to 7 AM", "value" : "time" }
+				]
+			},
+			"layout" :
+			{
+				"order" : 2,
+				"text" : "Layout",
+				"type" : "combo",
+				"value" : "right",
+				"options" :
+				[
+					{ "label" : "Widgets on the right", "value" : "right" },
+					{ "label" : "Centered", "value" : "center" }
+				]
+			},
+			"size" :
+			{
+				"order" : 3,
+				"text" : "Widget size (%)",
+				"type" : "slider",
+				"min" : 60,
+				"max" : 160,
+				"editable" : true,
+				"value" : 100
+			},
+			"clock" :
+			{
+				"order" : 4,
+				"text" : "Clock",
+				"type" : "bool",
+				"value" : true
+			},
+			"clock24" :
+			{
+				"order" : 5,
+				"text" : "24-hour clock",
+				"type" : "bool",
+				"value" : false
+			},
+			"live" :
+			{
+				"order" : 6,
+				"text" : "Do first from Collegiapp",
+				"type" : "bool",
+				"value" : true
+			},
+			"dofirst" :
+			{
+				"order" : 7,
+				"text" : "Do first when Collegiapp isn't running",
+				"type" : "textinput",
+				"value" : ""
+			},
+			"dofirstcourse" :
+			{
+				"order" : 8,
+				"text" : "Its course",
+				"type" : "textinput",
+				"value" : ""
+			},
+			"dofirstdue" :
+			{
+				"order" : 9,
+				"text" : "Its due time (2026-11-02 23:59)",
+				"type" : "textinput",
+				"value" : ""
+			},
+			"quarter" :
+			{
+				"order" : 10,
+				"text" : "Quarter",
+				"type" : "textinput",
+				"value" : "Fall 2026"
+			},
+			"quarterstart" :
+			{
+				"order" : 11,
+				"text" : "First day of classes (YYYY-MM-DD)",
+				"type" : "textinput",
+				"value" : "2026-09-24"
+			},
+			"lens" :
+			{
+				"order" : 12,
+				"text" : "Cursor lens",
+				"type" : "bool",
+				"value" : true
+			},
+			"ripples" :
+			{
+				"order" : 13,
+				"text" : "Ripples (each minute and on click)",
+				"type" : "bool",
+				"value" : true
+			},
+			"audio" :
+			{
+				"order" : 14,
+				"text" : "Now playing",
+				"type" : "bool",
+				"value" : true
+			}
+		}
+	}
+}

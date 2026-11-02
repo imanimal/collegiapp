@@ -1,0 +1,222 @@
+/* Collegiapp — Pocket Start (start.html): the Start board of the "Pocket for Windows" design canvas.
+   Same tokens as pocket.css: start.js sets P9 Cream or P11 Night on the root from lab.js's palettes, and the rules
+   below derive the surfaces the same way. Sizes are px because Start is a fixed window (start.rs WIDTH × HEIGHT, in
+   logical px): a 720 px panel inside an 18 px transparent margin that holds its shadow.
+   Order: tokens · base · icons · keys · search · modules · pinned · rows · deck · menus. */
+
+:root {
+  --pad: 18px;
+  --bg: #e6e2d8; --bg2: #fbf9f4; --chrome-bg: #2a2722; --chrome-fg: #f6f3ec;
+  --warn: #9a5b00; --bad: #c8341b; --ok: #2e7d32;
+  --k1: #2f6fde; --k2: #ff5b1f; --k3: #2e8b57; --k4: #b03aa8; --k5: #c27a00; --k6: #5b5548;
+  --surface: var(--p-surface, #f6f3ec);
+  --surface-2: var(--p-surface2, #ebe7dd);
+  --line: var(--p-line, #d3ccbd);
+  --text: var(--p-text, #1b1915);
+  --text-2: var(--p-text2, #4a453c);
+  --text-3: var(--p-text3, #6a645a);
+  --accent: var(--p-acc, #ff5b1f);
+  --on-accent: var(--p-on-acc, #1b1915);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --disp-bg: var(--p-disp-bg, #b1bd93);
+  --disp-fg: var(--p-disp-fg, #1f2a17);
+  --font-ui: "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas, monospace;
+  --font-num: "Doto", ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas, monospace;
+  --hl: rgba(255, 255, 255, .5);
+  --card-shadow: 0 0 0 1px var(--line), 0 2px 0 var(--line), 0 10px 24px rgba(40, 30, 10, .07);
+  /* the canvas' 60 px drop, tightened to fit the window's margin */
+  --drop: 0 6px 12px rgba(30, 22, 8, .26), 0 0 0 1px var(--line);
+  color-scheme: light;
+}
+:root[data-scheme="dark"] {
+  --hl: rgba(255, 255, 255, .06);
+  --card-shadow: 0 0 0 1px var(--line), 0 2px 0 #0b0a09, 0 10px 24px rgba(0, 0, 0, .3);
+  --drop: 0 6px 12px rgba(0, 0, 0, .55), 0 0 0 1px var(--line);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+body {
+  font: 15px/1.45 var(--font-ui); color: var(--text-2);
+  -webkit-font-smoothing: antialiased; font-synthesis: none; -webkit-user-select: none; user-select: none; cursor: default;
+}
+button, input { font: inherit; color: inherit; }
+input { min-width: 0; }
+[hidden] { display: none !important; }
+.hi { color: var(--text); }
+.dim { color: var(--text-3); }
+.mono { font-family: var(--font-mono); }
+.sp { flex: 1; }
+:is(button, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* the panel; the margin around it is transparent and catches clicks that close Start */
+.fly {
+  position: absolute; inset: var(--pad); display: flex; flex-direction: column; gap: 14px; padding: 14px; border-radius: 18px;
+  background: var(--bg); box-shadow: var(--drop), inset 0 1px 0 var(--hl);
+}
+
+/* ───── pixel icons: 9×9 bitmaps at whole 9 px steps ───── */
+.i { width: 18px; height: 18px; flex: none; display: block; fill: currentColor; shape-rendering: crispEdges; }
+.i.s9 { width: 9px; height: 9px; }
+.i.s27 { width: 27px; height: 27px; }
+
+/* ───── B8 keys ───── */
+.k {
+  border: 0; cursor: pointer; position: relative; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 600 14px/1.2 var(--font-ui); color: var(--text); border-radius: 10px; padding: 8px 14px 7px; margin-bottom: 3px;
+  background: linear-gradient(to bottom, color-mix(in srgb, #fff 14%, var(--surface-2)), var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 75%, #000), 0 3px 0 color-mix(in srgb, var(--line) 55%, #000), 0 5px 10px rgba(0, 0, 0, .14);
+}
+.k .i { color: var(--text-2); }
+.k.primary { color: var(--on-accent); background: linear-gradient(to bottom, color-mix(in srgb, #fff 16%, var(--accent)), var(--accent)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 62%, #000), 0 3px 0 color-mix(in srgb, var(--accent) 52%, #000), 0 5px 12px rgba(0, 0, 0, .16); }
+.k.dark { color: var(--chrome-fg); background: linear-gradient(to bottom, color-mix(in srgb, #fff 12%, var(--chrome-bg)), var(--chrome-bg)); box-shadow: 0 0 0 1px #000, 0 3px 0 #000, 0 5px 12px rgba(0, 0, 0, .2); }
+.k.dark .i { color: var(--accent); }
+.k.ghost { background: transparent; box-shadow: none; margin-bottom: 0; color: var(--text-2); }
+.k.sm { font-size: 13px; padding: 5px 10px 5px; }
+.k.sq { padding: 8px; }
+@media (hover: hover) {
+  .k:not(.ghost, .primary, .dark):hover { background: linear-gradient(to bottom, color-mix(in srgb, #fff 26%, var(--surface-2)), var(--surface-2)); }
+  .k.ghost:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+  .k.dark:hover { background: linear-gradient(to bottom, color-mix(in srgb, #fff 20%, var(--chrome-bg)), var(--chrome-bg)); }
+}
+.k:not(.ghost):active, .k.down { transform: translateY(3px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 75%, #000), 0 0 0 transparent, 0 1px 3px rgba(0, 0, 0, .12); }
+.k.dark:active, .k.dark.down { box-shadow: 0 0 0 1px #000, 0 0 0 transparent, 0 1px 3px rgba(0, 0, 0, .2); }
+.kb { font: 11px/1 var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 3px 6px; color: var(--text-3); background: var(--surface); white-space: nowrap; }
+
+/* ───── search / add ───── */
+.sq { display: flex; flex-direction: column; gap: 7px; flex: none; }
+.qa { display: flex; align-items: center; gap: 10px; border-radius: 10px; background: var(--bg2); padding: 7px 7px 7px 13px; box-shadow: inset 0 0 0 2px var(--accent); cursor: text; }
+.qa input { all: unset; flex: 1; min-width: 0; font: 18px/1.3 var(--font-ui); color: var(--text); caret-color: var(--accent); -webkit-user-select: text; user-select: text; }
+.qa input::placeholder { color: var(--text-3); opacity: 1; }
+.qa .pr { color: var(--accent); font: 700 22px/1 var(--font-mono); }
+.qa .kb { cursor: pointer; }
+.hint { font-size: 12.5px; color: var(--text-3); padding-left: 2px; min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hint .mono { color: var(--text-2); }
+.hint b { color: var(--text); font-weight: 600; }
+.hint .ok { color: var(--ok); font-weight: 600; }
+.hint .bad { color: var(--bad); font-weight: 600; }
+
+/* ───── F3 modules: a card with a printed label band; orange = do this first ───── */
+.mod { position: relative; display: flex; flex-direction: column; min-width: 0; flex: none; background: var(--surface); border-radius: 14px; box-shadow: var(--card-shadow); overflow: hidden; }
+.mod.grow { flex: 1 1 0; min-height: 0; }
+.band {
+  --band: var(--chrome-bg); --band-fg: var(--chrome-fg);
+  display: flex; align-items: center; gap: 9px; flex: none; white-space: nowrap; min-height: 38px; padding: 4px 7px 4px 14px;
+  background: var(--band); color: var(--band-fg); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .25);
+}
+.band .bt { display: inline-flex; align-items: center; gap: 9px; min-width: 0; font: 700 11.5px/1 var(--font-ui); text-transform: uppercase; letter-spacing: .11em; }
+.band .bt .i { color: var(--accent); }
+.band .cnt { font: 11.5px/1 var(--font-mono); opacity: .78; overflow: hidden; text-overflow: ellipsis; }
+.band::after { content: ""; flex: none; width: 22px; height: 9px; margin: 0 5px 0 3px; opacity: .3; background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 5px); }
+.band.hot { --band: var(--accent); --band-fg: var(--on-accent); }
+.band.hot .bt .i { color: inherit; }
+.band .k.ghost { color: inherit; padding: 5px 8px; }
+.band .k.ghost .i { color: inherit; }
+.mb { padding: 13px 15px 15px; }
+.scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 4px 7px 8px; }
+
+/* ───── pinned: six keys a row, each an icon well over its name ───── */
+.grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px 10px; padding-top: 15px; }
+.pin { flex-direction: column; gap: 7px; padding: 11px 4px 9px; font-size: 12.5px; min-width: 0; }
+.pin .lb { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.pin.empty { visibility: hidden; }
+.appg { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 10px; color: var(--kc, var(--text-2)); background: color-mix(in srgb, var(--kc, var(--text-3)) 15%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kc, var(--text-3)) 32%, transparent); }
+.k .appg .i { color: inherit; }
+.appg.sm { width: 28px; height: 28px; border-radius: 7px; }
+.appg.bare { background: none; box-shadow: none; }
+/* Windows' own app icon (start.js), over the pixel glyph until it loads; a loaded one sits in a plain well */
+.appg { position: relative; }
+.appg .ai { position: absolute; inset: 0; margin: auto; width: 30px; height: 30px; opacity: 0; pointer-events: none; }
+.appg.sm .ai { width: 20px; height: 20px; }
+.appg.real { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.appg.real .ai { opacity: 1; }
+.appg.real > .i { visibility: hidden; }
+.tile {
+  width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 7px; color: var(--disp-fg);
+  background: linear-gradient(170deg, color-mix(in srgb, #fff 18%, var(--disp-bg)), var(--disp-bg) 60%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .3), 0 0 0 2px var(--chrome-bg); font: 900 21px/1 var(--font-num);
+}
+.appg .tile { width: 34px; height: 34px; }
+.appg.sm .tile { width: 22px; height: 22px; border-radius: 5px; font-size: 15px; }
+.note { padding: 22px 6px 20px; text-align: center; color: var(--text-3); font-size: 13.5px; }
+.note b { display: block; color: var(--text); font-size: 15px; margin-bottom: 3px; }
+
+/* ───── rows: Do first, results, All apps ───── */
+.rows { padding: 6px 7px 8px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.frow { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 7px 9px; border-radius: 9px; cursor: pointer; }
+.frow.app { grid-template-columns: 28px minmax(0, 1fr) auto; padding: 5px 9px; }
+.frow.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.frow.cur { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+@media (hover: hover) { .frow:not(.sel):hover { background: var(--surface-2); } }
+.frow > .i { color: var(--text-3); }
+.frow.sel > .i { color: var(--accent); }
+.fn { color: var(--text); font-size: 14.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm { display: flex; align-items: center; gap: 0 7px; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; }
+.fm > span + span::before { content: "·"; margin-right: 7px; opacity: .7; }
+.fm > span:first-child { color: var(--text-2); font-weight: 600; }
+.fd { font: 12px/1.2 var(--font-mono); color: var(--text-3); text-align: right; white-space: nowrap; }
+.cdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--kc, var(--text-3)); flex: none; margin-right: 6px; }
+.pill { font: 600 12px/1.2 var(--font-ui); padding: 3px 9px; border-radius: 99px; white-space: nowrap; background: var(--surface-2); color: var(--text-2); }
+/* the pocket.css due pills, contrast included: --warn pulled toward the text on its wash, --bg2 on solid fills */
+.pill.soon { background: color-mix(in srgb, var(--warn) 14%, transparent); color: color-mix(in srgb, var(--warn) 75%, var(--text)); }
+.pill.hot { background: var(--warn); color: var(--bg2); }
+.pill.over { background: var(--bad); color: var(--bg2); }
+.pill.live { background: var(--accent); color: var(--on-accent); }
+.grp { display: flex; align-items: center; gap: 9px; padding: 12px 9px 5px; font: 600 12px/1.2 var(--font-ui); color: var(--text-3); }
+.grp span { font-family: var(--font-mono); font-weight: 400; }
+.grp::after { content: ""; flex: 1; border-bottom: 1px solid var(--line); }
+.grp:first-child { padding-top: 6px; }
+
+/* ───── work deck ───── */
+.wdeck { display: flex; align-items: center; gap: 9px; flex: none; padding: 7px 9px 6px; border-radius: 14px; background: color-mix(in srgb, var(--text) 5%, var(--bg)); box-shadow: inset 0 1px 0 var(--hl), inset 0 0 0 1px var(--line); }
+.who { padding: 4px 8px 4px 4px; gap: 10px; }
+.who .tile { font-size: 19px; }
+.who .nm { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+.who .sub { font-size: 11.5px; font-weight: 400; color: var(--text-3); }
+
+/* ───── menus: Power, an app's commands (start/menu.rs), a task's ───── */
+.menu { position: absolute; z-index: 5; display: flex; flex-direction: column; min-width: 230px; max-width: 330px; max-height: calc(100% - 16px); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 22px rgba(0, 0, 0, .3), 0 0 0 1px var(--line); overflow: hidden; }
+.menu .band { min-height: 34px; }
+.menu .mname { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.menu .its { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 4px 6px 7px; }
+.mi { all: unset; box-sizing: border-box; flex: none; display: flex; align-items: center; gap: 11px; padding: 6px 10px; border-radius: 7px; font: 14px/1.25 var(--font-ui); color: var(--text); white-space: nowrap; cursor: pointer; }
+.mi .i { color: var(--text-3); }
+.mi .mt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mi .kb { margin-left: 14px; }
+/* a switch's state, printed like a key cap: lit when on */
+.mi .tog { margin-left: 14px; font: 11px/1 var(--font-mono); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--text-3); background: var(--surface); }
+.mi .tog.on { color: var(--on-accent); background: var(--accent); border-color: color-mix(in srgb, var(--accent) 60%, #000); }
+.mi:focus-visible, .mi.on { background: var(--accent-soft); outline: none; }
+.mi:focus-visible .i, .mi.on .i { color: var(--accent); }
+@media (hover: hover) { .mi:hover { background: var(--accent-soft); } .mi:hover .i { color: var(--accent); } }
+/* ends or removes something */
+.mi.bad, .mi.bad .i { color: var(--bad); }
+@media (hover: hover) { .mi.bad:hover { background: color-mix(in srgb, var(--bad) 13%, transparent); } .mi.bad:hover .i { color: var(--bad); } }
+.mi.bad:focus-visible { background: color-mix(in srgb, var(--bad) 13%, transparent); }
+.mi.bad:focus-visible .i { color: var(--bad); }
+.msep { flex: none; height: 1px; background: var(--line); margin: 4px 8px; }
+.mload { padding: 6px 10px 2px; font-size: 12px; color: var(--text-3); }
+.ask { padding: 12px 14px 6px; font-size: 13.5px; color: var(--text-2); max-width: 320px; }
+.ask b { color: var(--text); font-weight: 600; }
+/* an app you hid, shown again with "N hidden" */
+.frow.gone { opacity: .5; }
+
+/* ───── motion: each open, the board rises and its parts deal in top to bottom, the tiles' LCD faces flicker on.
+   start.js sets --m from the main window's style code (0 = still) and .closed while Start is hidden. ───── */
+:root { --m: 1; }
+.fly.closed { opacity: 0; }
+.fly.opening { animation: flyIn calc(var(--m) * 260ms + 1ms) cubic-bezier(.2, .9, .3, 1); }
+@keyframes flyIn { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+.fly.opening > :is(.sq, #m1, #m2, #deck) { animation: partIn calc(var(--m) * 300ms + 1ms) cubic-bezier(.3, 1.45, .5, 1) backwards; animation-delay: calc(var(--m) * (var(--si, 0) * 55ms + 60ms)); }
+.fly > .sq { --si: 0; } .fly > #m1 { --si: 1; } .fly > #m2 { --si: 2; } .fly > #deck { --si: 3; }
+@keyframes partIn { from { opacity: 0; transform: translateY(8px); } }
+.fly.opening .tile { animation: lcdOn calc(var(--m) * 420ms + 1ms) steps(1, end) calc(var(--m) * 200ms) backwards; }
+@keyframes lcdOn { 0% { opacity: 0; } 30% { opacity: .35; } 45% { opacity: .1; } 60% { opacity: .75; } 75%, 100% { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .k { transition: background calc(var(--m) * 120ms), transform calc(var(--m) * 80ms), box-shadow calc(var(--m) * 120ms); }
+  .frow { transition: background calc(var(--m) * 100ms), box-shadow calc(var(--m) * 100ms); }
+}
+@media (prefers-reduced-motion: reduce) { .fly, .fly * { animation: none !important; } }

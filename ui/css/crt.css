@@ -1,0 +1,122 @@
+/* Collegiapp — CRT effect stack. All intensities are 0..1 custom properties set by fx.js:
+   --scan --glow --flicker --noise --ab --vig ; data-curve 0 flat · 1 glass sheen · 2 warped glass ;
+   data-mask N none · A aperture grille · S shadow mask. Layers never take pointer events. */
+
+.screen { --scan: .55; --flicker: .15; --noise: .12; --vig: .55; }
+/* the app is full-bleed, so the tube no longer rounds the corners: C1 is the glass sheen, C2 adds the warp */
+/* The warp moves the picture, not the page, so the content slides by the warp's offset at the pointer (fx.js follow)
+   and #crtShift slides the picture back: what's drawn under the pointer is what it hits. */
+.screen[data-curve="2"] .warp { filter: url(#crtShift) url(#crtWarp); }
+.screen[data-curve="2"] .content { translate: var(--warp-x, 0px) var(--warp-y, 0px); }
+
+.fx { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 40; overflow: hidden; }
+.fx > div { position: absolute; inset: 0; border-radius: inherit; }
+
+.fx-scan {
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0, calc(var(--scan) * .62)) 0 1px, transparent 1px 3px);
+}
+.fx-mask { opacity: 0; mix-blend-mode: multiply; }
+.screen[data-mask="A"] .fx-mask {
+  opacity: .16;
+  background: repeating-linear-gradient(90deg, #ff4040 0 1px, #40ff40 1px 2px, #4060ff 2px 3px);
+}
+.screen[data-mask="S"] .fx-mask {
+  opacity: .2;
+  background:
+    radial-gradient(circle at 1px 1px, #ff5050 .7px, transparent 1px) 0 0 / 4px 4px,
+    radial-gradient(circle at 3px 1px, #50ff50 .7px, transparent 1px) 0 0 / 4px 4px,
+    radial-gradient(circle at 2px 3px, #5080ff .7px, transparent 1px) 0 0 / 4px 4px,
+    #222;
+}
+.fx-noise {
+  inset: -60px !important; background-image: var(--noise-img, none); background-size: 192px 192px;
+  opacity: calc(var(--noise) * .22); mix-blend-mode: screen;
+  animation: noiseJit calc(var(--m) * .42s + .01s) steps(5) infinite;
+}
+@keyframes noiseJit {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-37px, 21px); } 40% { transform: translate(23px, -45px); }
+  60% { transform: translate(-12px, 33px); } 80% { transform: translate(41px, 9px); } 100% { transform: translate(-5px, -28px); }
+}
+.fx-roll {
+  height: 22% !important; bottom: auto !important;
+  background: linear-gradient(to bottom, transparent, rgba(var(--glow-rgb), calc(var(--flicker) * .14 + .015)) 55%, transparent);
+  animation: roll 8.5s linear infinite; mix-blend-mode: screen;
+}
+@keyframes roll { from { transform: translateY(-110%); } to { transform: translateY(560%); } }
+.fx-flick { opacity: var(--flicker); }
+.fx-flick::before { content: ""; position: absolute; inset: 0; background: rgba(var(--glow-rgb), .07); opacity: 0; animation: flick 3.7s infinite; }
+@keyframes flick {
+  0%, 100% { opacity: 0; } 4% { opacity: .9; } 5% { opacity: .1; } 7% { opacity: .6; } 8% { opacity: 0; }
+  52% { opacity: 0; } 53% { opacity: .5; } 54% { opacity: 0; } 81% { opacity: .25; } 82% { opacity: 0; }
+}
+.fx-vignette {
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 58%, rgba(0,0,0, calc(var(--vig) * .85)) 100%);
+  box-shadow: inset 0 0 calc(var(--vig) * 90px) rgba(0,0,0, calc(var(--vig) * .9));
+}
+.fx-glass { display: none; }
+.screen[data-curve="1"] .fx-glass, .screen[data-curve="2"] .fx-glass {
+  display: block;
+  background:
+    radial-gradient(ellipse 60% 40% at 28% 8%, rgba(255,255,255,.075), transparent 60%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, transparent 70%, rgba(255,255,255,.035) 88%, transparent 100%),
+    linear-gradient(172deg, rgba(255,255,255,.035), transparent 26%);
+}
+.fx-flash { background: #fff; opacity: 0; }
+
+/* motion gates */
+html[data-motion="0"] .fx-noise, html[data-motion="0"] .fx-roll, html[data-motion="0"] .fx-flick::before { animation: none; }
+html[data-motion="0"] .fx-roll { display: none; }
+html[data-motion="1"] .fx-roll { animation-duration: 14s; }
+html[data-motion="3"] .content { animation: jitter 6s infinite; }
+@keyframes jitter { 0%, 96%, 100% { transform: none; } 97% { transform: translateX(1px) skewX(.3deg); } 98% { transform: translateX(-1px); } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-noise, .fx-roll, .fx-flick::before, .content { animation: none !important; }
+}
+
+/* power: a tube TV on and off (fx.js powerOn / powerOff). The face is the dead tube's dark glass; .crt holds the snow,
+   the hum bar, a veil whose backdrop-filter carries brightness, colour and focus (the content keeps C2's warp filter),
+   the degauss blotches, the phosphor's afterglow, the beam's line and its spot. Under the scanlines and glass (.fx).
+   The blips between programmes (fx.js channel, track, osd, degauss) show it with .crt-blip, over the live picture. */
+.screen { --tube: #080a09; }
+.screen.off, .screen.crt-run { background: var(--tube); }
+.screen.off :is(.content, .layer, .fx-scan, .fx-noise, .fx-roll, .fx-flick, .fx-mask) { visibility: hidden; }
+.screen.off .fx-glass { opacity: .8; }
+.crt { position: absolute; inset: 0; pointer-events: none; overflow: hidden; display: none; }
+.crt * { pointer-events: none; }
+.screen.crt-run > .crt, .screen.crt-blip > .crt { display: block; }
+.crt > * { position: absolute; inset: 0; z-index: 30; display: block; opacity: 0; }
+.crt-snow { width: 100%; height: 100%; image-rendering: auto; filter: contrast(1.15); }
+/* a channel change's static: over the part that changes only, blended so it textures the picture without lighting it */
+.crt-snow.soft { mix-blend-mode: soft-light; filter: none; }
+/* tape search: under each search bar the picture itself smears, greys and blooms a little (fx.js moves and sizes them) */
+.crt > .crt-band { bottom: auto; height: 0; -webkit-backdrop-filter: blur(1.6px) saturate(.35) brightness(1.08) contrast(1.15); backdrop-filter: blur(1.6px) saturate(.35) brightness(1.08) contrast(1.15); }
+.crt-hum { bottom: auto; height: 28%; background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, .34) 32%, rgba(0, 0, 0, .46) 50%, rgba(0, 0, 0, .34) 68%, transparent); }
+.crt-veil { opacity: 1; }
+.crt-tint {
+  inset: -30%; mix-blend-mode: color;
+  background:
+    radial-gradient(circle at 34% 38%, rgba(255, 40, 160, .9), transparent 34%),
+    radial-gradient(circle at 66% 62%, rgba(20, 220, 130, .85), transparent 36%),
+    radial-gradient(circle at 62% 30%, rgba(60, 90, 255, .85), transparent 30%),
+    radial-gradient(circle at 36% 70%, rgba(255, 190, 30, .8), transparent 30%);
+}
+.crt-glow { background: radial-gradient(ellipse 46% 34% at 50% 50%, rgba(var(--glow-rgb, 210, 230, 255), .55), rgba(var(--glow-rgb, 210, 230, 255), .12) 60%, transparent 80%); mix-blend-mode: screen; }
+.crt-line {
+  inset: 50% 0 auto; height: 2px; margin-top: -1px; border-radius: 1px; background: #f4f9ff;
+  box-shadow: 0 0 3px 1px #fff, 0 0 12px 3px rgba(190, 220, 255, .85), 0 0 34px 10px rgba(140, 190, 255, .45);
+}
+.crt-dot {
+  inset: 50% auto auto 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 4px 2px #fff, 0 0 16px 6px rgba(200, 225, 255, .9), 0 0 48px 18px rgba(140, 190, 255, .45);
+}
+
+/* the set's on-screen display (fx.js osd: a channel and its name, ◀◀ Rew or ▶▶ FF over the tape counter, ▶ Play,
+   ■ Stop): phosphor-green dot matrix with a dark edge, so it reads over any theme for the second it's up. fx.js places
+   it (top, right) and fades it on and off. */
+.crt > .crt-osd {
+  inset: auto; display: flex; flex-direction: column; align-items: flex-end; gap: .1em; font-size: var(--fs); line-height: 1;
+  color: #8dff8a; text-shadow: 0 0 6px rgba(120, 255, 120, .55), 1px 1px 0 #041204, -1px -1px 0 #041204, 1px -1px 0 #041204, -1px 1px 0 #041204;
+}
+.crt-osd .o1 { font: 900 2em/1 var(--font-num); letter-spacing: .04em; }
+.crt-osd .o2 { font: 700 .82em/1 var(--font-mono); text-transform: uppercase; letter-spacing: .1em; }
+.crt-osd .o3 { margin-top: .25em; font: 900 1.15em/1 var(--font-num); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
