@@ -14,11 +14,19 @@
 //! newer here, so an offline edit never overwrites a newer one from another device. A deletion
 //! pulled from another device puts the local version in the trash. The sample item never syncs.
 //!
+//! Settings that follow you (the look, the calendar feed links, the Google class picks:
+//! `Settings::synced` in store.rs) are one more document, `users/{uid}/meta/settings`: `j` the core's `SyncedSettings` as
+//! JSON (each key with its value and the time and device of its last change), `d` and `s` as
+//! above. Each cycle reads it after the items, merges it key by key (`merge_settings`, later
+//! change wins) and writes it back when this device has something newer. The store stamps a
+//! setting when it changes here, so a new device's defaults never win over the account's.
+//!
 //! The project is the one in `ui/js/cloud-config.js`, built in, so the app and the web app share
 //! it with nothing to fill in; the Sync dialog can set another. Beside the store: `cloud.json`
 //! holds that other project's config (a Firebase web key and project ID, neither secret) and the
 //! sync marks; `cloud.session` holds the Firebase refresh token, uid and email. Neither is in
-//! Settings, and neither is ever uploaded.
+//! Settings, and neither is ever uploaded. The feed links are the one secret that syncs, by
+//! your choice, and only into your own settings document, which the rules lock to your uid.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -27,7 +35,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, SecondsFormat, Utc};
-use collegiapp_core::{Course, Item};
+use collegiapp_core::{merge_settings, Course, Item, SyncedSettings};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -122,6 +130,8 @@ struct Marks {
     last_pull: Option<DateTime<Utc>>,
     /// Each item's version on the server as far as this device knows: its `updated_at`.
     pushed: BTreeMap<Uuid, DateTime<Utc>>,
+    /// The newest setting change in the settings document as far as this device knows.
+    settings: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -314,7 +324,12 @@ fn due(app: &AppHandle) -> bool {
     let st = app.state::<SharedState>();
     let g = lock(&st);
     let settled = Utc::now() - chrono::Duration::seconds(SETTLE);
-    let waiting = unpushed(&g.data.items, &c.saved.marks).any(|it| it.updated_at <= settled);
+    let seen = c.saved.marks.settings;
+    let waiting = unpushed(&g.data.items, &c.saved.marks).any(|it| it.updated_at <= settled)
+        || g.data
+            .synced
+            .values()
+            .any(|s| seen.is_none_or(|t| s.at > t) && s.at <= settled);
     waiting
 }
 
@@ -359,7 +374,9 @@ fn run(app: &AppHandle, cloud: &Cloud) -> Result<(), String> {
         &token,
         &format!("{API}/{root}/users/{}", session.uid),
     )?;
-    push(app, cloud, &token, &root, &session.uid)
+    push(app, cloud, &token, &root, &session.uid)?;
+    // after the items, so a project whose rules predate the settings document still syncs them
+    sync_settings(app, cloud, &token, &root, &session.uid)
 }
 
 const API: &str = "https://firestore.googleapis.com/v1";
@@ -616,6 +633,97 @@ fn push(app: &AppHandle, cloud: &Cloud, token: &str, root: &str, uid: &str) -> R
         c.write_saved();
     }
     Ok(())
+}
+
+/// The settings document's map from a `batchGet` answer; a missing or unreadable one is empty.
+fn remote_settings(v: &Value) -> SyncedSettings {
+    v.as_array()
+        .into_iter()
+        .flatten()
+        .find_map(|r| r["found"]["fields"]["j"]["stringValue"].as_str())
+        .and_then(|j| serde_json::from_str(j).ok())
+        .unwrap_or_default()
+}
+
+/// Read the settings document, take what's newer there, and write it back if this device has
+/// something newer. One read a cycle; a write only after a change.
+fn sync_settings(
+    app: &AppHandle,
+    cloud: &Cloud,
+    token: &str,
+    root: &str,
+    uid: &str,
+) -> Result<(), String> {
+    let name = format!("{root}/users/{uid}/meta/settings");
+    let v = call(
+        &format!("{API}/{root}:batchGet"),
+        Body::Json(&json!({ "documents": [name] }).to_string()),
+        Some(token),
+    )?;
+    let remote = remote_settings(&v);
+    let (report, merged, device) = {
+        let st = app.state::<SharedState>();
+        let mut g = lock(&st);
+        let mut merged = g.data.synced.clone();
+        let report = merge_settings(&mut merged, &remote);
+        for k in &report.pulled {
+            g.data.settings.set_synced(k, &merged[k].v);
+            // a new feed link starts a new log, as when it's pasted here (commands.rs set_feed)
+            match k.as_str() {
+                "canvas_feed_url" => g.data.feeds.canvas = Default::default(),
+                "gcal_feed_url" => g.data.feeds.gcal = Default::default(),
+                _ => {}
+            }
+        }
+        if merged != g.data.synced {
+            g.data.synced = merged.clone();
+            g.save()?;
+        }
+        (report, merged, g.device_id())
+    };
+    if !report.pulled.is_empty() {
+        settings_pulled(app, &report.pulled);
+    }
+    if report.push {
+        let j = serde_json::to_string(&merged).map_err(|e| e.to_string())?;
+        let body = json!({ "writes": [{
+            "update": { "name": name, "fields": { "j": { "stringValue": j }, "d": { "stringValue": device } } },
+            "updateTransforms": [{ "fieldPath": "s", "setToServerValue": "REQUEST_TIME" }],
+        }]});
+        call(
+            &format!("{API}/{root}:commit"),
+            Body::Json(&body.to_string()),
+            Some(token),
+        )?;
+    }
+    cloud.lock().saved.marks.settings = merged.values().map(|s| s.at).max();
+    Ok(())
+}
+
+/// Settings came from another device: the windows reload (the main one takes the look), a new
+/// feed link is read now, and new class picks re-import the Google calendar this device reads.
+fn settings_pulled(app: &AppHandle, keys: &[String]) {
+    let _ = app.emit("items-changed", "sync");
+    let gcal = {
+        let st = app.state::<SharedState>();
+        let g = lock(&st);
+        g.data.settings.gcal_feed_url.is_some()
+    };
+    let links = keys.iter().any(|k| k.ends_with("_feed_url"));
+    let picks = gcal && keys.iter().any(|k| k.starts_with("gcal_"));
+    if links || picks {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let r = if links {
+                crate::feeds::refresh(&app)
+            } else {
+                crate::feeds::reimport_gcal(&app)
+            };
+            if let Err(e) = r {
+                eprintln!("collegiapp: synced feed settings not applied yet ({e})");
+            }
+        });
+    }
 }
 
 // ---- HTTP ------------------------------------------------------------------------------
@@ -1225,6 +1333,19 @@ mod tests {
         assert_eq!(parse_web_config(console).project_id, "p-1");
         assert!(!parse_web_config("window.CA_CLOUD = { apiKey: \"\", projectId: \"\" };").ready());
         built_in(); // the shipped file reads, empty or not
+    }
+
+    #[test]
+    fn the_settings_document_is_read_from_a_batch_get() {
+        let j = r#"{"look.pal":{"v":"P13","at":"2026-11-02T10:00:00.250Z","by":"web-1"}}"#;
+        let found = json!([{ "found": { "name": "x", "fields": {
+            "j": { "stringValue": j }, "d": { "stringValue": "web-1" }, "s": { "timestampValue": "2026-11-02T10:00:01Z" },
+        }}, "readTime": "2026-11-02T10:00:02Z" }]);
+        let s = remote_settings(&found);
+        assert_eq!(s["look.pal"].v, json!("P13"));
+        let missing = json!([{ "missing": "x", "readTime": "2026-11-02T10:00:02Z" }]);
+        assert!(remote_settings(&missing).is_empty());
+        assert!(remote_settings(&Value::Null).is_empty());
     }
 
     #[test]

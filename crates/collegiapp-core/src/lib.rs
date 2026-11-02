@@ -27,4 +27,7 @@ pub use model::{
 pub use presence::{alerts_due, next_up, Presence};
 pub use quickadd::{Draft, Token, TokenKind};
 pub use score::{rank, RankedItem, Score};
-pub use sync::{merge, merge_sets, merge_sets_report, MergeReport};
+pub use sync::{
+    merge, merge_sets, merge_sets_report, merge_settings, stamp_settings, MergeReport, Setting,
+    SettingsMerge, SyncedSettings,
+};

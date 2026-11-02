@@ -13,8 +13,11 @@ use std::sync::{Mutex, MutexGuard};
 
 use chrono::Utc;
 use collegiapp_core::webwork::WwCourse;
-use collegiapp_core::{default_views, Course, Item, ItemKind, Status, View};
+use collegiapp_core::{
+    default_views, stamp_settings, Course, Item, ItemKind, Status, SyncedSettings, View,
+};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::feeds::Feeds;
@@ -65,6 +68,55 @@ pub struct Settings {
     pub start_hidden: Vec<String>,
     /// Most the trash keeps on disk, in MB (trash.rs); the oldest go first past it.
     pub trash_limit_mb: u32,
+    /// The Appearance drawer's choices that sync (lab.js `look()`), null for one at its
+    /// default. None until the UI first sends them.
+    pub look: Option<BTreeMap<String, Value>>,
+}
+
+/// The settings that follow you to your other devices (cloud.rs): the calendar feed links, the
+/// Google class picks and the tray's focus level, plus the look as "look.<name>". The feed
+/// links are secret; you chose (2026-11-02) to keep them in your own uid-locked settings
+/// document rather than paste them on each device. Sign-ins, the browser, the blocklist
+/// (Windows program names), Pocket Start and the trash limit stay on each device.
+const SYNCED: &[&str] = &[
+    "canvas_feed_url",
+    "gcal_feed_url",
+    "gcal_series",
+    "gcal_sections",
+    "gcal_courses",
+    "gcal_hidden",
+    "tray_focus_level",
+];
+
+impl Settings {
+    /// This device's synced settings by key, for `collegiapp_core::stamp_settings`.
+    pub fn synced(&self) -> BTreeMap<String, Value> {
+        let all = serde_json::to_value(self).unwrap_or_default();
+        let mut out: BTreeMap<String, Value> = SYNCED
+            .iter()
+            .map(|k| (k.to_string(), all[*k].clone()))
+            .collect();
+        for (k, v) in self.look.iter().flatten() {
+            out.insert(format!("look.{k}"), v.clone());
+        }
+        out
+    }
+
+    /// Take another device's value for a synced key. A value this version can't read, or a
+    /// key it doesn't sync, is skipped.
+    pub fn set_synced(&mut self, key: &str, v: &Value) {
+        if let Some(k) = key.strip_prefix("look.") {
+            self.look
+                .get_or_insert_default()
+                .insert(k.to_string(), v.clone());
+        } else if SYNCED.contains(&key) {
+            let mut all = serde_json::to_value(&*self).unwrap_or_default();
+            all[key] = v.clone();
+            if let Ok(s) = serde_json::from_value(all) {
+                *self = s;
+            }
+        }
+    }
 }
 
 impl Default for Settings {
@@ -85,6 +137,7 @@ impl Default for Settings {
             start_pins: None,
             start_hidden: Vec::new(),
             trash_limit_mb: crate::trash::DEFAULT_LIMIT_MB,
+            look: None,
         }
     }
 }
@@ -105,6 +158,10 @@ pub struct Snapshot {
     /// Last fetch of each calendar feed, and the Google series list for the class picker.
     #[serde(default)]
     pub feeds: Feeds,
+    /// When and where each synced setting last changed, here or on another device: `save`
+    /// stamps changes made here, and cloud.rs merges the account's in.
+    #[serde(default)]
+    pub synced: SyncedSettings,
 }
 
 impl Snapshot {
@@ -128,6 +185,7 @@ impl Snapshot {
             items: vec![welcome],
             views: default_views(),
             feeds: Feeds::default(),
+            synced: SyncedSettings::new(),
         }
     }
 
@@ -182,13 +240,22 @@ impl AppState {
             Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
         };
         let trash = Trash::new(path.with_file_name("trash"));
-        let st = AppState { data, path, trash };
+        let mut st = AppState { data, path, trash };
         st.save()?;
         Ok(st)
     }
 
-    /// Atomic write: temp file + rename.
-    pub fn save(&self) -> Result<(), String> {
+    /// Stamp the synced settings that changed (cloud.rs sends them), then write atomically:
+    /// temp file + rename.
+    pub fn save(&mut self) -> Result<(), String> {
+        let d = &mut self.data;
+        stamp_settings(
+            &mut d.synced,
+            &d.settings.synced(),
+            &Settings::default().synced(),
+            Utc::now(),
+            &d.device_id,
+        );
         write_atomic(&self.path, &self.data)
     }
 
@@ -346,6 +413,46 @@ mod tests {
             .map(|m| m.why)
             .collect();
         assert_eq!(left, vec!["Undone priority"]);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A fresh store stamps nothing; a class pick, a feed link or a look change made here is
+    /// stamped on save; and another device's values land in the right fields.
+    #[test]
+    fn synced_settings_stamp_on_save_and_take_other_devices_values() {
+        let dir = std::env::temp_dir().join(format!("ca-store-{}", Uuid::new_v4().simple()));
+        let mut st = AppState::load_or_init(dir.join(FILE_NAME)).unwrap();
+        assert!(st.data.synced.is_empty(), "defaults stay unstamped");
+        st.data.settings.look = Some(BTreeMap::from([("pal".into(), Value::Null)]));
+        st.save().unwrap();
+        assert!(st.data.synced.is_empty(), "a look at its defaults too");
+
+        st.data.settings.gcal_hidden = vec!["uid-1".into()];
+        st.data.settings.gcal_feed_url = Some("https://calendar.google.com/x/basic.ics".into());
+        st.data.settings.look = Some(BTreeMap::from([("pal".into(), "P13".into())]));
+        st.data.settings.trash_limit_mb = 7; // stays on this device
+        st.data.settings.gradescope = true; // a sign-in: stays on this device
+        st.save().unwrap();
+        let keys: Vec<&str> = st.data.synced.keys().map(String::as_str).collect();
+        assert_eq!(keys, ["gcal_feed_url", "gcal_hidden", "look.pal"]);
+        assert_eq!(st.data.synced["look.pal"].by, st.data.device_id);
+
+        let mut s = Settings::default();
+        s.set_synced("gcal_courses", &serde_json::json!({ "uid-2": "cs130a" }));
+        s.set_synced("tray_focus_level", &"soft".into());
+        s.set_synced("look.night", &"auto".into());
+        s.set_synced("canvas_feed_url", &"https://canvas.example/feed.ics".into());
+        s.set_synced("gcal_series", &42.into()); // unreadable: skipped
+        s.set_synced("trash_limit_mb", &1.into()); // not synced: skipped
+        assert_eq!(s.gcal_courses["uid-2"], "cs130a");
+        assert_eq!(s.tray_focus_level, FocusLevel::Soft);
+        assert_eq!(s.look.as_ref().unwrap()["night"], "auto");
+        assert_eq!(
+            s.canvas_feed_url.as_deref(),
+            Some("https://canvas.example/feed.ics")
+        );
+        assert_eq!(s.gcal_series, None);
+        assert_eq!(s.trash_limit_mb, Settings::default().trash_limit_mb);
         let _ = fs::remove_dir_all(&dir);
     }
 

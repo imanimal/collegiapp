@@ -40,7 +40,8 @@
   // nightPal and themes from the defaults.
   if (saved && saved.v === 3) Object.assign(saved, { v: 4, motion: parsedFinal.motion });
   if (saved && saved.v !== 4) saved = null;
-  CA.ui = Object.assign({ pal: "P9", nightPal: "P11", themes: [], btn: "b8", frm: "f3", type: "T6", glow: 0, flicker: 0, noise: 0, ab: 0, vig: 0, mask: "N", bezel: "N" }, parsedFinal, env, saved || {});
+  const DEFAULTS = Object.assign({ pal: "P9", nightPal: "P11", themes: [], btn: "b8", frm: "f3", type: "T6", glow: 0, flicker: 0, noise: 0, ab: 0, vig: 0, mask: "N", bezel: "N" }, parsedFinal, env);
+  CA.ui = Object.assign({}, DEFAULTS, { themes: [] }, saved || {});
   if (!Array.isArray(CA.ui.themes)) CA.ui.themes = [];
   let open = false;
   let slot = null; // the Day or Night slot picked in the drawer; null follows the one in effect
@@ -137,8 +138,39 @@
     const was = TH.keyOf(shown()); fn();
     if (TH.keyOf(shown()) !== was) CA.motion.swap("theme", () => apply(light)); else apply(light);
   }
-  // a new night setting selects the slot it puts in effect
-  function set(patch, opts) { redraw(() => { if ("night" in patch) slot = null; Object.assign(CA.ui, patch); }, opts && opts.light); }
+  // a new night setting selects the slot it puts in effect; a change made here goes to your other devices
+  function set(patch, opts) { redraw(() => { if ("night" in patch) slot = null; Object.assign(CA.ui, patch); }, opts && opts.light); sendLook(); }
+
+  // ── sync: the look follows you to your other devices (store.js save_look → cloud.rs, or cloud.js; docs/SYNC.md) ──
+  // These choices sync; text size, the desk preview, the island and the shell stay on each device. One at its default
+  // goes as null, so a new device's defaults never win over the account's.
+  const SYNCED = ["pal", "nightPal", "night", "themes", "guide", "motion", "density", "curve", "scan", "glow", "flicker", "noise", "ab", "vig", "mask", "sound", "focusLevel"];
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function look(u) { u = u || CA.ui; const o = {}; SYNCED.forEach((k) => (o[k] = same(u[k], DEFAULTS[k]) ? null : u[k])); return o; }
+  let sent = null; // the look last sent or taken, as JSON
+  function sendLook(force) {
+    const l = look(), j = JSON.stringify(l);
+    if (j === sent && !force) return;
+    sent = j; if (CA.store.saveLook) CA.store.saveLook(l);
+  }
+  // another device's look (null for a default; a key it leaves out stays as it is), shown without sending it back
+  function adopt(l) {
+    if (!l) return;
+    const patch = {};
+    SYNCED.forEach((k) => {
+      if (!(k in l)) return;
+      const v = l[k] == null ? JSON.parse(JSON.stringify(DEFAULTS[k])) : l[k];
+      if (!same(v, CA.ui[k]) && (k !== "themes" || Array.isArray(v))) patch[k] = v;
+    });
+    if (Object.keys(patch).length) redraw(() => { if ("night" in patch) slot = null; Object.assign(CA.ui, patch); });
+    sent = JSON.stringify(look());
+  }
+  // The store's copy, at launch and on every reload (app.js). The first time it has none and this look goes in; after
+  // that the store's wins, since it has what your other devices changed. Not while a change made here is on its way.
+  function fromStore(l) {
+    if (CA.store.lookPending && CA.store.lookPending()) return;
+    if (l == null) sendLook(true); else adopt(l);
+  }
   // select the Day or Night slot; the one in effect means following it again
   function pickSlot(k, focus) {
     redraw(() => (slot = k === nowSlot() ? null : k));
@@ -363,7 +395,8 @@
     if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener("change", () => { if (CA.ui.night === "auto") apply(); });
   }
 
-  CA.lab = { open: openLab, close: closeLab, toggle: () => (open ? closeLab() : openLab()), isOpen: () => open, set, code, parseCode, zoom, toggleNight, theme: () => shown(), FINAL };
+  CA.lab = { open: openLab, close: closeLab, toggle: () => (open ? closeLab() : openLab()), isOpen: () => open, set, code, parseCode, zoom, toggleNight, theme: () => shown(), FINAL,
+    look, adopt, fromStore };
 
   // boot order: settings → app → panel bindings
   apply(true);

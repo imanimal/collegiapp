@@ -125,6 +125,7 @@ pub fn run() {
             commands::filter_terms,
             commands::get_settings,
             commands::set_settings,
+            commands::save_look,
             commands::open_link,
             commands::set_presence,
             commands::get_presence,

@@ -1,12 +1,21 @@
-//! Last-write-wins merge, per record. Used for Firebase (Firestore REST) sync later.
+//! Last-write-wins merge, per record (Firebase sync: src-tauri/src/cloud.rs, ui/js/cloud.js).
 //!
 //! Winner = later `updated_at`; on a tie a tombstone (`deleted`) wins; then the greater
 //! `updated_by` (device id, lexicographic); then (only if two records are still tied but
 //! differ) the greater canonical JSON, so `merge(a, b) == merge(b, a)` always.
+//!
+//! Settings sync the same way, per key ([`SyncedSettings`]): each key carries the time and
+//! device of its last change, the later one wins, then the greater device id. A device stamps
+//! a key when its value there changes ([`stamp_settings`]); a key it never changed that still
+//! has its default stays unstamped, so a new device's defaults never overwrite the account's.
+//! ui/js/cloud.js mirrors both functions for the web app.
 
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
+use chrono::{DateTime, SubsecRound, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::model::Item;
@@ -82,11 +91,84 @@ pub fn merge_sets_report(local: &[Item], remote: &[Item]) -> MergeReport {
     report
 }
 
+/// One synced setting: its value, and when and on which device it last changed. Times are
+/// whole milliseconds, so the web app (JS dates) orders them the same way.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Setting {
+    pub v: Value,
+    pub at: DateTime<Utc>,
+    pub by: String,
+}
+
+/// The settings that follow you between devices, by key ("gcal_series", "look.pal"). The
+/// settings document holds this map as its JSON.
+pub type SyncedSettings = BTreeMap<String, Setting>;
+
+/// Stamp the keys whose value here differs from their last stamp. `current` holds every key
+/// this device keeps (null for a look key at its default); keys it doesn't know are left
+/// alone. A key never stamped whose value is still its default (`defaults`, else null) stays
+/// unstamped. Returns whether anything was stamped.
+pub fn stamp_settings(
+    synced: &mut SyncedSettings,
+    current: &BTreeMap<String, Value>,
+    defaults: &BTreeMap<String, Value>,
+    at: DateTime<Utc>,
+    by: &str,
+) -> bool {
+    let at = at.trunc_subsecs(3);
+    let mut stamped = false;
+    for (k, v) in current {
+        let unset = defaults.get(k).unwrap_or(&Value::Null) == v;
+        match synced.get(k) {
+            Some(s) if &s.v == v => continue,
+            None if unset => continue,
+            _ => {}
+        }
+        synced.insert(
+            k.clone(),
+            Setting {
+                v: v.clone(),
+                at,
+                by: by.to_string(),
+            },
+        );
+        stamped = true;
+    }
+    stamped
+}
+
+/// What [`merge_settings`] did.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SettingsMerge {
+    /// Keys whose value here changed to the other device's.
+    pub pulled: Vec<String>,
+    /// The merged map differs from the other device's: write it back.
+    pub push: bool,
+}
+
+/// Merge another device's settings into these, key by key: the later stamp wins, then the
+/// greater device id; a full tie (one device, one change) keeps this one.
+pub fn merge_settings(local: &mut SyncedSettings, remote: &SyncedSettings) -> SettingsMerge {
+    let mut report = SettingsMerge::default();
+    for (k, r) in remote {
+        let wins = local.get(k).is_none_or(|l| (&r.at, &r.by) > (&l.at, &l.by));
+        if wins {
+            if local.get(k).is_none_or(|l| l.v != r.v) {
+                report.pulled.push(k.clone());
+            }
+            local.insert(k.clone(), r.clone());
+        }
+    }
+    report.push = local.iter().any(|(k, l)| remote.get(k) != Some(l));
+    report
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::{Item, ItemKind, Status};
     use chrono::{DateTime, Duration, Utc};
+    use serde_json::json;
 
     fn t0() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2026-10-28T17:00:00Z")
@@ -170,5 +252,122 @@ mod tests {
         let rep = merge_sets_report(std::slice::from_ref(&a), std::slice::from_ref(&a));
         assert!(rep.pulled.is_empty() && rep.to_push.is_empty());
         assert_eq!(rep.items, vec![a]);
+    }
+
+    fn values(pairs: &[(&str, Value)]) -> BTreeMap<String, Value> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn a_new_device_stamps_only_what_it_changed() {
+        let defaults = values(&[("tray_focus_level", json!("hard"))]);
+        let mut mac = SyncedSettings::new();
+        // fresh: the default focus level and an unset look stay unstamped
+        let fresh = values(&[
+            ("tray_focus_level", json!("hard")),
+            ("look.pal", Value::Null),
+        ]);
+        assert!(!stamp_settings(&mut mac, &fresh, &defaults, t0(), "mac"));
+        assert!(mac.is_empty());
+        // a change is stamped (to the millisecond), and only once
+        let picked = values(&[
+            ("tray_focus_level", json!("hard")),
+            ("look.pal", json!("P13")),
+        ]);
+        let at = t0() + Duration::nanoseconds(1_234_567);
+        assert!(stamp_settings(&mut mac, &picked, &defaults, at, "mac"));
+        assert_eq!(mac["look.pal"].at, t0() + Duration::milliseconds(1));
+        assert!(!stamp_settings(&mut mac, &picked, &defaults, at, "mac"));
+        // going back to the default is a change too
+        assert!(stamp_settings(
+            &mut mac,
+            &fresh,
+            &defaults,
+            t0() + Duration::seconds(1),
+            "mac"
+        ));
+        assert_eq!(mac["look.pal"].v, Value::Null);
+        // a key this device doesn't keep (the web app has no class picks) is left alone
+        mac.insert(
+            "gcal_hidden".into(),
+            Setting {
+                v: json!(["uid-1"]),
+                at: t0(),
+                by: "win".into(),
+            },
+        );
+        assert!(!stamp_settings(
+            &mut mac,
+            &fresh,
+            &defaults,
+            t0() + Duration::seconds(2),
+            "mac"
+        ));
+        assert_eq!(mac["gcal_hidden"].v, json!(["uid-1"]));
+    }
+
+    #[test]
+    fn settings_merge_per_key_by_last_write() {
+        let s = |v: Value, secs: i64, by: &str| Setting {
+            v,
+            at: t0() + Duration::seconds(secs),
+            by: by.into(),
+        };
+        let mut win: SyncedSettings = [
+            ("look.pal".to_string(), s(json!("P13"), 10, "win")),
+            ("look.motion".to_string(), s(json!("1"), 1, "win")),
+            ("gcal_hidden".to_string(), s(json!(["a"]), 5, "win")),
+        ]
+        .into();
+        let account: SyncedSettings = [
+            ("look.pal".to_string(), s(json!("P11"), 2, "mac")),
+            ("look.motion".to_string(), s(json!("3"), 20, "mac")),
+            ("look.night".to_string(), s(json!("auto"), 3, "mac")),
+        ]
+        .into();
+        let rep = merge_settings(&mut win, &account);
+        assert_eq!(rep.pulled, ["look.motion", "look.night"]);
+        assert!(rep.push, "the newer theme and the hidden series go up");
+        assert_eq!(win["look.pal"].v, json!("P13"));
+        assert_eq!(win["look.motion"].v, json!("3"));
+        assert_eq!(win["gcal_hidden"].v, json!(["a"]));
+
+        // the other side then takes the merged map whole, and merging it again changes nothing
+        let mut mac = account.clone();
+        let back = merge_settings(&mut mac, &win);
+        assert_eq!(back.pulled, ["gcal_hidden", "look.pal"]);
+        assert!(!back.push);
+        assert_eq!(mac, win);
+        assert_eq!(merge_settings(&mut win, &mac), SettingsMerge::default());
+
+        // same time: the greater device id wins, on both sides
+        let mut a: SyncedSettings = [("k".to_string(), s(json!(1), 0, "aaa"))].into();
+        let mut b: SyncedSettings = [("k".to_string(), s(json!(2), 0, "bbb"))].into();
+        let (ra, rb) = (a.clone(), b.clone());
+        merge_settings(&mut a, &rb);
+        merge_settings(&mut b, &ra);
+        assert_eq!((a["k"].v.clone(), b["k"].v.clone()), (json!(2), json!(2)));
+
+        // a newer stamp with the same value moves the stamp without reporting a change
+        let mut here: SyncedSettings = [("k".to_string(), s(json!(1), 0, "aaa"))].into();
+        let there: SyncedSettings = [("k".to_string(), s(json!(1), 9, "bbb"))].into();
+        let rep = merge_settings(&mut here, &there);
+        assert!(rep.pulled.is_empty() && !rep.push);
+        assert_eq!(here, there);
+    }
+
+    #[test]
+    fn synced_settings_read_the_web_apps_json() {
+        // ui/js/cloud.js writes `at` from Date.toISOString()
+        let j = r#"{"look.pal":{"v":"P13","at":"2026-10-28T17:00:00.001Z","by":"web-1a2b3c4d"},"look.night":{"v":null,"at":"2026-10-28T17:00:00Z","by":"web-1a2b3c4d"}}"#;
+        let s: SyncedSettings = serde_json::from_str(j).unwrap();
+        assert_eq!(s["look.pal"].at, t0() + Duration::milliseconds(1));
+        assert_eq!(s["look.night"].v, Value::Null);
+        // and Rust writes it back with millisecond times JS reads
+        let out = serde_json::to_string(&s).unwrap();
+        assert!(out.contains(r#""at":"2026-10-28T17:00:00.001Z""#), "{out}");
     }
 }

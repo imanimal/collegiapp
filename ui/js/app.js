@@ -1848,12 +1848,14 @@
       <div class="dim feed-st" id="${id}St">${feedLine(log, url)}${url ? ` · <button class="chip" data-act="feedOff" data-s="${id === "fC" ? "canvas" : "gcal"}">Disconnect</button>` : ""}</div></div>`;
     const gsOn = !!st.gradescope, gsCourses = (fd.gradescope_courses || []).map((c) => esc(c.short_name)).join(", ");
     const wwCourses = (st.webwork_courses || []).map((c) => esc(c.code)).join(", "), wwOn = !!wwCourses;
+    const redo = S.newHere ? signInHere() : []; // just signed in to sync here: the sign-ins still to do
     openOv("feeds", dialog("Connect sources", "Enter import · Esc", `<div class="feeds">
+      ${redo.length ? `<div class="dim">Your list and calendar links came over from your other devices. ${redo.join(" and ")} sign${redo.length > 1 ? "" : "s"} in on each device: sign in below and this computer keeps that work up to date too.</div>` : ""}
       ${field("fC", "Canvas calendar feed", "Canvas › Calendar › Calendar feed (bottom right) › copy the link.", st.canvas_feed_url, fd.canvas, "https://canvas.ucsb.edu/feeds/calendars/user_….ics")}
       ${field("fG", "Google Calendar", "Google Calendar › Settings › your calendar › Integrate calendar › Secret address in iCal format.", st.gcal_feed_url, fd.gcal, "https://calendar.google.com/calendar/ical/…/basic.ics")}
       <div class="feed"><b>Sync across devices</b><div class="dim">Your list and notes on your other computers, your phone and the web app, through your own free Firebase project.</div>
       <div class="dim feed-st">${S.cloud && S.cloud.signed_in ? "Signed in as " + esc(S.cloud.email || "you") : S.cloud && S.cloud.configured ? "Not signed in" : "Not set up"} · <button class="chip on" data-act="cloudOpen">${S.cloud && S.cloud.signed_in ? "Sync…" : "Set up…"}</button></div></div>
-      <div class="dim">These links work like passwords to your calendars. They stay on this device and are checked every 30 minutes; ${MOD}+R or F5 checks now.</div>
+      <div class="dim">These links work like passwords to your calendars. With sync on they go to your other devices through your own Firebase project, where only your Google account can read them. They're checked every 30 minutes; ${MOD}+R or F5 checks now.</div>
       <div class="feed"><b>Gradescope</b><div class="dim">For classes that post work on Gradescope instead of Canvas. Sign in with your school account in the window that opens; the app then reads this quarter's courses and assignments every 30 minutes and checks off what you've submitted.</div>
       <div class="dim feed-st" id="gsSt">${gsOn ? (gsCourses ? gsCourses + " · " : "") + feedLine(fd.gradescope, "gradescope") : "Not connected"} · <button class="chip ${gsOn ? "" : "on"}" data-act="gsConnect">${gsOn ? "Sign in again" : "Sign in to Gradescope…"}</button>${gsOn ? ' <button class="chip" data-act="gsOff">Disconnect</button>' : ""}</div></div>
       <div class="feed"><b>WeBWorK</b><div class="dim">For math classes that put homework on WeBWorK. Pick your course and sign in with its WeBWorK username and password in the window that opens; the app then reads its open sets and due dates every 20 minutes. WeBWorK signs you out after 30 idle minutes, so after the app has been closed a while you may need to sign in again. Your sets stay either way.</div>
@@ -1927,17 +1929,35 @@
         ? `Your list and notes sync through ${esc(st.project_id)} with ${LIVE ? "your other devices and the web app" : "the desktop app and your other devices"}. When two devices change the same thing, the later edit wins.`
         : LIVE ? `Opens ${esc(st.project_id)}'s sign-in page in your browser. What's here goes up and what's there comes down; when both changed, the later edit wins.` : "Use the Google account you signed in with in the desktop app."}</div>
         <div class="dim feed-st" id="cloudSt">${cloudStHTML(st)}</div>${err}</div>
-      <div class="dim">Calendar links, Gradescope and WeBWorK sign-ins and your settings stay on each device.${LIVE ? " An item deleted on another device goes to the trash here." : ""}</div>
+      <div class="dim">${LIVE ? `Your look, calendar links and class picks sync too. Gradescope and WeBWorK sign-ins, paired browsers and text size stay on each device, so sign in to them here as well. An item deleted on another device goes to the trash here.`
+        : "Your look syncs too; text size stays on each device."}</div>
       <div class="nb">${st.signed_in ? `<button class="btn primary" data-act="cloudNow">${ic("check")}Sync now<kbd>Enter</kbd></button><button class="btn" data-act="cloudOut">Sign out</button>`
         : LIVE && st.signing_in ? `<button class="btn primary" data-act="cloudIn">${ic("check")}Open the page again<kbd>Enter</kbd></button>`
-        : `<button class="btn primary" data-act="cloudIn"${st.signing_in ? " disabled" : ""}>${ic("check")}Sign in with Google<kbd>Enter</kbd></button>`}${LIVE ? '<button class="btn" data-act="cloudEdit">Change project</button>' : ""}${close}</div>`;
+        : `<button class="btn primary" data-act="cloudIn"${st.signing_in ? " disabled" : ""}>${ic("check")}Sign in with Google<kbd>Enter</kbd></button>`}${LIVE && st.signed_in ? '<button class="btn" data-act="feedsOpen">Connect sources</button>' : ""}${LIVE ? '<button class="btn" data-act="cloudEdit">Change project</button>' : ""}${close}</div>`;
     openOv("sync", dialog("Sync across devices", "Enter · Esc", `<div class="feeds">${body}</div>`));
     const f = $("#cfIn"); if (f) f.focus();
+  }
+  // Gradescope and WeBWorK sign in on each device (docs/SYNC.md): the ones with work on your list that this computer
+  // isn't signed in to.
+  function signInHere() {
+    const st = S.settings || {}, from = new Set(S.items.map((it) => it.src));
+    return [["gradescope", "Gradescope", !!st.gradescope], ["webwork", "WeBWorK", !!(st.webwork_courses || []).length]]
+      .filter(([id, , on]) => !on && from.has(id)).map(([, name]) => name);
+  }
+  // After the first sync on a computer signed in to neither (a new one), point at Connect sources: the list, the look
+  // and the calendar links came over, but those sign-ins didn't. Connect sources then says so too (S.newHere).
+  function hintConnect() {
+    const names = LIVE ? signInHere() : [];
+    if (!names.length) return;
+    S.newHere = true;
+    toast(`Your list, look and calendar links are here. ${names.join(" and ")} sign${names.length > 1 ? "" : "s"} in on each device: sign in on this one too`,
+      { ms: 15000, ring: true, actions: [["Connect sources", openFeeds]] });
   }
   // a status from cloud.rs or cloud.js: the open dialog follows it, a new sign-in says so, and the web app asks to sign in
   function onCloud(st) {
     const was = S.cloud; S.cloud = st; paintCloudKey();
-    if (st.signed_in && was && !was.signed_in) { toast(`Signed in as ${esc(st.email || "you")} · syncing`); CA.sound.ok(); }
+    if (st.signed_in && was && !was.signed_in) { toast(`Signed in as ${esc(st.email || "you")} · syncing`); CA.sound.ok(); S.cloudNew = true; }
+    if (S.cloudNew && st.signed_in && was && was.busy && !st.busy && !st.error) { S.cloudNew = false; reload().then(hintConnect); }
     if (S.overlay === "sync") {
       if ($("#cfIn")) return; // the form is open: keep what's typed
       const same = was && ["signed_in", "signing_in", "configured", "error", "email"].every((k) => was[k] === st[k]), el = $("#cloudSt");
@@ -2425,7 +2445,7 @@
       toast(LIVE ? "Shoreline and the UCSB APIs come next (M2 and M3 in docs/SPEC.md)" : `Source setup · ${esc(srcName(id))} · see docs/SPEC.md § Integrations`);
     },
     feedSave: () => feedSave(), syncNow: () => syncNow(),
-    cloudOpen: () => openSync(),
+    cloudOpen: () => openSync(), feedsOpen: () => openFeeds(),
     cloudKey: () => { const st = S.cloud || {}; if (st.configured && !st.signed_in && !st.signing_in) ACTIONS.cloudIn(); openSync(); },
     cloudSave: () => cloudSave(), cloudEdit: () => openSync(true), cloudBack: () => { S.cloudEdit = false; syncDialog(); },
     cloudIn: () => cloudApi.signIn().then((st) => { if (st) onCloud(st); }, (e) => toast("Sign-in · " + esc(String(e)))),
@@ -2839,6 +2859,7 @@
   // dark (power.rs). An open note is saved first; Quit also ends its editing session.
   function onPowerOff(p) {
     if (S.overlay === "note" && S.note) { if (p && p.quit) noteCommit(); else if (S.note.ed) S.note.ed.flush(); }
+    CA.store.flushLook();
     CA.fx.powerOff(() => CA.store.invoke("power_done", { seq: p ? p.seq : 0 }).catch(() => {}));
   }
   // ...and it comes back on when the window does: shown and focused again, made visible, or clicked
@@ -2875,6 +2896,7 @@
       S.courses = d.courses; S.calendarSeries = d.calendarSeries; S.settings = d.settings; S.feeds = d.feeds;
       if (S.sel && !find(S.sel)) { S.sel = null; S.insp = false; }
       if (busy()) return;
+      if (LIVE && d.settings) CA.lab.fromStore(d.settings.look); // the look, maybe changed on another device
       if (S.loaded) S.fx = { flip: true }; else S.loaded = S.animRows = true;
       renderAll();
     }).catch((e) => toast("Could not read your data · " + esc(String(e))));

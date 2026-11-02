@@ -102,12 +102,25 @@
   }
   const restored = (r) => ({ items: r.items.map(itemIn), before: r.before.map((b) => (b ? itemIn(b) : null)), trash: r.trash });
 
+  // The look's choices that sync (lab.js look()): the last of a burst (a slider's drag) goes to the store, which stamps
+  // what changed and syncs it (cloud.rs). `lookPending` keeps a reload from showing the store's older look meanwhile.
+  let lookNext = null, lookTimer = 0, lookBusy = 0;
+  function sendLook() {
+    const look = lookNext; lookNext = null; clearTimeout(lookTimer); lookTimer = 0;
+    if (!look) return;
+    lookBusy++;
+    invoke("save_look", { look }).catch((e) => onError(e)).finally(() => lookBusy--);
+  }
+
   CA.store = {
     live, uuid, tagOf, convert: { itemIn, itemOut, courseIn, courseOut, shape },
     empty: () => ({ courses: [], items: [], calendarSeries: [] }),
     load: () => invoke("load_all").then(shape),
     save(it, why) { if (!live) return; queue.set(it.id, it); if (why) whys.set(it.id, why); if (!flushing) { flushing = true; Promise.resolve().then(flush); } },
     isPending: (id) => queue.has(id) || pending.has(id),
+    saveLook(look) { if (!live) return; lookNext = look; clearTimeout(lookTimer); lookTimer = setTimeout(sendLook, 400); },
+    lookPending: () => !!lookNext || lookBusy > 0,
+    flushLook: sendLook,
     saveCourse: (c) => (live ? invoke("upsert_course", { course: courseOut(c) }) : Promise.resolve()),
     // Merge a course `into` another, or remove it (its items kept as personal, or deleted with dropItems).
     deleteCourse: (id, into, dropItems) => (live ? invoke("delete_course", { id, into: into || null, dropItems: !!dropItems }) : Promise.resolve()),

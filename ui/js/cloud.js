@@ -6,7 +6,7 @@
    (status, sign in and out) for app.js's Sync dialog. The Firebase SDK comes from gstatic on first use (no bundler).
    Inside the app, or with no project in cloud-config.js, it does nothing and the page is the web demo. The web app
    lives on PROJECT.firebaseapp.com, Google sign-in's own domain, so sign-in and the offline cache stay first-party;
-   PROJECT.web.app sends you there. */
+   PROJECT.web.app sends you there. The look syncs through one more document, users/{uid}/meta/settings (below). */
 (function () {
   const CA = window.CA, st = CA.store, cfg = window.CA_CLOUD;
   if (st.live || !cfg || !cfg.apiKey || !cfg.projectId) return;
@@ -22,7 +22,7 @@
   })();
   const items = new Map(), courses = new Map(), changeFns = [], statusFns = [], queue = new Map();
   const status = { configured: true, signed_in: false, signing_in: false, busy: true, email: null, project_id: cfg.projectId, last_sync: null, error: null, pending: 0, offline: false, web: true };
-  let U = null, F = null, auth = null, db = null, user = null, unsub = null, flushing = false, firstDone;
+  let U = null, F = null, auth = null, db = null, user = null, unsub = null, unsubSettings = null, flushing = false, firstDone;
   const first = new Promise((r) => (firstDone = r));
   const tell = () => { const s = Object.assign({}, status); statusFns.forEach((fn) => fn(s)); };
   const changed = () => changeFns.forEach((fn) => fn("sync"));
@@ -51,13 +51,64 @@
     tell(); firstDone();
   });
 
-  // one listener on the account's items: Firestore sends what's cached at once, then every change from any device
+  // Settings: users/{uid}/meta/settings, `j` the synced settings by key ({ "look.pal": { v, at, by } }, the core's
+  // SyncedSettings) with `d` and `s` as on items. The web app keeps the look (lab.js look(), null for a default); the
+  // desktop's keys (class picks) pass through. It mirrors sync.rs: a key is stamped when it changes here (so a new
+  // browser's defaults never win), and a merge takes the later `at` per key, then the greater device.
+  const SKEY = "capp.synced";
+  let synced = (() => { try { return JSON.parse(localStorage.getItem(SKEY) || "{}") || {}; } catch (e) { return {}; } })();
+  const keepSynced = () => { try { localStorage.setItem(SKEY, JSON.stringify(synced)); } catch (e) { /* storage off: stamps start over */ } };
+  // JSON with sorted keys: Rust sends objects sorted, so the same value compares equal whichever side wrote it
+  const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, n) => ((o[n] = x[n]), o), {}) : x));
+  const later = (a, b) => { const ta = Date.parse(a.at), tb = Date.parse(b.at); return ta !== tb ? ta > tb : a.by > b.by; };
+  const sameStamp = (a, b) => !!a && !!b && Date.parse(a.at) === Date.parse(b.at) && a.by === b.by;
+  // sync.rs stamp_settings, for the look's keys
+  function stampLook(look) {
+    const at = new Date().toISOString(); let any = false;
+    Object.entries(look).forEach(([k, v]) => {
+      const key = "look." + k, s = synced[key], val = v == null ? null : v;
+      if (s ? canon(s.v) === canon(val) : val === null) return;
+      synced[key] = { v: val, at, by: device }; any = true;
+    });
+    return any;
+  }
+  // sync.rs merge_settings: the keys whose value changed here, and whether the account's copy needs ours
+  function mergeSettings(remote) {
+    const pulled = [];
+    Object.entries(remote).forEach(([k, r]) => {
+      const l = synced[k];
+      if (l && !later(r, l)) return;
+      if (!l || canon(l.v) !== canon(r.v)) pulled.push(k);
+      synced[k] = r;
+    });
+    return { pulled, push: Object.entries(synced).some(([k, l]) => !sameStamp(l, remote[k])) };
+  }
+  const lookOf = () => Object.fromEntries(Object.entries(synced).filter(([k]) => k.startsWith("look.")).map(([k, s]) => [k.slice(5), s.v]));
+  function writeSettings() {
+    if (!user || !db) return;
+    F.setDoc(F.doc(db, "users", user.uid, "meta", "settings"), { j: JSON.stringify(synced), d: device, s: F.serverTimestamp() })
+      .catch((e) => { status.error = why(e); tell(); });
+  }
+  function onSettings(snap) {
+    let remote = {};
+    try { if (snap.exists()) remote = JSON.parse(snap.data().j) || {}; } catch (e) { return; }
+    const r = mergeSettings(remote); keepSynced();
+    if (r.pulled.some((k) => k.startsWith("look.")) && CA.lab) CA.lab.adopt(lookOf());
+    if (r.push) writeSettings();
+  }
+  // a look change made here (lab.js)
+  function saveLook(look) { if (stampLook(look)) { keepSynced(); writeSettings(); } }
+
+  // one listener on the account's items: Firestore sends what's cached at once, then every change from any device; and
+  // one on its settings
   function listen(u) {
     if (unsub) { unsub(); unsub = null; }
+    if (unsubSettings) { unsubSettings(); unsubSettings = null; }
     user = u; items.clear(); courses.clear();
     Object.assign(status, { signed_in: !!u, email: u ? u.email : null, signing_in: false, busy: !!u, pending: 0 });
     tell();
     if (!u) { changed(); firstDone(); return; }
+    unsubSettings = F.onSnapshot(F.doc(db, "users", u.uid, "meta", "settings"), onSettings, (e) => { status.error = why(e); tell(); });
     unsub = F.onSnapshot(F.collection(db, "users", u.uid, "items"), { includeMetadataChanges: true }, (snap) => {
       const ch = snap.docChanges();
       ch.forEach((c) => {
@@ -103,14 +154,15 @@
       });
     }).then(() => Object.assign({}, status), (e) => { status.signing_in = false; status.error = why(e); tell(); return Object.assign({}, status); });
   }
-  // signing out also clears this browser's copy of the list
+  // signing out also clears this browser's copy of the list and its setting stamps
   function signOut() {
+    try { localStorage.removeItem(SKEY); } catch (e) { /* storage off: nothing kept */ }
     return ready.then(() => U.signOut(auth)).then(() => F.terminate(db)).then(() => F.clearIndexedDbPersistence(db)).catch(() => {}).then(() => location.reload());
   }
   function syncNow() { return ready.then(() => F.enableNetwork(db)).then(() => Object.assign({}, status), () => Object.assign({}, status)); }
 
   Object.assign(st, {
-    cloud: true, load, save, isPending: (id) => queue.has(id),
+    cloud: true, load, save, isPending: (id) => queue.has(id), saveLook, lookPending: () => false,
     onChange(fn) { changeFns.push(fn); },
     saveCourse(c) { courses.set(c.id, c); return Promise.resolve(); },
     deleteCourse(id) { courses.delete(id); return Promise.resolve(); },

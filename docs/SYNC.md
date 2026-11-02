@@ -7,20 +7,27 @@ Collegiapp keeps your list and notes the same on your computers, your phone and 
 
 ## What syncs
 
-Every Item: tasks, classes, events, exams, notes and jots, with their done state, snoozes, edits and deletions, plus each item's course so that a device without that course can add it.
+- **Every Item:** tasks, classes, events, exams, notes and jots, with their done state, snoozes, edits and deletions, plus each item's course so that a device without that course can add it.
+- **The look:** the Appearance drawer's theme, the Day and Night themes and when to switch, imported themes, shortcut hints, motion, sound, density, screen glass and scanlines, and the default focus level.
+- **Calendar feed links:** the Canvas calendar feed and the Google secret iCal address. A device that gets a new link reads it at once; disconnecting one disconnects it everywhere (the items stay).
+- **Class picks:** which Google Calendar series are lectures and sections, their courses, and the hidden ones.
+- **The tray's focus level.**
 
 These stay on each device:
 
-- calendar feed links;
 - Gradescope and WeBWorK sign-ins;
 - paired browsers;
-- settings and the look;
+- text size, the island, the desk preview and Pocket Start (Windows);
+- the browser links open in, the focus blocklist and the trash size;
+- AI settings (the CLIs are on each computer);
 - focus stats;
 - the trash.
 
 The sample "Welcome" item never syncs.
 
-Each device still reads its own feeds. An imported item has the same id on every device (`stable_id` in the core), so two computers reading the same Canvas feed meet on one document, and checking it off on one checks it off everywhere.
+Each device reads the feeds itself. An imported item has the same id on every device (`stable_id` in the core), so two computers reading the same Canvas feed meet on one document, and checking it off on one checks it off everywhere.
+
+**A new computer.** Install the app and sign in: your list, notes, look, calendar links and class picks come down, and the new computer starts reading your calendars. Gradescope and WeBWorK keep their sign-ins on each device, so when your list has work from them the app points you at **Connect sources** to sign in there too. A paired browser (PocketCanvas) pairs with each computer's app on its own.
 
 ## Set up your project (once)
 
@@ -77,7 +84,7 @@ Everything runs through the Firebase CLI with npx, from the repo root. It isn't 
    npx firebase-tools deploy --only hosting,firestore:rules --project PROJECT_ID
    ```
 
-   This publishes `ui/` ([`firebase.json`](../firebase.json)) and [`firestore.rules`](../firestore.rules), which let each Google account read and write only its own items, and only with the server's write time.
+   This publishes `ui/` ([`firebase.json`](../firebase.json)) and [`firestore.rules`](../firestore.rules), which let each Google account read and write only its own items and settings, and only with the server's write time. Publish the rules again after they change: until then the app keeps syncing items, and the Sync dialog says Firestore said no.
 7. **Rebuild the desktop app** (`python tools/build_installer.py --install`). It builds in the project from `cloud-config.js`, so there's nothing to paste.
 8. **Sign in on the desktop.**
    1. Choose **Sign in** in the top bar, next to search. (It's also **Sync across devices…** in Ctrl+K and under **Connect sources**.) The web app's sign-in page opens in your browser.
@@ -90,6 +97,8 @@ Everything runs through the Firebase CLI with npx, from the repo root. It isn't 
 To try the web app locally, run `python tools/serve_ui.py` and open `http://localhost:4791`. `localhost` is an authorized domain by default; `127.0.0.1` isn't.
 
 **What's private.** None of the config is secret: the rules decide who can read what, so committing `cloud-config.js` to a public repo is fine. A fork that ships its own app should put its own project there. The Firebase session (`cloud.session` beside the store) is the one thing to keep private, and it's never uploaded. The sign-in page sends Google's one-hour ID token only to `127.0.0.1`, on the port the app opened, with a one-time code that only the page the app opened knows. The app turns away a post without that code, and any post that names another site as its origin.
+
+**Feed links are secrets.** Anyone with one can read that calendar. They sync by your choice, only into your settings document, which the rules let your Google account alone read; the web app's offline copy keeps them on the browsers you sign in on, like your list. To stop a leaked link working, reset it where you got it (Google: **Integrate calendar › Secret address in iCal format › Reset**) and paste the new one in Connect sources: it replaces the old one on every device.
 
 **Another project.** In the Sync dialog, **Change project** takes a pasted config and overrides the built-in one (it's kept in `cloud.json`); saving it empty goes back to the built-in one. That project needs the web app deployed too, since the sign-in page is part of it.
 
@@ -112,11 +121,18 @@ Each Item is one document at `users/{uid}/items/{item id}`:
 - **Web:** it listens to the collection live and writes whole documents with the server's time. Firestore's cache holds the list, and writes made offline wait in it until there's a connection.
 - **Size:** an item over 900 KB (Firestore's limit is 1 MiB a document) stays on its device.
 
+The settings are one more document, `users/{uid}/meta/settings`, with the same `d` and `s`. Its `j` is a map from a key (`look.pal`, `gcal_hidden`) to that setting's value and the time and device of its last change (`SyncedSettings` in the core's `sync.rs`; `ui/js/cloud.js` mirrors it):
+
+- **Stamps:** a device stamps a setting when it changes there. On the desktop the store does it on every save (`Settings::synced` in `store.rs` lists the keys); the look reaches the store through `save_look` from the Appearance drawer. A setting this device never changed that still has its default stays unstamped, so a new computer's defaults never win over what the account already has.
+- **Merge:** key by key, the later stamp wins, then the greater device id. Changing the theme on one computer and the class picks on another keeps both.
+- **Desktop timing:** every cycle reads the document after the items (one read) and writes it back only when this device has a newer setting. A change made here starts a cycle within 5 s, like an item.
+- **Web:** it listens to the document live and keeps its stamps in `localStorage`; it has only the look, and passes the desktop's keys through.
+
 ### Spark limits
 
 The free plan allows 50,000 reads, 20,000 writes and 1 GiB stored. One student's list uses a small fraction:
 
-- **Reads:** a desktop that's open all day pulls 1,440 times, and an empty pull counts as one read.
+- **Reads:** a desktop that's open all day pulls 1,440 times, and an empty pull counts as one read; reading the settings document is one more read a pull, 2,880 a day in all.
 - **Writes:** each change is one write.
 - **First sync:** the first sign-in writes every item once, typically a few hundred.
 

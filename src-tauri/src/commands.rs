@@ -485,6 +485,18 @@ pub async fn webwork_disconnect(app: AppHandle) -> CmdResult<Feeds> {
     .map_err(|e| e.to_string())?
 }
 
+/// The Appearance drawer's choices that sync (lab.js `look()`, null for a default), from a
+/// change made here. Keys this version of the UI doesn't send are kept.
+#[tauri::command]
+pub fn save_look(
+    look: BTreeMap<String, serde_json::Value>,
+    state: State<'_, SharedState>,
+) -> CmdResult<()> {
+    let mut g = lock(&state);
+    g.data.settings.look.get_or_insert_default().extend(look);
+    g.save()
+}
+
 #[tauri::command]
 pub fn set_settings(settings: Settings, state: State<'_, SharedState>) -> CmdResult<Settings> {
     let mut g = lock(&state);

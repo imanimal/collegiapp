@@ -280,7 +280,7 @@ pub fn record(log: &mut FeedLog, r: &Result<ImportCounts, String>) {
 pub fn finish(app: &AppHandle) -> Result<Feeds, String> {
     let state = app.state::<SharedState>();
     let feeds = {
-        let g = lock(&state);
+        let mut g = lock(&state);
         g.save()?;
         g.data.feeds.clone()
     };
