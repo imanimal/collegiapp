@@ -4,9 +4,9 @@ Everything that can be prepared without your accounts is ready. These steps are 
 
 | repo | folder | what a release ships | how users update |
 |---|---|---|---|
-| `imanimal/collegiapp` | `~/Downloads/collegiapp` | Windows `-setup.exe` and `.msi`, macOS universal `.dmg` (plus `Collegiapp_universal.dmg` for Homebrew), `latest.json` | the app checks `latest.json` at launch and every 6 h, installs when you say so |
-| `imanimal/pocketcanvas` | `~/Downloads/pocketcanvas` | `pocketcanvas-<version>.xpi` signed by Mozilla, `updates.json` | Firefox checks `updates.json` (the manifest's `update_url`) once a day |
-| `imanimal/homebrew-tap` | `~/Downloads/homebrew-tap` | the Collegiapp cask and `install.sh` | the apps update themselves; the casks say `auto_updates` |
+| `imanimal/collegiapp` | `~/Documents/Personal Projects/collegiapp` | Windows `-setup.exe` and `.msi`, macOS universal `.dmg` (plus `Collegiapp_universal.dmg` for Homebrew), `latest.json` | the app checks `latest.json` at launch and every 6 h, installs when you say so |
+| `imanimal/pocketcanvas` | `~/Documents/Personal Projects/pocketcanvas` | `pocketcanvas-<version>.xpi` signed by Mozilla, `updates.json` | Firefox checks `updates.json` (the manifest's `update_url`) once a day |
+| `imanimal/homebrew-tap` | `~/Documents/Personal Projects/homebrew-tap` | the Collegiapp cask and `install.sh` | the apps update themselves; the casks say `auto_updates` |
 
 ## 1. Back up the signing keys (do this first)
 
@@ -17,15 +17,15 @@ Everything that can be prepared without your accounts is ready. These steps are 
 With the GitHub CLI (`gh auth login` once):
 
 ```bash
-cd ~/Downloads/collegiapp && git init -b main && git add -A && git commit -m "Collegiapp 0.1.0" && gh repo create imanimal/collegiapp --public --source . --push
+cd ~/"Documents/Personal Projects/collegiapp" && git init -b main && git add -A && git commit -m "Collegiapp 0.1.0" && gh repo create imanimal/collegiapp --public --source . --push
 ```
 
 ```bash
-cd ~/Downloads/pocketcanvas && git init -b main && git add -A && git commit -m "PocketCanvas 0.1.0" && gh repo create imanimal/pocketcanvas --public --source . --push
+cd ~/"Documents/Personal Projects/pocketcanvas" && git init -b main && git add -A && git commit -m "PocketCanvas 0.1.0" && gh repo create imanimal/pocketcanvas --public --source . --push
 ```
 
 ```bash
-cd ~/Downloads/homebrew-tap && git init -b main && git add -A && git commit -m "Cask for Collegiapp" && gh repo create imanimal/homebrew-tap --public --source . --push
+cd ~/"Documents/Personal Projects/homebrew-tap" && git init -b main && git add -A && git commit -m "Cask for Collegiapp" && gh repo create imanimal/homebrew-tap --public --source . --push
 ```
 
 Check `git status` before the first commit in each: build output (`target/`, `dist/`) is ignored, and nothing under `~/.tauri` is inside these folders.
