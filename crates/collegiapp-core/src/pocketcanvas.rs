@@ -13,7 +13,10 @@
 //! Classes: one with your Canvas id is updated, else the one its code names, else (unless it's
 //! ghosted or hidden) a new course. Ghosted and hidden classes are excluded (`included: false`);
 //! priority and normal ones included; a class left on automatic keeps whatever you set here.
-//! Work Canvas says you submitted is checked off once, when it's still open here.
+//! Work Canvas says you submitted is checked off once, when it's still open here. WeBWorK work is
+//! the exception: WeBWorK sends Canvas a grade after every answer, so Canvas calls a set submitted
+//! as soon as you start it. Work that lives in WeBWorK (its own entry, or a Canvas one `same_as`
+//! a set) is checked off only at full marks ([`PushWork::full_marks`]) and stays due until then.
 //!
 //! Canvas lists grade columns and notices as assignments too, so work keeps its kind only when
 //! it's sure to be work ([`canvas_kind`]): the extension says it's to do (`to_do`: turned in
@@ -84,6 +87,8 @@ pub struct PushWork {
     pub url: Option<String>,
     pub submitted: bool,
     pub points: Option<f32>,
+    /// Your Canvas score, once there is one.
+    pub score: Option<f32>,
     /// Canvas says it's something to do: an assignment turned in online (an upload, text, a
     /// link, an online quiz, a discussion post, an outside tool such as Gradescope), or an item
     /// on your Canvas To Do list. Without it the work may be a grade column or a notice.
@@ -98,6 +103,25 @@ impl PushWork {
             || app(&self.adapter)
             || self.same_as.is_some()
             || self.due_from.as_deref().is_some_and(app)
+    }
+
+    /// The work is a WeBWorK set: WeBWorK's own entry, or Canvas's assignment for one.
+    pub fn in_webwork(&self) -> bool {
+        self.adapter == "webwork"
+            || self
+                .same_as
+                .as_ref()
+                .is_some_and(|s| s.adapter == "webwork")
+    }
+
+    /// Canvas has every point (within its rounding).
+    pub fn full_marks(&self) -> bool {
+        matches!((self.score, self.points), (Some(s), Some(p)) if p > 0.0 && s >= p * 0.9995)
+    }
+
+    /// Finished as far as Canvas can tell: submitted, and for WeBWorK work, at full marks.
+    pub fn finished(&self) -> bool {
+        self.submitted && (!self.in_webwork() || self.full_marks())
     }
 }
 
@@ -264,7 +288,7 @@ pub fn import(
                 url: u.clone(),
             });
         }
-        if w.submitted {
+        if w.finished() {
             done.push(id);
         }
         incoming.push(it);
@@ -350,7 +374,7 @@ pub fn find(items: &[Item], courses: &[Course], refs: &[SourceRef]) -> Option<Se
 }
 
 /// Send one piece of work. It's imported like a push (same id, same class matching, checked off
-/// when Canvas says you submitted it), except that it's work (you sent it), it never changes
+/// when Canvas says you finished it), except that it's work (you sent it), it never changes
 /// whether a class is included, and an item you deleted here comes back. When Collegiapp has the app item it's the same as,
 /// that item gets your additions. Later pushes leave the estimate, priority and notes alone.
 /// Returns the item and whether it's new here, or None when there's nothing to send.
@@ -482,6 +506,39 @@ mod tests {
         // again: nothing changes
         let n = import(&mut courses, &mut items, &push(), now, "d");
         assert_eq!((n.added, n.updated, n.unchanged), (0, 0, 4));
+    }
+
+    #[test]
+    fn webwork_work_stays_due_until_full_marks() {
+        // WeBWorK sends Canvas a grade after every answer, so Canvas calls a set submitted early
+        let now = at();
+        let (mut courses, mut items) = (Vec::new(), Vec::new());
+        let mut p = push();
+        p.work.truncate(2);
+        p.work[0].submitted = true;
+        p.work[0].points = Some(10.0);
+        p.work[0].score = Some(6.5);
+        // WeBWorK's own entry, from a PocketCanvas that sends no score
+        p.work[1].submitted = true;
+        let status = |items: &[Item], t: &str| items.iter().find(|i| i.title == t).unwrap().status;
+        import(&mut courses, &mut items, &p, now, "d");
+        assert_eq!(status(&items, "Homework 3"), Status::Todo);
+        assert_eq!(status(&items, "Homework 5"), Status::Todo);
+        p.work[0].score = Some(9.99);
+        import(&mut courses, &mut items, &p, now, "d");
+        assert_eq!(
+            status(&items, "Homework 3"),
+            Status::Todo,
+            "99.9% isn't done"
+        );
+        p.work[0].score = Some(9.999_99);
+        import(&mut courses, &mut items, &p, now, "d");
+        assert_eq!(
+            status(&items, "Homework 3"),
+            Status::Done,
+            "full marks, as Canvas rounds"
+        );
+        assert_eq!(status(&items, "Homework 5"), Status::Todo);
     }
 
     #[test]
