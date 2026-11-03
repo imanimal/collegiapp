@@ -251,6 +251,23 @@ The view row (`.mnav` > `.nkeys` + `.nfoot`). Every view is a saved filter, so a
 - The row is a horizontal strip (section 9): it scrolls sideways with the wheel or a drag, fades only at an edge with more past it, and a render brings the current key into view; on phones it sticks below the top bar.
 - The order is yours (`CA.ui.tabs`, synced with the look) and the number keys follow it: the first key is 1, the tenth 0, the eleventh −. Hold a key and drag it (a mouse drags straight away where the row fits, after a quarter-second hold where it scrolls; touch long-presses), or Alt+Shift+← → (⌥⇧ on a Mac) moves the current view's key. While it moves the key is `.lift` (a step up with an accent rim; an inset accent ring in Standard) in a `.sorting` row, and the others slide aside. Esc puts it back; the palette has **Put the view keys back in order**.
 
+### Sidebar and path bar
+
+The places as folders (`docs/NAVIGATION.md`): `#side` > `.panel.sd` (an F3 module: the graphite band "Folders" with the side and hide keys, then `.sd-tree`, then `.sd-foot` with calendars, trash, appearance and help) and `.sd-grip` on its inner edge. `#nav` holds the `.pathbar` instead of the key row.
+
+```html
+<div class="sd-row on" role="treeitem" aria-level="3" aria-expanded="true" aria-selected="true" style="--lvl:1" data-act="sdGo" data-node="c:cs130a:work">
+  <span class="sd-tw" data-act="sdFold" data-node="c:cs130a:work">{tw}</span>{work}<span class="sd-l">Assignments</span><span class="sd-n">2</span></div>
+```
+
+- `.sd-sec` is a section (Views, Classes, Notes, Tags): the module's printed label, uppercase in Pocket and sentence case in Standard; it only folds.
+- `.sd-row.on` is the place you're in: graphite like a pressed program key, with an orange icon and count (an orange rim at night; a solid chrome row in Standard). Indent is `--lvl` × 1.05 em.
+- `.sd-tw` turns its 9×9 triangle a quarter (`rotate`) when the folder is open. A class shows `.sd-dot` in its colour; a count is `.sd-n`; a file's due day is `.sd-d` (`.late` in `--bad`); a pinned note has `.sd-pin`; done items strike through.
+- `.sd-sort` holds the Views rows; dragging one (a mouse straight away, touch with a long-press) makes it `.lift` in a `.sorting` group, like a program key.
+- `.sd-grip` is a 12 px band in the gap beside the page (22 px on touch) with an accent line on hover, focus and drag; it's a focusable `role="separator"` (← → resize, Home, End, Enter hides).
+- `#content[data-sd]`: `dock`, `over` (a drawer with `sideInL`/`sideInR` over `.sd-scrim`), `off` or `none` (the key row instead); `data-side` and `--side-w` place and size it.
+- `.pathbar`: `.sd-show` (the Folders key, only while the sidebar isn't docked), then `.pb-path` of `.pb-b` steps (buttons), `.pb-sep` › and the `.pb-cur` place (`aria-current="page"`); then `.pb-f` "filtered" and Clear when chips or a search narrowed it.
+
 ### Window keys
 
 `.winkeys` > `.wk` × 3 (`wmin`, `wmax`/`wrest`, `close`) in a recessed slot, at the end of the top bar on Windows and Linux. Close turns `--bad` when pressed. macOS keeps its traffic lights instead.
@@ -490,13 +507,15 @@ The always-on-top live activity (`ui/island.html`, 380×64): a graphite pill wit
 
 `#screen` is a named container (`container: screen / inline-size`), so layouts follow the room the app has: an open Appearance drawer, split view and iPad Slide Over all count. Width breakpoints are `@container screen`; heights use `@media`.
 
-Regions: `#top` (top bar), `#nav` (program keys), `#now` (Do first), `#sched` (Up next), `#list`, `#insp` (floating), `#bottom` (deck).
+`#content` holds `#side` (the sidebar) and `.main`, which is a container named `screen` too, so the page (`#page`) lays out in the room the sidebar leaves it; dialogs in `#layer` still answer to the whole screen.
+
+Regions: `#side` (sidebar), `#top` (top bar), `#nav` (path bar, or program keys), `#now` (Do first), `#sched` (Up next), `#list`, `#insp` (floating), `#bottom` (deck).
 
 | screen width | layout |
 |---|---|
 | **≥ 1100 px** | Two columns (1 : 1.3): Do first over Up next on the left, the list on the right. |
 | **761–1099 px** | Windows taller than 960 px: Do first spans the top; Up next and the list share the row below (1 : 1.35). Up to 960 px tall: Do first over Up next on the left, the list on the right (1 : 1.25), because spanning left the list a sliver (14 px at 800×600). |
-| **≤ 760 px** | One scrolling column like an iPhone: the key row sticks under the top bar, the deck sticks to the bottom, the inspector is a sheet. Up next keeps only what's next, where, and when to leave. |
+| **≤ 760 px** | One scrolling column like an iPhone: the path bar (or key row) sticks under the top bar, the deck sticks to the bottom, the inspector is a sheet. Up next keeps only what's next, where, and when to leave. |
 | non-list lens | `data-wide="1"`: the list takes the whole width; Do first and Up next hide. |
 
 | window height | change |
@@ -642,6 +661,7 @@ The same app with the handheld taken out, for people who want a plain modern UI.
 | LCD inlays: bezel, dot texture, Doto, power-on flicker | a number panel on `--disp-bg` with a hairline, system numerals at 600, no texture or flicker; `.hot` / `.bad` change its fill |
 | course-colour stubs and stripes (week items, month items, agenda bar, course cards, location banner, selected row) | a course-colour dot; the selected row is the accent wash alone |
 | program keys on lips | flat tabs; the current one is a solid `--chrome-bg` tab |
+| the sidebar as a module | flush with the window's edge on `--surface-2`, a hairline toward the page, sentence-case section labels, the current place a solid `--chrome-bg` row |
 | 14 / 10 px radii, 99 px pills | 8 px cards, 6 px keys, chips and pills, 4 px small parts |
 | dot grid, C1/C2 glass, scanlines, blurred scrims and sticky bars | solid `--bg`; the effect layers are off (`fx.apply` gets flat settings; the C settings stay for Pocket and the drawer hides Screen glass); no `backdrop-filter` anywhere |
 | deck engraving, speaker grille, legend keys on tall windows | a plain toolbar card, one-line keys at every height |

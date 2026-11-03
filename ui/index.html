@@ -32,13 +32,19 @@
         <div class="screen" id="screen" data-r="pocket">
           <div class="warp" id="warp">
             <div class="content" id="content">
-              <header class="region top" id="top"></header>
-              <nav class="region nav" id="nav" aria-label="Views"></nav>
-              <section class="region now" id="now" aria-label="Do first"></section>
-              <section class="region sched" id="sched" aria-label="Up next"></section>
-              <section class="region list" id="list" aria-label="Items"></section>
-              <aside class="region insp" id="insp" aria-label="Details"></aside>
-              <footer class="region bottom" id="bottom"></footer>
+              <nav class="region side" id="side" aria-label="Folders" hidden></nav>
+              <div class="main" id="main">
+                <div class="page" id="page">
+                  <header class="region top" id="top"></header>
+                  <nav class="region nav" id="nav" aria-label="Views"></nav>
+                  <section class="region now" id="now" aria-label="Do first"></section>
+                  <section class="region sched" id="sched" aria-label="Up next"></section>
+                  <section class="region list" id="list" aria-label="Items"></section>
+                  <aside class="region insp" id="insp" aria-label="Details"></aside>
+                  <footer class="region bottom" id="bottom"></footer>
+                </div>
+              </div>
+              <div class="sd-scrim" id="sdScrim" data-act="sideToggle" hidden></div>
             </div>
           </div>
           <div class="layer" id="layer">

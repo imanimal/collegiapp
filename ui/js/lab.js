@@ -40,7 +40,7 @@
   // nightPal and themes from the defaults.
   if (saved && saved.v === 3) Object.assign(saved, { v: 4, motion: parsedFinal.motion });
   if (saved && saved.v !== 4) saved = null;
-  const DEFAULTS = Object.assign({ pal: "P9", nightPal: "P11", themes: [], tabs: [], btn: "b8", frm: "f3", type: "T6", glow: 0, flicker: 0, noise: 0, ab: 0, vig: 0, mask: "N", bezel: "N" }, parsedFinal, env);
+  const DEFAULTS = Object.assign({ pal: "P9", nightPal: "P11", themes: [], tabs: [], nav: "side", side: "left", btn: "b8", frm: "f3", type: "T6", glow: 0, flicker: 0, noise: 0, ab: 0, vig: 0, mask: "N", bezel: "N" }, parsedFinal, env);
   CA.ui = Object.assign({}, DEFAULTS, { themes: [], tabs: [] }, saved || {});
   if (!Array.isArray(CA.ui.themes)) CA.ui.themes = [];
   if (!Array.isArray(CA.ui.tabs)) CA.ui.tabs = [];
@@ -143,9 +143,10 @@
   function set(patch, opts) { redraw(() => { if ("night" in patch) slot = null; Object.assign(CA.ui, patch); }, opts && opts.light); sendLook(); }
 
   // ── sync: the look follows you to your other devices (store.js save_look → cloud.rs, or cloud.js; docs/SYNC.md) ──
-  // These choices sync, with the view keys' order (`tabs`, app.js); text size, the desk preview, the island and the
+  // These choices sync, with the view keys' order (`tabs`) and where you navigate from (`nav`: the sidebar or the key
+  // row, `side`: its edge; app.js); text size, the desk preview, the island and the
   // shell stay on each device. One at its default goes as null, so a new device's defaults never win over the account's.
-  const SYNCED = ["pal", "nightPal", "night", "themes", "tabs", "guide", "motion", "density", "curve", "scan", "glow", "flicker", "noise", "ab", "vig", "mask", "sound", "focusLevel"];
+  const SYNCED = ["pal", "nightPal", "night", "themes", "tabs", "nav", "side", "guide", "motion", "density", "curve", "scan", "glow", "flicker", "noise", "ab", "vig", "mask", "sound", "focusLevel"];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function look(u) { u = u || CA.ui; const o = {}; SYNCED.forEach((k) => (o[k] = same(u[k], DEFAULTS[k]) ? null : u[k])); return o; }
   let sent = null; // the look last sent or taken, as JSON
@@ -280,6 +281,9 @@
       ${themeSec(u)}
       <div class="lab-sec"><h3>Text size</h3><div class="opts">${ZOOMS.map((z) => opt("zoom", z, "", Math.round(z * 100) + "%")).join("")}</div><div class="opt-desc">${MOD}+= and ${MOD}+− work anywhere; ${MOD}+0 resets.</div></div>
       <div class="lab-sec"><h3>Density</h3><div class="opts">${Object.entries(DENS).map(([id, [nm]]) => opt("density", id, id, nm)).join("")}</div></div>
+      <div class="lab-sec"><h3>Navigation</h3><div class="opts">${opt("nav", "side", "", "Sidebar")}${opt("nav", "top", "", "Keys along the top")}</div>
+        ${u.nav === "top" ? "" : `<div class="opts" style="margin-top:6px">${opt("side", "left", "", "On the left")}${opt("side", "right", "", "On the right")}</div>`}
+        <div class="opt-desc">${u.nav === "top" ? "The view keys in a row under the top bar." : `Every place as folders: views, classes with their work and notes, tags. ${MOD}+\\ hides it; drag its edge to resize.`}</div></div>
       ${std ? "" : `<div class="lab-sec"><h3>Screen glass</h3><div class="opts">${Object.entries(CURVES).map(([v, [nm]]) => opt("curve", v, "C" + v, nm)).join("")}</div><div class="opt-desc">${esc(CURVES[u.curve][1])}${u.curve === "2" && CA.fx.warpFallback() ? " <b>Showing Tube on this device.</b>" : ""}</div>
         <div class="sl"><label for="sl-scan">Scanlines</label><input type="range" id="sl-scan" min="0" max="30" value="${u.scan}" data-slider="scan"><output id="out-scan">${u.scan}</output></div></div>`}
       <div class="lab-sec"><h3>Shortcut hints</h3><div class="opts">${Object.entries(GUIDES).map(([id, [nm]]) => opt("guide", id, id.toUpperCase(), nm)).join("")}</div><div class="opt-desc">${esc(GUIDES[u.guide][1])}</div></div>

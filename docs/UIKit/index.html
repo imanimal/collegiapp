@@ -218,6 +218,39 @@
         <figure class="uk-spec"><div class="uk-row"><button class="fpill"><i data-ic="focus"></i>Focus · <span class="num">18:42</span></button></div><figcaption><code>.fpill</code> the running focus timer in the top bar</figcaption></figure>
         <figure class="uk-spec"><div class="uk-row"><button class="btn cloudkey" data-st="out"><i data-ic="cloud"></i><span class="bl">Sign in</span><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="ok"><i data-ic="cloud"></i><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="busy"><i data-ic="cloud"></i><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="off"><i data-ic="cloud"></i><i class="ck-dot"></i></button><button class="btn cloudkey" data-st="bad"><i data-ic="cloud"></i><i class="ck-dot"></i></button></div><figcaption><code>.cloudkey</code> sync: <code>out</code> (one click signs in) · <code>ok</code> · <code>busy</code> · <code>off</code> · <code>bad</code>; <code>wait</code> blinks "Signing in"</figcaption></figure>
       </div>
+      <div class="uk-h3" style="margin-top:1.6em">Sidebar · every place as folders (docs/NAVIGATION.md)</div>
+      <div class="uk-row" style="align-items:flex-start;gap:1.4em;flex-wrap:wrap">
+        <div class="side" style="width:18em;height:31em"><div class="panel sd"><div class="ph"><span class="pt"><i data-ic="folder"></i>Folders</span><span class="sp"></span><button class="btn ghost sm" aria-label="Move the sidebar to the right"><i data-ic="next"></i></button><button class="btn ghost sm" aria-label="Hide the sidebar"><i data-ic="side"></i></button></div>
+          <div class="sd-tree" role="tree" aria-label="Folders">
+            <div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Views</span></div>
+            <div role="group" class="sd-grp sd-sort">
+              <div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="now"></i><span class="sd-l">Do first</span><span class="sd-n">5</span><kbd>1</kbd></div>
+              <div class="sd-row lift" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="today"></i><span class="sd-l">Today</span><span class="sd-n">3</span><kbd>2</kbd></div>
+              <div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="inbox"></i><span class="sd-l">Inbox</span><span class="sd-n">2</span><kbd>3</kbd></div>
+            </div>
+            <div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Classes</span></div>
+            <div role="group" class="sd-grp">
+              <div class="sd-row" role="treeitem" aria-level="2" aria-expanded="true" style="--lvl:0"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-dot" style="--kc: var(--k1)"></span><span class="sd-l">CMPSC 130A</span><span class="sd-n">2</span></div>
+              <div role="group" class="sd-grp">
+                <div class="sd-row on" role="treeitem" aria-level="3" aria-expanded="true" aria-selected="true" style="--lvl:1"><span class="sd-tw"><i data-ic="tw"></i></span><i data-ic="work"></i><span class="sd-l">Assignments</span><span class="sd-n">2</span></div>
+                <div role="group" class="sd-grp">
+                  <div class="sd-row" role="treeitem" aria-level="4" style="--lvl:2"><span class="sd-tw"></span><i data-ic="file"></i><span class="sd-l">PA3: heaps and hash tables</span><span class="sd-d">Fri</span></div>
+                  <div class="sd-row" role="treeitem" aria-level="4" style="--lvl:2"><span class="sd-tw"></span><i data-ic="file"></i><span class="sd-l">HW 4: amortized analysis</span><span class="sd-d late">Oct 30</span></div>
+                </div>
+                <div class="sd-row" role="treeitem" aria-level="3" aria-expanded="false" style="--lvl:1"><span class="sd-tw"><i data-ic="tw"></i></span><i data-ic="exams"></i><span class="sd-l">Exams</span><span class="sd-n">1</span></div>
+                <div class="sd-row" role="treeitem" aria-level="3" style="--lvl:1"><span class="sd-tw"></span><i data-ic="week"></i><span class="sd-l">Calendar</span></div>
+              </div>
+              <div class="sd-row" role="treeitem" aria-level="2" aria-expanded="false" style="--lvl:0"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-dot" style="--kc: var(--k3)"></span><span class="sd-l">PSTAT 120A</span><span class="sd-n">1</span></div>
+            </div>
+            <div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Notes</span><button class="sd-add" aria-label="New note"><i data-ic="plus"></i></button></div>
+            <div role="group" class="sd-grp"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="notes"></i><span class="sd-l">Lecture 12: B-trees</span><span class="sd-pin"><i data-ic="pin"></i></span></div></div>
+          </div>
+          <div class="sd-foot"><button class="btn ghost sm" aria-label="Calendars and sources"><i data-ic="week"></i></button><button class="btn ghost sm" aria-label="Trash"><i data-ic="trash"></i></button><span class="sp"></span><button class="btn ghost sm" aria-label="Appearance"><i data-ic="lab"></i></button><button class="btn ghost sm" aria-label="Keyboard shortcuts"><i data-ic="help"></i></button></div></div></div>
+        <div class="uk-specs" style="flex:1;min-width:18em">
+          <figure class="uk-spec"><div class="uk-frame"><div class="region"><div class="pathbar"><button class="btn sm sd-show"><i data-ic="side"></i><span class="bl">Folders</span></button><nav class="pb-path" aria-label="You are here"><button class="pb-b">Classes</button><span class="pb-sep" aria-hidden="true">›</span><button class="pb-b">CMPSC 130A</button><span class="pb-sep" aria-hidden="true">›</span><span class="pb-cur" aria-current="page"><i data-ic="work"></i>Assignments</span></nav><span class="pb-f">filtered</span><button class="btn ghost sm">Clear</button></div></div></div><figcaption><code>.pathbar</code> where you are: <code>.sd-show</code> while the sidebar isn't docked, <code>.pb-b</code> steps back up, <code>.pb-cur</code> the place, <code>.pb-f</code> once it's narrowed</figcaption></figure>
+          <figure class="uk-spec"><div class="uk-row"><span class="dim">See the tree:</span></div><figcaption><code>.sd-sec</code> sections fold · <code>.sd-row.on</code> the place you're in · <code>.sd-row.lift</code> a view being moved · <code>.sd-dot</code> a class · <code>.sd-n</code> a count · <code>.sd-d.late</code> overdue · <code>.sd-pin</code> pinned</figcaption></figure>
+        </div>
+      </div>
       <div class="uk-h3" style="margin-top:1.6em">Top bar · the window's title bar on Windows and Linux</div>
       <div class="uk-frame"><div class="region"><div class="mtop">
         <span class="brandmark"><span class="logo" aria-hidden="true">C</span><span>Collegiapp</span></span>

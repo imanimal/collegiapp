@@ -55,13 +55,15 @@ body.lab-open .desk[data-mode="desk"] { padding-right: 424px; }
 /* ───────────── screen + content box ─────────────
    The screen is a named container: the layouts in pocket.css follow the room the app actually has
    (@container screen …), not the window, so the Appearance drawer, the desk preview, split view and
-   iPad Slide Over all get the layout that fits. */
+   iPad Slide Over all get the layout that fits. The content is the sidebar (#side) beside the main area, and the main
+   area is a container named screen too, so the page's regions (#page) lay out in the room the sidebar leaves them,
+   while dialogs and sheets in #layer still answer to the whole screen. */
 .screen { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--bg); isolation: isolate; container: screen / inline-size; }
 .warp { position: absolute; inset: 0; } /* holds C2's warp filter (crt.css), so the content can slide under it */
-.content {
-  position: absolute; inset: 0; display: grid; gap: var(--gap);
-  font-size: var(--fs); line-height: 1.45; overflow: hidden;
-}
+.content { position: absolute; inset: 0; display: flex; font-size: var(--fs); line-height: 1.45; overflow: hidden; }
+.content[data-side="right"] { flex-direction: row-reverse; }
+.main { flex: 1; min-width: 0; position: relative; container: screen / inline-size; }
+.page { position: absolute; inset: 0; display: grid; gap: var(--gap); overflow: hidden; }
 .region { min-width: 0; min-height: 0; position: relative; container-type: inline-size; }
 #top { grid-area: top; } #nav { grid-area: nav; } #now { grid-area: now; } #sched { grid-area: sched; }
 #list { grid-area: list; } #bottom { grid-area: bottom; }

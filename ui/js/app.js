@@ -231,6 +231,10 @@
     arrow: "....#####|.......##|......#.#|.....#..#|....#...#|...#.....|..#......|.#.......|#........",
     box: "#########|#.......#|#.......#|#.......#|#.......#|#.......#|#.......#|#.......#|#########",
     oval: "..#####..|.#.....#.|#.......#|#.......#|#.......#|#.......#|#.......#|.#.....#.|..#####..",
+    side: "#########|#..#....#|#..#....#|#..#....#|#..#....#|#..#....#|#..#....#|#..#....#|#########",
+    folder: ".........|####.....|#...#####|#.......#|#.......#|#.......#|#.......#|#########|.........",
+    file: ".#####...|.#...##..|.#....##.|.#.....#.|.#.....#.|.#.....#.|.#.....#.|.#######.|.........",
+    tw: ".........|..#......|..##.....|..###....|..####...|..###....|..##.....|..#......|.........",
   };
   const ICONS = {};
   for (const n in PIX) ICONS[n] = PIX[n].split("|").map((row, y) => row.replace(/#+/g, (run, x) => `M${x} ${y}h${run.length}v1h-${run.length}z`).replace(/\./g, "")).join("");
@@ -266,6 +270,7 @@
     draw: "M3 4h18v16H3zM6 14c1.5-3 3-3 4 0s2.5 3 4 0 2.5-3 4 0", pick: "M5 3l13 7.5-5.5 1.5L10 17.5 5 3zM13 12l5 6",
     erase: "M7 21l-4.3-4.3a1.7 1.7 0 0 1 0-2.4l9.6-9.6a1.7 1.7 0 0 1 2.4 0l5.6 5.6a1.7 1.7 0 0 1 0 2.4L13 21zM22 21H7M5 11l9 9",
     line: "M5 19L19 5", arrow: "M5 19L19 5M10 5h9v9", box: "M4 5h16v14H4z", oval: "M12 5c5 0 9 3.1 9 7s-4 7-9 7-9-3.1-9-7 4-7 9-7z",
+    side: "M4 5h16v14H4zM9 5v14", folder: "M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", file: "M6 3h8l4 4v14H6zM14 3v4h4", tw: "M10 7l5 5-5 5",
   };
   const ic = (n, c, as) => ((as || document.documentElement.dataset.look) === "standard"
     ? `<svg class="i ln${c ? " " + c : ""}" viewBox="0 0 24 24" aria-hidden="true"><path d="${LINE[n] || ""}"/></svg>`
@@ -299,6 +304,9 @@
   }
   const cchip = (c) => (c ? `<span class="cchip" style="${kc(c)}">${esc(c.code)}</span>` : `<span class="cchip none">Personal</span>`);
   function viewTitle() {
+    // with the sidebar, a folder's list is titled by its path: "CS 16 · Assignments", "Notes · CS 16", "#lab"
+    const loc = S.side && sideLoc(S.side);
+    if (loc && !loc.filtered && !loc.cur.view) return loc.path.filter((n) => !n.sec || n.id === "s:notes").map((n) => n.label).join(" · ");
     const v = viewById(S.view), m = S.q.match(/^is:open course:(\S+)$/);
     const c = m && S.courses.find((x) => x.tag.toLowerCase() === m[1]);
     return c ? c.code : v.label + (S.q !== v.q ? " · filtered" : "");
@@ -354,8 +362,13 @@
   function bindFrame() {
     if (!WIN) return;
     const root = document.documentElement, content = $("#content"); root.dataset.frame = FRAME;
-    const grip = (e) => e.button === 0 && !e.target.closest("button, a, input, textarea, select, [data-act]")
-      && (e.target === content || !!e.target.closest("#top")) && e.clientY <= $("#top").getBoundingClientRect().bottom;
+    // the sidebar's band (and the space above it) drags the window too, down to the band's bottom
+    const grip = (e) => {
+      if (e.button !== 0 || e.target.closest("button, a, input, textarea, select, [data-act], .sd-grip")) return false;
+      const side = e.target.closest("#side"), band = side ? $("#side .ph") : $("#top");
+      return !!band && (side ? e.target === side || !!e.target.closest("#side .ph") : e.target === content || e.target.id === "page" || !!e.target.closest("#top"))
+        && e.clientY <= band.getBoundingClientRect().bottom;
+    };
     let down = null;
     content.addEventListener("mousedown", (e) => {
       if (!grip(e)) return;
@@ -390,7 +403,246 @@
     // the one-column layout keeps the top bar pinned (it's the title bar); the key row sticks under it
     if (window.ResizeObserver) new ResizeObserver(() => root.style.setProperty("--top-h", $("#top").offsetHeight + "px")).observe($("#top"));
   }
+  /* ─────────── the sidebar: every place in the app as folders (docs/NAVIGATION.md) ───────────
+     Views (in your order, numbered 1–0 −), Classes (a folder per class with its assignments, exams, calendar and notes;
+     the work and the notes are files in them), Notes (by class, pinned ones first) and Tags. Clicking a folder opens
+     its list in the page and unfolds it; its arrow only folds. A file opens: an item's details, a note's editor. The
+     path bar (#nav) spells out where you are, and the place you're in unfolds to show itself. It docks beside the page
+     when the screen has room (900 px), else it's a drawer over it. CA.ui.nav ("side" or "top", the old key row) and
+     CA.ui.side ("left" or "right") sync with the look; the width, whether it's hidden and which folders are open stay
+     on this device (localStorage capp.side). */
+  const SIDE_KEY = "capp.side", SIDE_MIN = 200, SIDE_MAX = 440, SIDE_DOCK = 900, SIDE_FILES = 12;
+  const sideP = Object.assign({ w: 0, hidden: false, open: {} }, (() => { try { return JSON.parse(localStorage.getItem(SIDE_KEY)) || {}; } catch (e) { return {}; } })());
+  function sideSave() { try { localStorage.setItem(SIDE_KEY, JSON.stringify(sideP)); } catch (e) { /* a private window: it forgets */ } }
+  const navMode = () => (CA.ui && CA.ui.nav === "top" ? "top" : "side");
+  const sideAt = () => (CA.ui && CA.ui.side === "right" ? "right" : "left");
+  const sideW = () => Math.max(SIDE_MIN, Math.min(SIDE_MAX, sideP.w || Math.round(17 * (parseFloat(getComputedStyle($("#content")).fontSize) || 15))));
+  // none (the key row instead), dock (beside the page), over (a drawer, open), off (hidden, or a drawer that's shut)
+  function sideState() {
+    if (navMode() !== "side") return "none";
+    if ($("#screen").clientWidth < SIDE_DOCK) return S.sideOver ? "over" : "off";
+    return sideP.hidden ? "off" : "dock";
+  }
+  function sideApply() {
+    const c = $("#content"), st = sideState();
+    if (c.dataset.sd !== st) c.dataset.sd = st;
+    if (c.dataset.side !== sideAt()) c.dataset.side = sideAt();
+    c.style.setProperty("--side-w", sideW() + "px");
+    $("#side").hidden = st === "none" || st === "off";
+    $("#sdScrim").hidden = st !== "over";
+    return st;
+  }
+  const qn = (q) => String(q || "").replace(/\s+/g, " ").trim();
+  const dueShort = (t) => {
+    const diff = Math.round((E.startOfDay(t) - E.startOfDay(S.now)) / DAY), d = new Date(t);
+    return diff === 0 ? "Today" : diff === 1 ? "Tmr" : diff > 1 && diff < 7 ? DNM[d.getDay()] : `${MNM[d.getMonth()]} ${d.getDate()}`;
+  };
+  // The tree. A node: { id, label, to: { view, q, lens, sort } (what it opens), kids, n (a count), icon or course,
+  // item or note (a file), sec (a section's header), def (open by default), up (its folder) }.
+  function sideTree() {
+    const c0 = ctx(), all = (q) => { const t = E.parseFilter(q); return S.items.filter((it) => E.matchItem(it, t, c0)); };
+    const L = (q) => ({ view: "all", q, lens: "list", sort: "due" }), NL = (q) => ({ view: "notes", q, lens: "notes", sort: "updated" });
+    const byDue = (a, b) => (a.due == null) - (b.due == null) || (a.due || 0) - (b.due || 0) || a.title.localeCompare(b.title);
+    const byNote = (a, b) => isPinned(b) - isPinned(a) || b.updated - a.updated;
+    const fileIcon = (it) => (it.kind === "exam" ? "exams" : E.SCHEDULED(it.kind) ? "events" : "file");
+    const item = (it) => ({ id: "i:" + it.id, label: it.title || "Untitled", item: it.id, icon: fileIcon(it), due: it.due, done: it.status === "done" });
+    const note = (it) => ({ id: "n:" + it.id, label: it.title || "Untitled note", note: it.id, icon: "notes", pin: isPinned(it) });
+    // a folder's files: the first SIDE_FILES, then a key that opens the folder for the rest
+    const files = (id, list, to) => (list.length > SIDE_FILES ? list.slice(0, SIDE_FILES).concat({ id: id + ":more", label: `${list.length - SIDE_FILES} more`, more: true, to }) : list);
+    const views = tabs().concat(viewById("done")).map((v) => ({ id: "v:" + v.id, label: v.label, icon: v.id, view: v.id, k: v.k, to: { view: v.id, q: v.q, lens: v.lens, sort: v.sort },
+      n: ["now", "today", "inbox", "work", "exams"].includes(v.id) ? all(v.q).length : null }));
+    const notes = all("is:open kind:note").sort(byNote);
+    const classes = S.courses.filter((c) => c.included).map((c) => {
+      const t = c.tag.toLowerCase(), q = (s) => s + " course:" + t, id = "c:" + c.id;
+      const work = all(q("is:open kind:work")).sort(byDue), exams = all(q("kind:exam")).sort(byDue), mine = notes.filter((it) => it.course === c.id);
+      return { id, label: c.code, title: c.title, course: c, to: L(q("is:open")), n: work.length || null, kids: [
+        { id: id + ":work", label: "Assignments", icon: "work", to: L(q("is:open kind:work")), n: work.length || null, kids: files(id + ":work", work.map(item), L(q("is:open kind:work"))) },
+        { id: id + ":exams", label: "Exams", icon: "exams", to: L(q("kind:exam")), n: exams.filter((it) => it.status !== "done").length || null, kids: files(id + ":exams", exams.map(item), L(q("kind:exam"))) },
+        { id: id + ":cal", label: "Calendar", icon: "week", to: { view: "week", q: q("is:open"), lens: "week", sort: "due" } },
+        { id: id + ":notes", label: "Notes", icon: "notes", to: NL(q("is:open kind:note")), n: mine.length || null, kids: files(id + ":notes", mine.map(note), NL(q("is:open kind:note"))) },
+      ] };
+    });
+    const own = all("is:open course:none").filter((it) => !isNote(it)).sort(byDue);
+    classes.push({ id: "c:none", label: "Personal", icon: "folder", to: L("is:open course:none"), n: own.length || null, kids: files("c:none", own.map(item), L("is:open course:none")) });
+    const folders = S.courses.filter((c) => notes.some((it) => it.course === c.id)).map((c) => {
+      const mine = notes.filter((it) => it.course === c.id), to = NL("is:open kind:note course:" + c.tag.toLowerCase());
+      return { id: "nc:" + c.id, label: c.code, course: c, to, n: mine.length, kids: files("nc:" + c.id, mine.map(note), to) };
+    });
+    const loose = notes.filter((it) => !it.course || !cById(it.course));
+    if (loose.length) folders.push({ id: "nc:none", label: "No class", icon: "folder", to: NL("is:open kind:note course:none"), n: loose.length, kids: files("nc:none", loose.map(note), NL("is:open kind:note course:none")) });
+    const tagN = new Map();
+    all("is:open").forEach((it) => (it.tags || []).forEach((g) => { const k = String(g).toLowerCase(); if (k !== "pinned" && k !== "section") tagN.set(k, (tagN.get(k) || 0) + 1); }));
+    const tags = [...tagN].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([g, n]) => ({ id: "t:" + g, label: "#" + g, icon: "filter", to: L("is:open tag:" + g), n }));
+    const tree = [
+      { id: "s:views", label: "Views", sec: true, def: true, sort: true, kids: views },
+      { id: "s:classes", label: "Classes", sec: true, def: true, to: Object.assign({ view: "classes" }, viewById("classes")), kids: classes },
+      { id: "s:notes", label: "Notes", sec: true, def: true, add: true, to: Object.assign({ view: "notes" }, viewById("notes")), kids: notes.filter(isPinned).map(note).concat(folders) },
+    ];
+    if (tags.length) tree.push({ id: "s:tags", label: "Tags", sec: true, def: false, kids: tags });
+    const map = new Map(), link = (list, up) => list.forEach((n) => { n.up = up; map.set(n.id, n); if (n.kids) link(n.kids, n); });
+    link(tree, null);
+    return { tree, map };
+  }
+  const sideOpenQ = (n) => (n.id in sideP.open ? !!sideP.open[n.id] : !!n.def);
+  const pathTo = (n) => { const p = []; for (let x = n; x; x = x.up) p.unshift(x); return p; };
+  // Where you are: the folder whose list is on screen (the one you clicked, when two show the same list), else the
+  // folder you opened last or your view, "filtered" once chips or a search narrowed it.
+  function sideLoc(T) {
+    const q = qn(S.q), hits = [], hit = (n) => n.to && !n.more && !n.sec && n.to.lens === S.lens && qn(n.to.q) === q;
+    T.map.forEach((n) => { if (hit(n)) hits.push(n); });
+    const at = T.map.get(S.sideAt), exact = (at && hits.includes(at) && at) || hits[0];
+    if (exact) return { cur: exact, path: pathTo(exact), filtered: false };
+    const base = at && at.to && at.to.lens === S.lens && at.to.view === S.view ? at : T.map.get("v:" + S.view) || T.map.get("v:now");
+    return { cur: base, path: pathTo(base), filtered: true };
+  }
+  function mSide(el) {
+    const st = sideApply(); if (st === "none" || st === "off") { if (el.firstChild) el.innerHTML = ""; return; }
+    const T = S.side || sideTree(), loc = sideLoc(T), side = sideAt();
+    // the place you went to unfolds the folders it's in, once per arrival, so you can still fold them after
+    if (S.sideShown !== loc.cur.id) { S.sideShown = loc.cur.id; S.sideReveal = true; loc.path.slice(0, -1).forEach((n) => { if (n.kids && !sideOpenQ(n)) sideP.open[n.id] = true; }); sideSave(); }
+    const lead = (n) => (n.course ? `<span class="sd-dot" style="${kc(n.course)}"></span>` : ic(n.icon || "folder"));
+    const row = (n, lvl) => {
+      const kids = !!(n.kids && n.kids.length), open = kids && sideOpenQ(n), on = n === loc.cur;
+      const tail = n.due != null ? `<span class="sd-d${!n.done && n.due < S.now ? " late" : ""}">${esc(dueShort(n.due))}</span>` : n.n ? `<span class="sd-n">${n.n}</span>` : "";
+      const r = n.sec
+        ? `<div class="sd-row sd-sec" role="treeitem" aria-level="1"${kids ? ` aria-expanded="${open}"` : ""} tabindex="-1"${kids ? ` data-act="sdFold"` : ""} data-node="${esc(n.id)}"><span class="sd-tw">${kids ? ic("tw") : ""}</span><span class="sd-l">${esc(n.label)}</span>${n.add ? `<button class="sd-add" data-act="noteNew" tabindex="-1" title="New note (W)" aria-label="New note">${ic("plus")}</button>` : ""}</div>`
+        : `<div class="sd-row${on ? " on" : ""}${n.done ? " done" : ""}${n.more ? " more" : ""}" role="treeitem" aria-level="${lvl}"${kids ? ` aria-expanded="${open}"` : ""} aria-selected="${on}" tabindex="-1" style="--lvl:${lvl - 2}" data-act="sdGo" data-node="${esc(n.id)}"${n.view && n.k ? ` data-v="${n.view}" data-hint="${n.k}"` : ""}${n.item ? ` data-id="${esc(n.item)}"` : ""} title="${esc(n.title ? n.label + " · " + n.title : n.label)}">`
+          + `<span class="sd-tw"${kids ? ` data-act="sdFold" data-node="${esc(n.id)}"` : ""}>${kids ? ic("tw") : ""}</span>${n.more ? "" : lead(n)}<span class="sd-l">${esc(n.label)}</span>${n.pin ? `<span class="sd-pin" title="Pinned">${ic("pin")}</span>` : ""}${tail}${n.view && n.k ? `<kbd>${n.k}</kbd>` : ""}</div>`;
+      return r + (open ? `<div role="group" class="sd-grp${n.sort ? " sd-sort" : ""}">${n.kids.map((k) => row(k, lvl + 1)).join("")}</div>` : "");
+    };
+    const key = (act, icon, label, k) => `<button class="btn ghost sm" data-act="${act}" title="${esc(label)}${k ? " (" + esc(k) + ")" : ""}" aria-label="${esc(label)}">${ic(icon)}</button>`;
+    el.innerHTML = `<div class="panel sd"><div class="ph"><span class="pt">${ic("folder")}Folders</span><span class="sp"></span>`
+      + key("sideSwap", side === "left" ? "next" : "prev", side === "left" ? "Move the sidebar to the right" : "Move the sidebar to the left")
+      + key("sideToggle", "side", st === "over" ? "Close the sidebar" : "Hide the sidebar", MOD + "+\\") + `</div>`
+      + `<div class="sd-tree" role="tree" aria-label="Folders">${T.tree.map((n) => row(n, 1)).join("")}</div>`
+      + `<div class="sd-foot">${key("feedsOpen", "week", "Calendars and sources")}${key("trash", "trash", "Trash")}<span class="sp"></span>${key("lab", "lab", "Appearance", MOD + "+.")}${key("help", "help", "Keyboard shortcuts", "?")}</div></div>`
+      + `<div class="sd-grip" role="separator" aria-orientation="vertical" aria-label="Sidebar width" tabindex="0" aria-valuemin="${SIDE_MIN}" aria-valuemax="${SIDE_MAX}" aria-valuenow="${sideW()}" title="Drag to resize · double-click for the usual width"></div>`;
+    // one row takes Tab (the place you're in); the arrows move between the rest
+    const rows = $$(".sd-tree .sd-row", el), on = $(".sd-tree .sd-row.on", el);
+    const want = S.sideFocus === "@on" ? on : S.sideFocus && rows.find((r) => r.dataset.node === S.sideFocus);
+    if (rows.length) (want || on || rows[0]).tabIndex = 0;
+    if (want) want.focus({ preventScroll: true });
+    S.sideFocus = null;
+    if (on && S.sideReveal) { S.sideReveal = false; MO.after(() => on.isConnected && on.scrollIntoView({ block: "nearest" })); }
+  }
+  // the path bar, where the key row was: the sidebar's key while it's hidden, then the path, each step a way back up
+  function mPath(el) {
+    const T = S.side || sideTree(), loc = sideLoc(T), st = sideState();
+    const step = (n, last) => last
+      ? `<span class="pb-cur" aria-current="page">${n.course ? `<span class="sd-dot" style="${kc(n.course)}"></span>` : ic(n.icon || "folder")}${esc(n.label)}</span>`
+      : n.to ? `<button class="pb-b" data-act="sdGo" data-node="${esc(n.id)}">${esc(n.label)}</button>` : `<span class="pb-s">${esc(n.label)}</span>`;
+    const narrowed = loc.filtered && qn(S.q) !== qn(loc.cur.to.q);
+    el.innerHTML = `<div class="pathbar">${st === "dock" ? "" : `<button class="btn sm sd-show" data-act="sideToggle" title="Show the sidebar (${MOD}+\\)" aria-label="Show the sidebar">${ic("side")}<span class="bl">Folders</span></button>`}`
+      + `<nav class="pb-path" aria-label="You are here">${loc.path.map((n, i) => step(n, i === loc.path.length - 1)).join(`<span class="pb-sep" aria-hidden="true">›</span>`)}</nav>`
+      + `${narrowed ? `<span class="pb-f">filtered</span><button class="btn ghost sm" data-act="sdGo" data-node="${esc(loc.cur.id)}" title="Show the whole folder again">Clear</button>` : ""}</div>`;
+  }
+  // open a place: a view, a folder (and unfold it), a file (its folder, then the item's details or the note)
+  function sideGo(id) {
+    const T = S.side || sideTree();
+    let n = T.map.get(id); if (!n) return;
+    const file = n.item || n.note ? n : null, more = !!n.more, loc = sideLoc(T), cur = loc.filtered ? null : loc.cur;
+    if (more) n = n.up;
+    else if (file) n = file.up && file.up.to ? file.up : null;
+    const folder = !file && !more && !!(n.kids && n.kids.length);
+    // the folder you're in: a click folds it (in the drawer, it shuts the drawer on it instead)
+    if (folder && n === cur && sideOpenQ(n)) { if (S.sideOver) { S.sideOver = false; return renderAll(); } return sideFold(n.id); }
+    if (folder) { sideP.open[n.id] = true; sideSave(); }
+    if ($("#side").contains(document.activeElement)) S.sideFocus = (file || n).id;
+    // the drawer stays open on a folder you unfolded, so you can go further in; anything else shuts it
+    if (S.sideOver && !folder) S.sideOver = false;
+    if (n && n.to) {
+      const t = n.to, lens = S.lens;
+      S.sideAt = n.id;
+      if (t.view !== S.view || t.lens !== S.lens) { S.insp = false; S.cal.at = null; }
+      S.view = t.view; S.q = t.q; S.lens = t.lens; S.sort = t.sort; S.skip = 0; S.animRows = true;
+      if (file && file.item) { S.sel = file.item; S.insp = true; }
+      CA.sound.click(); paint(lens);
+    } else if (file && file.item) select(file.item, true);
+    if (file && file.note) openNote(file.note);
+  }
+  function sideFold(id) {
+    const T = S.side || sideTree(), n = T.map.get(id); if (!n || !n.kids) return;
+    sideP.open[id] = !sideOpenQ(n); sideSave();
+    if ($("#side").contains(document.activeElement)) S.sideFocus = id;
+    mSide($("#side"));
+  }
+  // show or hide it (a drawer on a narrow screen); showing it puts the keyboard in it, on the place you're in
+  function sideToggle(show) {
+    if (navMode() !== "side") return setNavMode("side");
+    if ($("#screen").clientWidth < SIDE_DOCK) S.sideOver = show != null ? show : !S.sideOver;
+    else { sideP.hidden = show != null ? !show : !sideP.hidden; sideSave(); }
+    const st = sideState(), shown = st === "dock" || st === "over";
+    if (shown) { S.sideFocus = "@on"; S.sideReveal = true; }
+    CA.sound.click(); renderAll();
+    if (!shown) { const b = $("#nav .sd-show"); if (b) b.focus({ preventScroll: true }); }
+  }
+  function sideSwap() {
+    if (!CA.lab) return;
+    CA.lab.set({ side: sideAt() === "left" ? "right" : "left" }, { light: true });
+    renderAll(); toast(`Sidebar on the ${sideAt()}`);
+  }
+  function setNavMode(m) {
+    if (!CA.lab) return;
+    CA.lab.set({ nav: m }, { light: true });
+    if (m === "side") { sideP.hidden = false; sideSave(); }
+    renderAll(); toast(m === "side" ? "Folders are in the sidebar" : `The view keys are back along the top · ${esc(MOD)}+K, “Use the sidebar” brings it back`);
+  }
+  // The tree's keys (the WAI-ARIA tree pattern): ↑ ↓ move, → unfolds or steps in, ← folds or steps out, Home and End,
+  // Enter or Space opens, Esc goes back to the page (or shuts the drawer). Letters stay the app's shortcuts.
+  function sideKey(e) {
+    const k = e.key;
+    if (e.target.matches && e.target.matches(".sd-grip")) {
+      const d = (k === "ArrowRight" ? 1 : k === "ArrowLeft" ? -1 : 0) * (sideAt() === "left" ? 1 : -1);
+      if (d || k === "Home" || k === "End") { e.preventDefault(); e.stopPropagation(); sideP.w = k === "Home" ? SIDE_MIN : k === "End" ? SIDE_MAX : sideW() + d * 16; sideSave(); sideApply(); e.target.setAttribute("aria-valuenow", sideW()); }
+      else if (k === "Enter") { e.preventDefault(); e.stopPropagation(); sideToggle(false); }
+      return;
+    }
+    const row = e.target.closest && e.target.closest(".sd-tree .sd-row"); if (!row || e.ctrlKey || e.metaKey || e.altKey) return;
+    const rows = $$(".sd-tree .sd-row", $("#side")), i = rows.indexOf(row), exp = row.getAttribute("aria-expanded");
+    const to = (r) => { if (!r) return; rows.forEach((x) => (x.tabIndex = -1)); r.tabIndex = 0; r.focus(); };
+    const parent = () => { const g = row.parentElement.closest('[role="group"]'); return g && g.previousElementSibling; };
+    const stop = () => { e.preventDefault(); e.stopPropagation(); };
+    if (k === "ArrowDown") { stop(); to(rows[i + 1]); }
+    else if (k === "ArrowUp") { stop(); to(rows[i - 1]); }
+    else if (k === "Home") { stop(); to(rows[0]); }
+    else if (k === "End") { stop(); to(rows[rows.length - 1]); }
+    else if (k === "ArrowRight") { stop(); if (exp === "false") sideFold(row.dataset.node); else if (exp === "true") to(rows[i + 1]); }
+    else if (k === "ArrowLeft") { stop(); if (exp === "true") sideFold(row.dataset.node); else to(parent()); }
+    else if (k === "Enter" || k === " ") { stop(); if (row.classList.contains("sd-sec")) sideFold(row.dataset.node); else sideGo(row.dataset.node); }
+    else if (k === "Escape") { stop(); if (S.sideOver) sideToggle(false); else row.blur(); }
+  }
+  // the edge drags the width (well past the narrowest, it hides); a double-click puts back the usual width
+  function bindSide() {
+    let g = null;
+    const c = () => $("#content");
+    document.addEventListener("pointerdown", (e) => {
+      const grip = e.target.closest && e.target.closest(".sd-grip"); if (!grip || e.button !== 0) return;
+      e.preventDefault(); const r = $("#side").getBoundingClientRect(), left = sideAt() === "left";
+      // the width follows the pointer from where it took hold, a few pixels out in the gap
+      g = { id: e.pointerId, edge: left ? r.left : r.right, w: r.width, d: (left ? e.clientX - r.left : r.right - e.clientX) - r.width, shut: false };
+      try { grip.setPointerCapture(e.pointerId); } catch (x) { /* already gone */ }
+      c().classList.add("sd-sizing");
+    });
+    document.addEventListener("pointermove", (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const raw = (sideAt() === "left" ? e.clientX - g.edge : g.edge - e.clientX) - g.d;
+      g.shut = raw < SIDE_MIN - 60; g.w = Math.max(SIDE_MIN, Math.min(SIDE_MAX, Math.round(raw)));
+      c().style.setProperty("--side-w", g.w + "px"); c().classList.toggle("sd-shut", g.shut);
+    });
+    const end = (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const t = g; g = null; c().classList.remove("sd-sizing", "sd-shut");
+      if (t.shut && e.type === "pointerup") { sideP.hidden = true; sideSave(); renderAll(); return toast(`Sidebar hidden · ${esc(MOD)}+\\ brings it back`); }
+      sideP.w = t.w; sideSave(); sideApply(); const gr = $("#side .sd-grip"); if (gr) gr.setAttribute("aria-valuenow", sideW());
+    };
+    document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
+    document.addEventListener("dblclick", (e) => { if (e.target.closest && e.target.closest(".sd-grip")) { sideP.w = 0; sideSave(); sideApply(); } });
+    $("#side").addEventListener("keydown", sideKey);
+    // a screen that grows or shrinks past the docking width (the window, the Appearance drawer) docks or undocks it
+    if (window.ResizeObserver) new ResizeObserver(() => { if (sideState() !== $("#content").dataset.sd) { S.sideOver = false; renderAll(); } }).observe($("#screen"));
+  }
   function mNav(el) {
+    if (navMode() === "side") return mPath(el);
     const v0 = viewById(S.view), custom = S.q !== v0.q;
     const count = (v) => S.items.filter((it) => E.matchItem(it, E.parseFilter(v.q), ctx())).length;
     let out = `<div class="mnav h"><div class="nkeys" role="tablist" aria-label="Views">`;
@@ -503,7 +755,7 @@
   function go(id) {
     const v = viewById(id), lens = S.lens;
     if (v.id !== S.view) { S.insp = false; S.cal.at = null; } // the details belong to the tab they were opened on; Calendar opens on today
-    S.view = v.id; S.q = v.q; S.lens = v.lens; S.sort = v.sort; S.skip = 0; S.animRows = true;
+    S.sideAt = null; S.view = v.id; S.q = v.q; S.lens = v.lens; S.sort = v.sort; S.skip = 0; S.animRows = true;
     CA.sound.click(); paint(lens);
   }
   function setQ(q, keepFocus, from) {
@@ -896,7 +1148,8 @@
     const itop = ipb && !insp.hidden && insp.dataset.for === S.sel ? ipb.scrollTop : 0;
     const kept = fx.flip && same ? MO.keep(listEl) : null, hero = MO.keep($("#now")), next = MO.keep($("#sched")), texts = MO.texts(content);
     const sx = stripScroll();
-    mTop($("#top")); mNav($("#nav")); mNow($("#now"), ranked()); mSched($("#sched"), scheduleItems()); renderList(); renderInsp(); renderBottom(); renderIsland(); renderShell();
+    S.side = navMode() === "side" ? sideTree() : null;
+    mTop($("#top")); mSide($("#side")); mNav($("#nav")); mNow($("#now"), ranked()); mSched($("#sched"), scheduleItems()); renderList(); renderInsp(); renderBottom(); renderIsland(); renderShell();
     updateCountdowns();
     // keep the list and the details where they were scrolled to (a different list starts at the top)
     if (same && ltop) { const n = $("#list .pb"); if (n) n.scrollTop = ltop; }
@@ -1134,6 +1387,13 @@
     const done = live.filter((it) => it.status === "done");
     if (done.length) cmd(`Delete all done items (${done.length})`, "", () => bulkEdit(done, { deleted: true }, "delete", `Deleted ${done.length} done items`), "clear completed clean up purge remove finished archive", true);
     cmd("Appearance…", MOD + "+.", openLab, "theme style look colors settings");
+    if (navMode() === "side") {
+      const shown = ["dock", "over"].includes(sideState());
+      cmd(shown ? "Hide the sidebar" : "Show the sidebar", MOD + "+\\", () => sideToggle(), "folders navigation nav bar panel tree explorer files");
+      cmd(`Move the sidebar to the ${sideAt() === "left" ? "right" : "left"}`, "", sideSwap, "side switch swap flip folders navigation nav bar panel", true);
+      if (sideP.w) cmd("Put the sidebar back to its usual width", "", () => { sideP.w = 0; sideSave(); sideApply(); }, "reset size resize narrow wide folders", true);
+      cmd("Use the view keys along the top instead", "", () => setNavMode("top"), "sidebar tabs key row classic old layout navigation nav bar folders", true);
+    } else cmd("Use the sidebar (folders)", MOD + "+\\", () => setNavMode("side"), "folders navigation nav bar panel tree explorer files new layout");
     cmd("Larger text", MOD + "+=", () => CA.lab.zoom(1), "zoom bigger font size");
     cmd("Smaller text", MOD + "+−", () => CA.lab.zoom(-1), "zoom font size");
     cmd("Switch light / night", "", () => CA.lab.toggleNight(), "dark mode theme");
@@ -1171,7 +1431,7 @@
     if ((CA.ui.tabs || []).length) out.push({ sec: "Views", label: "Put the view keys back in order", hint: "", sub: "", run: () => setTabs(TAB_IDS, "View keys back in their first order"), kw: "reset tab order reorder default", more: true });
     S.courses.forEach((c) => {
       const cc = (label, run, kw) => out.push({ sec: "Classes", label, sub: c.title, hint: "", run, kw: "course class " + c.tag + " " + kw, more: true });
-      if (c.included) out.push({ sec: "Classes", label: c.code + " " + c.title, hint: "", sub: c.tag, run: () => setQ("is:open course:" + c.tag.toLowerCase()), kw: "show items" });
+      if (c.included) out.push({ sec: "Classes", label: c.code + " " + c.title, hint: "", sub: c.tag, run: () => (S.side ? sideGo("c:" + c.id) : setQ("is:open course:" + c.tag.toLowerCase())), kw: "show items folder" });
       if (c.included) cc("New item in " + c.code + "…", () => openQuick(c.tag.toLowerCase() + " "), "add create homework task");
       cc("Edit " + c.code + "…", () => openCourse(c.id), "rename change name link website gradescope page");
       cc("Delete " + c.code + "…", () => openCourseDel(c.id), "remove trash erase duplicate");
@@ -1236,7 +1496,7 @@
   }
 
   function openHelp() {
-    const keys = [["Q", "quick add (" + MOD + "+Shift+Space system-wide in the app)"], [MOD + "+K  /", "search and commands"], ["1 – 9, 0, −", "views by their place along the top"], ["Hold · drag a view key", "reorder the views (" + (MAC ? "⌥⇧" : "Alt+Shift+") + "← → moves the current one)"], ["W  Shift+W", "new note · new checklist"], ["Shift+Q", "quick jot (Tab: item · jot · list)"], ["I  " + MOD + "+J", "ask your AI"], ["Esc", "close · clear filters"], [MAC ? "⌘[  ⌘]" : "Alt+←  Alt+→", "back / forward (also the mouse's side buttons)"],["J K ↑ ↓", "move selection"], ["Enter", "open details"],
+    const keys = [["Q", "quick add (" + MOD + "+Shift+Space system-wide in the app)"], [MOD + "+K  /", "search and commands"], ["1 – 9, 0, −", "views by their place in the list"], [MOD + "+\\", "show or hide the sidebar (↑ ↓ ← → Enter in its folders)"], ["Hold · drag a view key", "reorder the views (" + (MAC ? "⌥⇧" : "Alt+Shift+") + "arrows move the current one)"], ["W  Shift+W", "new note · new checklist"], ["Shift+Q", "quick jot (Tab: item · jot · list)"], ["I  " + MOD + "+J", "ask your AI"], ["Esc", "close · clear filters"], [MAC ? "⌘[  ⌘]" : "Alt+←  Alt+→", "back / forward (also the mouse's side buttons)"],["J K ↑ ↓", "move selection"], ["Enter", "open details"],
       ["X  Space", "toggle done"], ["F", "focus 25 on selection / Do first"], ["Shift+F", "focus setup"], ["S", "snooze"], ["N  Shift+N", "next / previous Do first"], ["[  ]", "calendar: previous / next week or month"], ["+", "priority up"], ["Del", "delete (undo)"], [MOD + "+Z", "undo"], [MOD + "+Shift+Z  " + MOD + "+Y", "redo"],
       [MOD + "+V", "paste a link onto the open item, or into a new one"], [MOD + "+R  F5", "refresh Canvas, Google, Gradescope and WeBWorK now"], [MOD + "+.", "appearance"], [MOD + "+=  " + MOD + "+−", "text size"], ["Hold " + ALT, "show every shortcut"], [MOD + "+P", "print the open note"], ["# ## - 1. [] > ```", "in a note: Markdown becomes formatting as you type"], ["Right-click · long-press", "radial menu (on a row: item actions)"], ["Swipe a row", "right: done · left: snooze (touch)"]];
     openOv("help", dialog("Keys & help", "Esc", `<div class="helpgrid">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join("")}</div>`));
@@ -2464,6 +2724,7 @@
     toggle: (el) => toggleDone(el.dataset.id, el), done: (el) => { if (S.overlay === "focusdone") closeOv(); toggleDone(el.dataset.id, el); },
     focus: (el) => startFocus(el.dataset.id, +el.dataset.min || 25), snooze: (el) => openSnooze(el.dataset.id), skip: () => skip(), back: () => skip(-1),
     del: (el) => del(el.dataset.id), quick: () => openQuick(), palette: () => openPalette(), help: () => openHelp(), lab: openLab,
+    sdGo: (el) => sideGo(el.dataset.node), sdFold: (el) => sideFold(el.dataset.node), sideToggle: () => sideToggle(), sideSwap,
     clearQ, rmTerm: (el) => { const t = E.parseFilter(S.q); t.splice(+el.dataset.i, 1); setQ(t.map((x) => x.raw).join(" ")); },
     toggleTerm: (el) => toggleTerm(el.dataset.t), closeInsp: () => { S.insp = false; renderAll(); }, closeOv,
     open: (el) => openLink(el.dataset.url),
@@ -2650,57 +2911,64 @@
   function moveTab(id, d) {
     const ids = tabs().map((v) => v.id), i = ids.indexOf(id);
     if (i < 0 || i + d < 0 || i + d >= ids.length) return CA.sound.nope();
+    if ($("#side").contains(document.activeElement)) S.sideFocus = "v:" + id;
     ids.splice(i + d, 0, ids.splice(i, 1)[0]); setTabs(ids); CA.sound.tick();
-    MO.after(() => { const b = $(`.nkeys .nv[data-v="${id}"]`); if (b) { MO.ack(b); b.scrollIntoView({ block: "nearest", inline: "nearest" }); } });
+    MO.after(() => { const b = $(`:is(.nkeys .nv, .sd-sort .sd-row)[data-v="${id}"]`); if (b) { MO.ack(b); b.scrollIntoView({ block: "nearest", inline: "nearest" }); } });
   }
-  // Hold a view key and drag it along the strip to put it somewhere else; the others make room. A mouse lifts it on a
-  // drag where the strip fits, and after a quarter-second hold where it scrolls (a quick drag pans it); touch lifts it
-  // with a long-press. Esc puts it back. A press let go where it started is still a click.
+  // Hold a view key and drag it along the strip (or a row up and down the sidebar's Views) to put it somewhere else;
+  // the others make room. A mouse lifts it on a drag where the strip fits or in the sidebar, and after a quarter-second
+  // hold where the strip scrolls (a quick drag pans it); touch lifts it with a long-press. Esc puts it back. A press let
+  // go where it started is still a click.
   function bindTabSort() {
     let s = null;
-    const keysIn = (strip) => $$(".nv", strip);
+    const keysIn = (t) => $$(t.sel, t.strip);
     function lift() {
       if (!s || s.on) return;
       const r = s.key.getBoundingClientRect();
-      s.on = true; s.gx = s.x - r.left; S.sorting = true;
+      s.on = true; s.g = s.y ? s.py - r.top : s.x - r.left; S.sorting = true;
       s.strip.classList.add("sorting"); s.key.classList.add("lift");
       CA.sound.tick(); if (navigator.vibrate) navigator.vibrate(8);
     }
     // the lifted key under the pointer; it trades places with a neighbour once the pointer passes that one's middle
-    function follow(x) {
-      const strip = s.strip, a = strip.getBoundingClientRect();
-      if (hscroll(strip)) { if (x < a.left + 32) strip.scrollLeft -= 10; else if (x > a.right - 32) strip.scrollLeft += 10; stripEdges(strip); }
-      const others = keysIn(strip).filter((b) => b !== s.key);
-      const before = others.find((b) => { const r = b.getBoundingClientRect(); return x < r.left + r.width / 2; });
-      if ((before || null) !== s.key.nextElementSibling || (!before && strip.lastElementChild !== s.key)) {
-        const was = new Map(others.map((b) => [b, b.getBoundingClientRect().left]));
-        strip.insertBefore(s.key, before || null);
-        if (motion()) others.forEach((b) => { const dx = was.get(b) - b.getBoundingClientRect().left; if (dx) b.animate([{ translate: `${dx}px 0` }, { translate: "0 0" }], { duration: 160 * CA.motion.level + 1, easing: "cubic-bezier(.2, .9, .3, 1)" }); });
+    function follow(x, y) {
+      const strip = s.strip, p = s.y ? y : x, lo = s.y ? "top" : "left", size = s.y ? "height" : "width";
+      if (s.y) { const sc = strip.closest(".sd-tree"), a = sc.getBoundingClientRect(); if (y < a.top + 24) sc.scrollTop -= 8; else if (y > a.bottom - 24) sc.scrollTop += 8; }
+      else if (hscroll(strip)) { const a = strip.getBoundingClientRect(); if (x < a.left + 32) strip.scrollLeft -= 10; else if (x > a.right - 32) strip.scrollLeft += 10; stripEdges(strip); }
+      const others = keysIn(s).filter((b) => b !== s.key);
+      const to = others.find((b) => { const r = b.getBoundingClientRect(); return p < r[lo] + r[size] / 2; }) || s.end;
+      if (to !== s.key.nextElementSibling) {
+        const was = new Map(others.map((b) => [b, b.getBoundingClientRect()[lo]]));
+        strip.insertBefore(s.key, to);
+        if (motion()) others.forEach((b) => { const d = was.get(b) - b.getBoundingClientRect()[lo]; if (d) b.animate([{ translate: s.y ? `0 ${d}px` : `${d}px 0` }, { translate: "0 0" }], { duration: 160 * CA.motion.level + 1, easing: "cubic-bezier(.2, .9, .3, 1)" }); });
       }
       s.key.style.translate = "";
-      s.key.style.translate = `${Math.round(x - s.gx - s.key.getBoundingClientRect().left)}px 0`;
+      const off = Math.round(p - s.g - s.key.getBoundingClientRect()[lo]);
+      s.key.style.translate = s.y ? `0 ${off}px` : `${off}px 0`;
     }
     function finish(keep) {
       const t = s; s = null; S.sorting = false; clearTimeout(t.t);
       if (!t.on) return;
       t.strip.classList.remove("sorting"); t.key.classList.remove("lift"); t.key.style.translate = "";
-      const ids = keysIn(t.strip).map((b) => b.dataset.v), same = ids.join() === tabs().map((v) => v.id).join();
+      const ids = keysIn(t).map((b) => b.dataset.v), same = ids.join() === tabs().map((v) => v.id).join();
       if (!same || t.far) S.noClickUntil = Date.now() + 250; // the click that ends a drag isn't a press
       if (same) return; // back where it was: a slow or shaky click is still a click
+      if (t.y && $("#side").contains(document.activeElement)) S.sideFocus = t.key.dataset.node;
       if (keep) { setTabs(ids); CA.sound.tick(); } else renderAll();
     }
     document.addEventListener("pointerdown", (e) => {
       if (s || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
-      const key = e.target.closest && e.target.closest(".nkeys .nv"); if (!key) return;
-      s = { key, strip: key.parentElement, pid: e.pointerId, x: e.clientX, y: e.clientY, on: false, far: false, mouse: e.pointerType === "mouse" };
+      const key = e.target.closest && e.target.closest(".nkeys .nv, .sd-sort > .sd-row[data-v]"); if (!key || e.target.closest(".sd-tw[data-act]")) return;
+      const y = key.classList.contains("sd-row"), strip = key.parentElement;
+      // the sidebar's Done row isn't a view key: the keys stay above it
+      s = { key, strip, y, sel: y ? ".sd-row[data-v]" : ".nv", end: y ? $(".sd-row:not([data-v])", strip) : null, pid: e.pointerId, x: e.clientX, py: e.clientY, on: false, far: false, mouse: e.pointerType === "mouse" };
       s.t = setTimeout(lift, s.mouse ? 250 : 420);
     });
     document.addEventListener("pointermove", (e) => {
       if (!s || e.pointerId !== s.pid) return;
-      const d = Math.hypot(e.clientX - s.x, e.clientY - s.y);
-      if (!s.on) { if (d <= 8) return; if (s.mouse && !hscroll(s.strip)) lift(); else { clearTimeout(s.t); s = null; return; } }
+      const d = Math.hypot(e.clientX - s.x, e.clientY - s.py);
+      if (!s.on) { if (d <= 8) return; if (s.mouse && (s.y || !hscroll(s.strip))) lift(); else { clearTimeout(s.t); s = null; return; } }
       e.preventDefault(); s.far = s.far || d > 12;
-      follow(e.clientX);
+      follow(e.clientX, e.clientY);
     });
     document.addEventListener("pointerup", (e) => { if (s && e.pointerId === s.pid) finish(true); });
     document.addEventListener("pointercancel", (e) => { if (s && e.pointerId === s.pid) finish(false); });
@@ -2711,6 +2979,7 @@
   function bind() {
     bindStrips();
     bindTabSort();
+    bindSide();
     document.addEventListener("click", (e) => {
       if (Date.now() < S.noClickUntil) { e.preventDefault(); return; } // a swipe or long-press just ended
       const radial = $("#radial"); if (!radial.hidden && !e.target.closest("#radial")) closeRadial();
@@ -2724,7 +2993,7 @@
     document.addEventListener("contextmenu", (e) => {
       if (S.sorting) return e.preventDefault();
       const content = $("#content"); if (!content.contains(e.target) || e.target.closest("input, textarea, select")) return;
-      e.preventDefault(); const cr = $("#layer").getBoundingClientRect(), row =e.target.closest(".row, .un-row, .wi, .ag, .ncard"), ser = e.target.closest("[data-ser]");
+      e.preventDefault(); const cr = $("#layer").getBoundingClientRect(), row = e.target.closest(".row, .un-row, .wi, .ag, .ncard, .sd-row[data-id]"), ser = e.target.closest("[data-ser]");
       openRadial(e.clientX - cr.left, e.clientY - cr.top, row ? find(row.dataset.id) : null, ser && ser.dataset.ser);
     });
     // touch: long-press opens the radial menu (iOS fires no contextmenu); swiping a row right marks it done, left snoozes it
@@ -2732,7 +3001,7 @@
     const swallow = () => { S.noClickUntil = Date.now() + 450; };
     const lpOff = () => { if (lp) { lp.remove(); lp = null; } };
     document.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" || !e.isPrimary || !$("#content").contains(e.target) || e.target.closest("input, textarea, select, [contenteditable], .nkeys")) return;
+      if (e.pointerType === "mouse" || !e.isPrimary || !$("#content").contains(e.target) || e.target.closest("input, textarea, select, [contenteditable], .nkeys, .sd-sort")) return;
       const row = e.target.closest("#list .row.mrow"), it = row && find(row.dataset.id);
       const ser = e.target.closest("[data-ser]");
       press = { x: e.clientX, y: e.clientY, it, ser: ser && ser.dataset.ser, row: it && !E.SCHEDULED(it.kind) ? row : null, dx: 0 };
@@ -2822,8 +3091,9 @@
     if (t.closest && t.closest("#lab")) { if (k === "Escape") CA.lab.close(); return; }
     // a held Alt repeats its keydown; rebuilding the tips each time would restart their fade-in from nothing
     if (k === "Alt") { e.preventDefault(); if (!e.repeat) showTips(); return; }
-    if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && !inField && !S.overlay && (k === "ArrowLeft" || k === "ArrowRight")) {
-      e.preventDefault(); hideTips(); return moveTab(S.view, k === "ArrowLeft" ? -1 : 1);
+    if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && !inField && !S.overlay && /^Arrow(Left|Right|Up|Down)$/.test(k)) {
+      const row = t.closest && t.closest(".sd-sort .sd-row[data-v]"); // the focused row in the sidebar's Views, else your view
+      e.preventDefault(); hideTips(); return moveTab(row ? row.dataset.v : S.view, k === "ArrowLeft" || k === "ArrowUp" ? -1 : 1);
     }
     if (e.altKey && !e.ctrlKey && !e.metaKey) {
       // match the physical key: Option+letter on a Mac types a symbol (Option+Q is “œ”)
@@ -2848,6 +3118,7 @@
     }
     if (mod && k.toLowerCase() === "k") { e.preventDefault(); mirror("k"); return openPalette(); }
     if (mod && k === ".") { e.preventDefault(); return CA.lab.toggle(); }
+    if (mod && (k === "\\" || e.code === "Backslash") && !e.shiftKey && !e.altKey && !S.overlay) { e.preventDefault(); return sideToggle(); }
     if (mod && e.shiftKey && k === " ") { e.preventDefault(); return openQuick(); }
     if (mod && !inField && (k.toLowerCase() === "y" || (k.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); return doRedo(); }
     if (mod && k.toLowerCase() === "z" && !inField) { e.preventDefault(); return doUndo(); }
@@ -2930,6 +3201,7 @@
       if (S.overlay === "takeover") { refuse($("#ov .takeover .big")); return toast("Answer the takeover first"); }
       return closeOv();
     }
+    if (S.sideOver) return sideToggle(false);
     const t = e.target;
     if (/INPUT|TEXTAREA/.test(t.tagName)) { if (t.value) { t.value = ""; t.dispatchEvent(new Event("input", { bubbles: true })); } else t.blur(); return; }
     if (S.insp) { S.insp = false; return renderAll(); }

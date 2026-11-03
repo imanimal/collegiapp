@@ -9,7 +9,7 @@ Collegiapp keeps your list and notes the same on your computers, your phone and 
 
 - **Every Item:** tasks, classes, events, exams, notes and jots, with their done state, snoozes, edits and deletions.
 - **Courses:** each course with its color, whether it's included, its title, names and links, and deleting or merging one.
-- **The look:** the Appearance drawer's theme, the Day and Night themes and when to switch, imported themes, shortcut hints, motion, sound, density, screen glass and scanlines, the default focus level, and the order of the view keys along the top (`look.tabs`).
+- **The look:** the Appearance drawer's theme, the Day and Night themes and when to switch, imported themes, shortcut hints, motion, sound, density, screen glass and scanlines, the default focus level, the order of the views (`look.tabs`), and whether you get around by the sidebar or the key row and which side the sidebar is on (`look.nav`, `look.side`). The sidebar's width, whether it's hidden and which folders are open stay on each device.
 - **Calendar feed links:** the Canvas calendar feed and the Google secret iCal address. A device that gets a new link reads it at once; disconnecting one disconnects it everywhere (the items stay).
 - **Class picks:** which Google Calendar series are lectures and sections, their courses, and the hidden ones.
 - **The tray's focus level.**

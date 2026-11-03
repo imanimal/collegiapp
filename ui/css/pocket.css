@@ -131,8 +131,11 @@
    Widths are the screen's (@container screen), not the window's, so an open drawer counts.
    ≥1100 px: two columns, Do first over Up next on the left, the list on the right.
    761–1099: Do first spans the top; Up next and the list share the row below.
-   ≤760: one scrolling column with a sticky key row and a key deck pinned to the bottom (an iPhone layout). */
-.content {
+   ≤760: one scrolling column with a sticky key row and a key deck pinned to the bottom (an iPhone layout).
+   The page (#page) is laid out in the main area, beside the sidebar when it's docked, so these widths are the room
+   the page has. The dot grid is the whole content's, under the sidebar too. */
+.content { background: radial-gradient(color-mix(in srgb, var(--text) 12%, transparent) 1px, transparent 1.5px) 0 0 / 16px 16px, var(--bg); }
+.page {
   grid-template:
     "top top" auto
     "nav nav" auto
@@ -142,7 +145,6 @@
   gap: var(--gap) calc(var(--gap) * 1.15);
   /* very wide screens keep a readable measure; the dot grid still fills the window */
   padding: max(.8em, env(safe-area-inset-top)) max(1.1em, env(safe-area-inset-right), (100% - 116em) / 2) max(.7em, env(safe-area-inset-bottom)) max(1.1em, env(safe-area-inset-left), (100% - 116em) / 2);
-  background: radial-gradient(color-mix(in srgb, var(--text) 12%, transparent) 1px, transparent 1.5px) 0 0 / 16px 16px, var(--bg);
 }
 /* Windows (backdrop.rs, app.js sets html[data-backdrop] and --grid*): while only the desktop is behind the window, the
    grid moves from .content to .screen, outside the C2 warp, at the Pocket wallpaper's cell and phase, so the dots carry
@@ -152,7 +154,7 @@ html[data-backdrop="desktop"] .content { background: none; }
 html[data-backdrop="desktop"] .screen {
   background: radial-gradient(circle, color-mix(in srgb, var(--text) 12%, var(--bg)) calc(var(--grid-r) - .4px), transparent calc(var(--grid-r) + .4px)) var(--grid-x) var(--grid-y) / var(--grid) var(--grid), var(--bg);
 }
-.content[data-wide="1"] { grid-template: "top" auto "nav" auto "list" minmax(0, 1fr) "bottom" auto / minmax(0, 1fr); }
+.content[data-wide="1"] .page { grid-template: "top" auto "nav" auto "list" minmax(0, 1fr) "bottom" auto / minmax(0, 1fr); }
 .content[data-wide="1"] :is(#now, #sched) { display: none; }
 #now .panel { height: auto; }
 
@@ -206,6 +208,9 @@ html[data-backdrop="desktop"] .screen {
    top-left corner (tauri.macos.conf.json), so the top bar starts after them. */
 html[data-frame] .mtop { -webkit-user-select: none; user-select: none; cursor: default; }
 html[data-frame="mac"] .mtop { padding-left: 66px; }
+/* with the sidebar docked on the left, the traffic lights sit over its top instead, and its module starts below them */
+html[data-frame="mac"] .content[data-sd="dock"][data-side="left"] .mtop { padding-left: 0; }
+html[data-frame="mac"] .content[data-sd="dock"][data-side="left"] .side { padding-top: 36px; }
 .winkeys {
   display: flex; gap: .3em; flex: none; padding: .24em; margin-left: .15em; border-radius: 10px;
   background: color-mix(in srgb, var(--text) 7%, var(--bg)); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .2), inset 0 0 0 1px var(--line);
@@ -263,6 +268,88 @@ html[data-frame="mac"] .mtop { padding-left: 66px; }
 .nkeys .nv { -webkit-touch-callout: none; }
 .nkeys.sorting, .nkeys.sorting .nv { cursor: grabbing; }
 .nkeys .nv.lift { position: relative; z-index: 2; --press: -1; --ring: var(--accent); --lip: var(--accent); transition: none; }
+
+/* ───────────── sidebar: every place as folders (app.js mSide, docs/NAVIGATION.md) ─────────────
+   #content's data-sd says where it is: "dock" beside the page (a screen 900 px or wider), "over" a drawer on a
+   narrower one, "off" hidden, "none" when the view keys run along the top instead. data-side is its edge and --side-w
+   its width (dragged at .sd-grip, kept on this device). It's an F3 module like the others: the graphite band, then
+   the tree. The place you're in is the graphite key, like a latched program key. */
+.side { flex: none; width: var(--side-w, 17em); z-index: 2; display: flex; flex-direction: column; }
+.side > .panel { flex: 1; height: auto; }
+.content[data-side="left"] .side { padding: max(.8em, env(safe-area-inset-top)) 0 max(.7em, env(safe-area-inset-bottom)) max(1.1em, env(safe-area-inset-left)); }
+.content[data-side="right"] .side { padding: max(.8em, env(safe-area-inset-top)) max(1.1em, env(safe-area-inset-right)) max(.7em, env(safe-area-inset-bottom)) 0; }
+.sd-tree { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: .45em .45em .9em; }
+.sd-row {
+  position: relative; display: flex; align-items: center; gap: .5em; min-height: 2.15em; padding: .2em .55em .2em calc(.25em + var(--lvl, 0) * 1.05em);
+  border-radius: 8px; color: var(--text-2); font-size: .92em; white-space: nowrap; cursor: pointer; outline: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+}
+.sd-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sd-row .i { color: var(--text-3); }
+.sd-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sd-row.on { background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: 0 2px 0 #000; }
+.sd-row.on .i { color: var(--accent); }
+:root[data-scheme="dark"] .sd-row.on { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, #000), 0 2px 0 #000; }
+.sd-row.done .sd-l { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--line); }
+.sd-row.more { color: var(--text-3); }
+.sd-row.more .sd-l::after { content: " ›"; }
+/* a section: the label printed on the module, the way the bands are; it only folds */
+.sd-sec { margin-top: .75em; min-height: 2em; padding-left: .25em; color: var(--text-3); font-size: .72em; font-weight: 700; text-transform: uppercase; letter-spacing: .11em; }
+.sd-tree > .sd-sec:first-child { margin-top: 0; }
+/* the fold arrow: a 9×9 pixel triangle that turns a quarter when the folder is open */
+.sd-tw { flex: none; width: 1.1em; display: grid; place-items: center; align-self: stretch; }
+.sd-tw .i { width: .78em; height: .78em; width: round(nearest, .78em, 9px); height: round(nearest, .78em, 9px); transition: rotate calc(var(--m) * 140ms + 1ms) var(--ease); }
+[aria-expanded="true"] > .sd-tw .i { rotate: 90deg; }
+.sd-dot { flex: none; width: .62em; height: .62em; margin-inline: .24em; border-radius: 50%; background: var(--kc, var(--text-3)); }
+.sd-n { flex: none; font: 700 .78em/1 var(--font-mono); padding: .24em .42em; border-radius: 5px; background: var(--surface-2); color: var(--text-2); }
+.sd-row.on .sd-n { background: var(--accent); color: var(--on-accent); }
+.sd-d { flex: none; font: .78em/1 var(--font-mono); color: var(--text-3); }
+.sd-d.late { color: var(--bad); font-weight: 700; }
+.sd-row.on .sd-d { color: inherit; }
+.sd-pin { flex: none; display: inline-flex; }
+.sd-pin .i { width: .78em; height: .78em; width: round(nearest, .78em, 9px); height: round(nearest, .78em, 9px); color: var(--accent); }
+.sd-add { all: unset; box-sizing: border-box; flex: none; margin-left: auto; width: 1.9em; height: 1.9em; display: grid; place-items: center; border-radius: 6px; color: var(--text-3); cursor: pointer; font-size: 1.25em; }
+.sd-add:focus-visible { outline: 2px solid var(--accent); }
+.sd-row kbd { flex: none; min-width: 1.5em; text-align: center; font: .78em/1 var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: .2em .4em; color: var(--text-3); }
+.sd-row.on kbd { color: inherit; border-color: rgba(255, 255, 255, .25); }
+.screen:not([data-guide="g1"]) .sd-row kbd { display: none; }
+.sd-foot { flex: none; display: flex; align-items: center; gap: .15em; padding: .35em .45em; box-shadow: inset 0 1px 0 var(--line); }
+/* a Views row lifted to move (app.js bindTabSort): it rides above the others with an accent rim while they slide aside */
+.sd-sort.sorting, .sd-sort.sorting .sd-row { cursor: grabbing; }
+.sd-row.lift { z-index: 2; background: var(--surface); color: var(--text); box-shadow: 0 0 0 1.5px var(--accent), 0 6px 14px rgba(0, 0, 0, .18); }
+/* the edge: a grab band in the gap beside the page; an accent line shows while it's pointed at, focused or dragged */
+.sd-grip { position: absolute; top: 0; bottom: 0; width: 12px; cursor: col-resize; touch-action: none; outline: none; }
+.content[data-side="left"] .sd-grip { right: calc(-.55em - 6px); }
+.content[data-side="right"] .sd-grip { left: calc(-.55em - 6px); }
+.sd-grip::after { content: ""; position: absolute; inset: 22% 5px; border-radius: 2px; background: var(--accent); opacity: 0; transition: opacity calc(var(--m) * 120ms + 1ms); }
+.sd-grip:focus-visible::after, .content.sd-sizing .sd-grip::after { opacity: 1; }
+.content:not([data-sd="dock"]) .sd-grip { display: none; }
+.content.sd-sizing { cursor: col-resize; -webkit-user-select: none; user-select: none; }
+.content.sd-shut .side > .panel { opacity: .45; }
+/* a narrow screen: the sidebar is a drawer over the page, from its edge, over a scrim */
+.content[data-sd="over"] .side { position: absolute; top: 0; bottom: 0; z-index: 9; width: min(var(--side-w, 17em), calc(100% - 3.5em)); animation: sideInL calc(var(--m) * 220ms + 1ms) var(--ease); }
+.content[data-sd="over"][data-side="left"] .side { left: 0; padding: max(.6em, env(safe-area-inset-top)) 0 max(.6em, env(safe-area-inset-bottom)) max(.6em, env(safe-area-inset-left)); }
+.content[data-sd="over"][data-side="right"] .side { right: 0; padding: max(.6em, env(safe-area-inset-top)) max(.6em, env(safe-area-inset-right)) max(.6em, env(safe-area-inset-bottom)) 0; animation-name: sideInR; }
+.content[data-sd="over"] .side > .panel { box-shadow: var(--drop); }
+.sd-scrim { position: absolute; inset: 0; z-index: 8; background: var(--scrim); animation: scrimIn calc(var(--m) * 200ms + 1ms) ease-out; }
+@keyframes sideInL { from { opacity: 0; translate: -1.5em 0; } }
+@keyframes sideInR { from { opacity: 0; translate: 1.5em 0; } }
+
+/* ───────────── path bar: where you are, in place of the key row ─────────────
+   The sidebar's key while it's hidden, then the path, every step but the last a way back up. */
+.pathbar { display: flex; align-items: center; gap: .6em; min-height: 2.35em; min-width: 0; }
+.pb-path { display: flex; align-items: center; gap: .25em; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font-size: .92em; }
+.pb-s, .pb-cur { flex: 0 1 auto; min-width: 1.5em; overflow: hidden; text-overflow: ellipsis; padding: .3em .4em; border-radius: 6px; }
+.pb-b { all: unset; box-sizing: border-box; flex: 0 1 auto; min-width: 1.5em; overflow: hidden; text-overflow: ellipsis; padding: .3em .4em; border-radius: 6px; color: var(--text-3); font-weight: 600; cursor: pointer; }
+.pb-b:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pb-s { color: var(--text-3); }
+.pb-sep { flex: none; color: var(--text-3); opacity: .6; font-weight: 700; }
+.pb-cur { flex-shrink: 0; max-width: 60%; display: inline-flex; align-items: center; gap: .45em; color: var(--text); font-weight: 700; padding-inline: .2em; }
+.pb-cur .i { color: var(--accent); }
+.pb-cur .sd-dot { margin-inline: .1em; }
+.pb-f { flex: none; font-size: .8em; padding: .25em .6em; border-radius: 99px; background: var(--accent-soft); color: var(--text); }
+.sd-show { flex: none; }
+@container (max-width: 30em) { .sd-show .bl { display: none; } }
 
 /* ───────────── shared item vocabulary ───────────── */
 .meta-row { display: flex; align-items: center; gap: .55em; flex-wrap: wrap; font-size: .86em; color: var(--text-2); }
@@ -958,7 +1045,7 @@ html[data-motion="0"] .dv-ev.live .dv-et::before { animation: none; }
 /* boot (fx.js powerOn, as the static clears): the modules settle in through the snow one after another, then their LCDs
    switch on; it all fits in fx.js's BOOT (800 ms) */
 #top { --ri: 0; } #nav { --ri: 1; } #now { --ri: 2; } #list { --ri: 3; } #sched { --ri: 4; } #bottom { --ri: 5; }
-.screen.booting .content > .region { animation: modIn calc(var(--m) * 340ms + 1ms) var(--ease-back) backwards; animation-delay: calc(var(--m) * var(--ri, 0) * 50ms); }
+.screen.booting :is(.page > .region, .side) { animation: modIn calc(var(--m) * 340ms + 1ms) var(--ease-back) backwards; animation-delay: calc(var(--m) * var(--ri, 0) * 50ms); }
 @keyframes modIn { from { opacity: 0; transform: translateY(.8em) scale(.985); } }
 .screen.booting .display > *, .screen.booting .logo { animation: lcdOn calc(var(--m) * 380ms + 1ms) steps(1, end) backwards; animation-delay: calc(var(--m) * (var(--ri, 0) * 50ms + 150ms)); }
 .screen.booting .timeline .blk { animation: pxWipe calc(var(--m) * 320ms + 1ms) steps(8, end) calc(var(--m) * 440ms) backwards; }
@@ -1286,6 +1373,10 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
   .bset-b8 .btn.ghost:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
   .search:hover { color: var(--text-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 28%, var(--line)); }
   .nv:not(.on):hover { background: var(--surface-2); color: var(--text); }
+  .sd-row:not(.on, .sd-sec, .lift):hover { background: var(--surface-2); color: var(--text); }
+  .sd-sec:hover, .sd-tw[data-act]:hover .i { color: var(--text); }
+  .sd-add:hover, .pb-b:hover { background: var(--surface-2); color: var(--text); }
+  .sd-grip:hover::after { opacity: 1; }
   .chip:hover { border-color: color-mix(in srgb, var(--text) 35%, var(--line)); color: var(--text); }
   .row:not(.sel):hover, .ag:hover, .live:hover { background: var(--surface-2); }
   .mrow button.chk:hover { border-color: var(--accent); color: var(--accent); }
@@ -1311,7 +1402,7 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
    Widths query the screen container; heights query the window (the screen is always full height). */
 /* mid widths: Do first spans the top, Up next and the list share the row below; details are a drawer */
 @container screen (min-width: 761px) and (max-width: 1099px) {
-  .content { grid-template: "top top" auto "nav nav" auto "now now" auto "sched list" minmax(0, 1fr) "bottom bottom" auto / minmax(0, 1fr) minmax(0, 1.35fr); }
+  .page { grid-template: "top top" auto "nav nav" auto "now now" auto "sched list" minmax(0, 1fr) "bottom bottom" auto / minmax(0, 1fr) minmax(0, 1.35fr); }
   .content:not([data-wide="1"]) .insp.float { grid-row: now-start / list-end; grid-column: 1 / -1; left: auto; width: min(28em, 100%); box-shadow: var(--drop); border-radius: var(--radius); animation-name: drawerIn; }
   .content:not([data-wide="1"]) .insp.float.gone { animation-name: drawerOut; }
 }
@@ -1319,14 +1410,14 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
    over Up next on the left and the list keeps the full height on the right */
 @media (max-height: 960px) {
   @container screen (min-width: 761px) and (max-width: 1099px) {
-    .content { grid-template: "top top" auto "nav nav" auto "now list" auto "sched list" minmax(0, 1fr) "bottom bottom" auto / minmax(0, 1fr) minmax(0, 1.25fr); }
+    .page { grid-template: "top top" auto "nav nav" auto "now list" auto "sched list" minmax(0, 1fr) "bottom bottom" auto / minmax(0, 1fr) minmax(0, 1.25fr); }
   }
 }
 /* short windows (1366×650, split screens): tighter type and spacing, keys go single-line */
 @media (max-height: 780px) {
   .content, .layer { --fs: clamp(calc(var(--fs0) * .9), calc(var(--fs0) * .72 + .27vw), calc(var(--fs0) * 1.08)); }
   @container screen (min-width: 761px) {
-    .content { row-gap: calc(var(--gap) * .7); }
+    .page { row-gap: calc(var(--gap) * .7); }
     .deck { padding-block: .4em .35em; }
     .deck .btn { padding-block: .45em .42em; }
     .coach { display: none; }
@@ -1348,11 +1439,10 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
   .screen::before { content: ""; position: absolute; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 7; pointer-events: none; }
 }
 @container screen (max-width: 760px) {
-  .content {
+  .page {
     display: flex; flex-direction: column; gap: .8em; padding: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
-    background-attachment: local;
   }
-  .content > .region { flex: none; margin-inline: max(.8em, env(safe-area-inset-left)) max(.8em, env(safe-area-inset-right)); }
+  .page > .region { flex: none; margin-inline: max(.8em, env(safe-area-inset-left)) max(.8em, env(safe-area-inset-right)); }
   #top { padding-top: max(.6em, env(safe-area-inset-top)); }
   #nav {
     position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; margin-inline: 0 !important;
@@ -1427,6 +1517,12 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
 /* touch screens: 44 px targets, no hover hints, no keyboard legends, 16 px+ inputs so iOS never zooms */
 @media (pointer: coarse) {
   .bset-b8 .btn, .nv, .search, .fpill { min-height: 44px; }
+  .sd-row { min-height: 44px; }
+  .sd-sec { min-height: 40px; }
+  .sd-tw { width: 1.6em; }
+  .sd-grip { width: 22px; }
+  .content[data-side="left"] .sd-grip { right: calc(-.55em - 11px); }
+  .content[data-side="right"] .sd-grip { left: calc(-.55em - 11px); }
   .chip { min-height: 36px; padding-inline: .9em; }
   .seg .chip { min-height: 34px; }
   .md-n { min-height: 34px; }
