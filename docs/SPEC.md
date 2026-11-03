@@ -114,7 +114,8 @@ Only actionable kinds are ranked; classes, events and tickets feed **Up Next** i
 
 - **Protected processes are never killed** (system processes, Collegiapp, terminals, editors, Firefox itself).
 - **Site blocking.** The planned Collegiapp Firefox extension blocks per session and needs no admin rights. The alternative is Firefox enterprise `policies.json` `WebsiteFilter`, which needs admin and is persistent, so it's opt-in.
-- `F` = 25 min on the Do First item at your default level; `Shift+F` opens setup (15/25/50/90 min, level, blocklist preview). Finishing offers "mark done" or "keep going +25".
+- `F` = 25 min on the Do First item at your default level; `Shift+F` opens setup (15/25/50/90 min, level, blocklist preview). Finishing offers "mark done", a break (5 min, 15 after every fourth completed session today) or "keep going +25".
+- **Breaks** (`B`, or "Break 5/15 min" in search) are a timer between sessions, kept in the UI: nothing is closed, they end any time, count no focus minutes and show in the top bar. A Soft session ends straight into one; a Hard or Lockdown session keeps its time, so its break comes after. When one runs out, "Break over" offers Focus 25 on the item you were on (or Do First), with a system notification if the window is not in front (`break_over`).
 
 ## 7. Integrations
 

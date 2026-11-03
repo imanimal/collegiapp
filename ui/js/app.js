@@ -82,7 +82,7 @@
   const LIVE = CA.store.live, CLOUD = !!CA.store.cloud, OWN = LIVE || CLOUD;
   const S = (CA.state = Object.assign(OWN ? CA.store.empty() : CA.sampleData(), {
     now: Date.now(), q: VIEWS[0].q, view: "now", lens: "list", sort: "score", cal: { mode: "day", at: null },
-    sel: null, insp: false, skip: 0, focus: null, overlay: null, islandOpen: false, update: null,
+    sel: null, insp: false, skip: 0, focus: null, brk: null, overlay: null, islandOpen: false, update: null,
     stats: OWN ? loadStats() : { streak: 4, focusMin: 85 }, alerted: {}, settings: null, feeds: null, blocklist: [],
     hist: [], redo: [], trash: null, animRows: true, coachI: 0, ticks: 0, listIds: [], flashId: null, refocus: null, palI: 0, palList: [], noClickUntil: 0,
   }));
@@ -115,17 +115,17 @@
   function dayKey(t) { const d = new Date(t); return d.getFullYear() * 1e4 + (d.getMonth() + 1) * 100 + d.getDate(); }
   function loadStats() {
     let st = null; try { st = JSON.parse(localStorage.getItem("ca.stats") || "null"); } catch (e) { st = null; }
-    st = Object.assign({ streak: 0, focusMin: 0, day: 0, last: 0 }, st); delete st.xp; // older saves still carry XP
+    st = Object.assign({ streak: 0, focusMin: 0, sessions: 0, day: 0, last: 0 }, st); delete st.xp; // older saves still carry XP
     const today = dayKey(Date.now()), yest = dayKey(Date.now() - DAY);
-    if (st.day !== today) { st.focusMin = 0; st.day = today; }
+    if (st.day !== today) { st.focusMin = 0; st.sessions = 0; st.day = today; }
     if (st.last !== today && st.last !== yest) st.streak = 0;
     return st;
   }
   function saveStats() { if (!OWN) return; try { localStorage.setItem("ca.stats", JSON.stringify(S.stats)); } catch (e) { /* storage off: stats reset next launch */ } }
-  function addFocusStats(min) {
+  function addFocusStats(min, completed) {
     const st = S.stats, today = dayKey(Date.now());
     if (OWN && st.last !== today) { st.streak = (st.last === dayKey(Date.now() - DAY) ? st.streak : 0) + 1; st.last = today; }
-    st.focusMin += min; saveStats();
+    st.focusMin += min; if (completed) st.sessions = (st.sessions || 0) + 1; saveStats();
   }
   const cById = (id) => S.courses.find((c) => c.id === id);
   const courseOf = (it) => (it && it.course ? cById(it.course) : null);
@@ -178,6 +178,7 @@
     plus: ".........|....#....|....#....|....#....|.#######.|....#....|....#....|....#....|.........",
     focus: "..#####..|.#.....#.|#..###..#|#.#...#.#|#.#.#.#.#|#.#...#.#|#..###..#|.#.....#.|..#####..",
     play: "..#......|..##.....|..###....|..####...|..#####..|..####...|..###....|..##.....|..#......",
+    pause: ".........|.##...##.|.##...##.|.##...##.|.##...##.|.##...##.|.##...##.|.##...##.|.........",
     check: ".........|........#|.......##|......##.|#....##..|##..##...|.####....|..##.....|.........",
     clock: "..#####..|.#..#..#.|#...#...#|#...#...#|#...###.#|#.......#|#.......#|.#.....#.|..#####..",
     next: ".#.....#.|.##....#.|.###...#.|.####..#.|.#####.#.|.####..#.|.###...#.|.##....#.|.#.....#.",
@@ -252,7 +253,7 @@
     classes: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 1 2-2h13", events: "M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7L12 3z",
     links: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1", all: "M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1",
     done: "M4 4h16v16H4zM8 12l3 3 5-6", search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4", plus: "M12 5v14M5 12h14",
-    focus: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", play: "M8 5l11 7-11 7V5z", check: "M5 12l5 5 9-10",
+    focus: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", play: "M8 5l11 7-11 7V5z", pause: "M9 5v14M15 5v14", check: "M5 12l5 5 9-10",
     clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", next: "M6 5l9 7-9 7V5zM18 5v14", prev: "M18 5l-9 7 9 7V5zM6 5v14", pin: "M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10zM12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z",
     go: "M5 12h14M13 6l6 6-6 6", ext: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5", lab: "M6 4v16M12 4v16M18 4v16M4 8h4M10 15h4M16 10h4",
     help: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3.5M12 17h.01", filter: "M4 5h16l-6 7v6l-4 2v-8L4 5z",
@@ -354,7 +355,8 @@
 
   function mTop(el) {
     const { wk, toFinals } = weekInfo(), d = new Date(S.now);
-    const f = S.focus ? `<button class="fpill" data-act="focusTop" title="Back to the focus screen">${ic("focus")}Focus · <span class="num" data-cd data-f="clock" data-t="${S.focus.end}">${cdText(S.focus.end - S.now)}</span></button>` : "";
+    const f = S.focus ? `<button class="fpill" data-act="focusTop" title="Back to the focus screen">${ic("focus")}Focus · <span class="num" data-cd data-f="clock" data-t="${S.focus.end}">${cdText(S.focus.end - S.now)}</span></button>`
+      : S.brk ? `<button class="fpill" data-act="brkShow" title="Back to the break screen">${ic("pause")}Break · <span class="num" data-cd data-f="clock" data-t="${S.brk.end}">${cdText(S.brk.end - S.now)}</span></button>` : "";
     el.innerHTML = `<div class="mtop">${LOGO}
       <div class="crumb"><span class="v"><span class="dl">${DNL[d.getDay()]}</span><span class="ds">${DNM[d.getDay()]}</span>, ${MNM[d.getMonth()]} ${d.getDate()}</span><span class="ctx">${esc(CA.quarter.name)} · Week ${wk} of 10 · Finals in ${toFinals} days</span></div>
       <button class="search" data-act="palette" data-hint="k" title="Search and commands (${MOD}+K)">${ic("search")}<span class="ph-t">Search items, classes, links, commands</span><kbd>${MOD} K</kbd></button>
@@ -1369,6 +1371,7 @@
   function presence() {
     const list = scheduleItems(), live = list.find((it) => it.kind === "class" && it.due <= S.now && it.end > S.now), next = list.find((it) => it.due > S.now && it.due - S.now < 12 * HR);
     if (S.focus) { const it = find(S.focus.id); return { label: "Focus · " + (it ? it.title : "session"), t: S.focus.end, p0: S.focus.start, p1: S.focus.end, short: "FOCUS" }; }
+    if (S.brk) return { label: "Break", t: S.brk.end, p0: S.brk.start, p1: S.brk.end, short: "BREAK" };
     if (live) { const c = courseOf(live); return { label: "In class · " + (c ? c.tag : "") + " " + live.title, t: live.end, p0: live.due, p1: live.end, short: c ? c.tag : "CLASS" }; }
     if (next) { const c = courseOf(next); return { label: (c ? c.tag + " " : "") + next.title, t: next.due, p0: next.due - HR, p1: next.due, short: c ? c.tag : kShort(next.kind), it: next, trip: tripTo(next) }; }
     const top = topItem(); return top ? { label: "Due · " + top.title, t: top.due || S.now, p0: S.now - HR, p1: top.due || S.now, short: "DUE" } : { label: "All clear", t: S.now, p0: 0, p1: 1, short: "OK" };
@@ -1651,6 +1654,8 @@
     cmd("Focus 50 min on Do first", "", () => topItem() && startFocus(topItem().id, 50), "start pomodoro timer study");
     cmd("Lockdown 90 min (kill games, block sites)", "", () => topItem() && startFocus(topItem().id, 90, "lockdown"), "focus block distraction");
     cmd("Focus setup…", "Shift+F", openFocusSetup, "pomodoro timer level block");
+    cmd("Break 5 min", "B", () => takeBreak(5), "pause rest pomodoro timer short");
+    cmd("Break 15 min", "", () => takeBreak(15), "pause rest pomodoro timer long");
     cmd("Clear filters", "Esc", clearQ, "reset show everything");
     if (LIVE) {
       const st = S.settings || {};
@@ -1785,7 +1790,7 @@
 
   function openHelp() {
     const keys = [["Q", "quick add (" + MOD + "+Shift+Space system-wide in the app)"], [MOD + "+K  /", "search and commands"], ["1 – 9, 0, −", "views by their place in the list"], [MOD + "+\\", "show or hide the sidebar (↑ ↓ ← → Enter in its folders)"], ["Hold · drag a view key", "reorder the views (" + (MAC ? "⌥⇧" : "Alt+Shift+") + "arrows move the current one)"], ["W  Shift+W", "new note · new checklist"], ["Shift+Q", "quick jot (Tab: item · jot · list)"], ["I  " + MOD + "+J", "ask your AI"], ["Esc", "close · clear filters"], [MAC ? "⌘[  ⌘]" : "Alt+←  Alt+→", "back / forward (also the mouse's side buttons)"],["J K ↑ ↓", "move selection"], ["Enter", "open details"],
-      ["X  Space", "toggle done"], ["F", "focus 25 on selection / Do first"], ["Shift+F", "focus setup"], ["S", "snooze"], ["N  Shift+N", "next / previous Do first"], ["[  ]", "calendar: previous / next week or month"], ["+", "priority up"], ["Del", "delete (undo)"], [MOD + "+Z", "undo"], [MOD + "+Shift+Z  " + MOD + "+Y", "redo"],
+      ["X  Space", "toggle done"], ["F", "focus 25 on selection / Do first"], ["Shift+F", "focus setup"], ["B", "break 5 min (ends a Soft focus first)"], ["S", "snooze"], ["N  Shift+N", "next / previous Do first"], ["[  ]", "calendar: previous / next week or month"], ["+", "priority up"], ["Del", "delete (undo)"], [MOD + "+Z", "undo"], [MOD + "+Shift+Z  " + MOD + "+Y", "redo"],
       [MOD + "+V", "paste a link onto the open item, or into a new one"], [MOD + "+R  F5", "refresh Canvas, Google, Gradescope and WeBWorK now"], [MOD + "+.", "appearance"], [MOD + "+=  " + MOD + "+−", "text size"], ["Hold " + ALT, "show every shortcut"], [MOD + "+P", "print the open note"], ["# ## - 1. [] > ```", "in a note: Markdown becomes formatting as you type"], ["Right-click · long-press", "radial menu (on a row: item actions)"], ["Swipe a row", "right: done · left: snooze (touch)"]];
     openOv("help", dialog("Keys & help", "Esc", `<div class="helpgrid">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join("")}</div>`));
   }
@@ -2330,6 +2335,7 @@
   function beginFocus(id, min, level, st) {
     const now = Date.now();
     S.focus = { id, start: st ? Date.parse(st.started_at) : now, end: st ? Date.parse(st.ends_at) : now + min * MIN, min, level, killed: 0 };
+    S.brk = null; // focusing ends a break
     const it = find(id); if (it && it.status !== "done") edit(it, { status: "doing" });
     CA.sound.ok(); showFocus(true); renderAll();
     CA.fx.osd("▶︎", "Play", $("#ov .focus")); // the tape starts
@@ -2337,7 +2343,7 @@
   // End a session: the Rust session first (a Hard one refuses without the phrase), then the screen.
   function endFocus(completed, phrase) {
     if (!LIVE || !S.focus) return finishFocus(completed);
-    CA.store.invoke("end_focus", { phrase: phrase || null }).then(() => finishFocus(completed)).catch((e) => toast(esc(String(e))));
+    CA.store.invoke("end_focus", { phrase: phrase || null }).then(() => finishFocus(completed)).catch((e) => { if (S.focus) S.focus.brk = 0; toast(esc(String(e))); });
   }
   function onFocusTick(st) {
     const f = S.focus; if (!f || !st || !st.active) return;
@@ -2353,7 +2359,7 @@
       <div class="display big${f.end - Date.now() <= MIN ? " hot" : ""}"><span class="d-lbl">Time left</span><span class="d-num fo-time num" data-cd data-f="clock" data-t="${f.end}"></span></div>
       <div class="fo-bar meter" id="foBar">${Array.from({ length: 24 }, (_, i) => `<i style="--i:${i}"></i>`).join("")}</div>
       <div class="fo-log" id="foLog"></div>
-      <div class="nb" style="justify-content:center"><button class="btn" data-act="foAdd">+5 min</button>${f.level !== "lockdown" ? `<button class="btn" data-act="foMin">Minimize to island<kbd>Esc</kbd></button>` : ""}<button class="btn primary" data-act="foDone">${ic("check")}Task done</button><button class="btn" data-act="foEnd">End early…</button>${LIVE ? "" : `<button class="btn ghost" data-act="foSkip">Demo: finish now</button>`}</div>
+      <div class="nb" style="justify-content:center"><button class="btn" data-act="foAdd">+5 min</button>${f.level !== "lockdown" ? `<button class="btn" data-act="foMin">Minimize to island<kbd>Esc</kbd></button>` : ""}<button class="btn primary" data-act="foDone">${ic("check")}Task done</button>${f.level === "soft" ? `<button class="btn" data-act="foBreak">${ic("pause")}Break<kbd>B</kbd></button>` : ""}<button class="btn" data-act="foEnd">End early…</button>${LIVE ? "" : `<button class="btn ghost" data-act="foSkip">Demo: finish now</button>`}</div>
       <div class="fo-exit" id="foExit" hidden><span class="dim">Type “${PHRASE}” to quit early:</span><input id="foPhrase" autocomplete="off" spellcheck="false" aria-label="Exit phrase"></div></div>`, "full");
     focusBar();
     if (fresh) MO.ack($("#ov .display.big"), "boot");
@@ -2376,17 +2382,18 @@
     step();
   }
   function focusBar() {
-    const f = S.focus, bar = $("#foBar"); if (!f || !bar) return;
+    const f = S.focus || S.brk, bar = $("#foBar"); if (!f || !bar) return;
     const p = Math.max(0, Math.min(1, (Date.now() - f.start) / (f.end - f.start))), n = Math.round(p * 24);
     $$("i", bar).forEach((x, i) => (x.className = i < n ? "on" : ""));
   }
   function finishFocus(completed) {
     const f = S.focus; if (!f) return;
     const mins = Math.max(1, Math.round((Math.min(Date.now(), f.end) - f.start) / MIN)), full = completed ? f.min : mins;
-    addFocusStats(full); S.focus = null;
-    const it = find(f.id);
+    addFocusStats(full, completed); S.focus = null;
+    if (f.brk) { toast(`+${full} min focused · ${S.stats.focusMin} today`); return startBreak(f.brk, f.id); } // Break on a Soft session
+    const it = find(f.id), open = it && it.status !== "done", long = completed && S.stats.sessions > 0 && S.stats.sessions % 4 === 0; // every fourth session earns a long one
     openOv("focusdone", `<div class="focus"><div class="fo-top">Session ${completed ? "complete" : "ended"}</div><div class="fo-time" id="foGain">+${full} min</div><div class="fo-task">${S.stats.focusMin} min focused today · ${S.stats.streak}-day streak</div>
-      <div class="nb" style="justify-content:center">${it && it.status !== "done" ? `<button class="btn primary" data-act="done" data-id="${it.id}">${ic("check")}Mark “${esc(it.title)}” done</button>` : ""}<button class="btn" data-act="focus" data-id="${f.id}" data-min="25">Keep going +25</button><button class="btn" data-act="closeOv">Close<kbd>Esc</kbd></button></div></div>`, "full");
+      <div class="nb" style="justify-content:center">${open ? `<button class="btn primary" data-act="done" data-id="${it.id}">${ic("check")}Mark “${esc(it.title)}” done</button>` : ""}<button class="btn${open ? "" : " primary"}" data-act="brk" data-id="${f.id}" data-min="${long ? 15 : 5}">${ic("pause")}${long ? "Long break" : "Break"} · ${long ? 15 : 5} min<kbd>B</kbd></button><button class="btn" data-act="focus" data-id="${f.id}" data-min="25">Keep going +25<kbd>F</kbd></button><button class="btn" data-act="closeOv">Close<kbd>Esc</kbd></button></div></div>`, "full");
     CA.sound.done(); renderAll();
     CA.fx.osd("■", "Stop", $("#ov .focus"));
     // the minutes count up on the LCD, then the pixels go
@@ -2399,6 +2406,47 @@
     const t = target(), pick = t && E.ACTIONABLE(t.kind) ? t : topItem(); // a selected class can't be focused on; fall back to Do First
     if (pick) { startFocus(pick.id, 25); return true; }
     return refuse(hinted("f"));
+  }
+
+  // A break is a timer between sessions, kept here and not in focus.rs: it closes nothing, ends any time and counts no
+  // focus minutes. A Soft session ends into one; Hard and Lockdown keep their time, so their break comes after.
+  const brkNext = (id) => { const it = id && find(id); return it && it.status !== "done" ? it : topItem(); };
+  function takeBreak(min) {
+    const f = S.focus;
+    if (S.brk && !f) { showBreak(false); return true; }
+    if (!f) { const t = target(); startBreak(min, t && E.ACTIONABLE(t.kind) ? t.id : null); return true; }
+    if (f.level === "soft" || Date.now() >= f.end) { f.brk = min; endFocus(Date.now() >= f.end); return true; }
+    toast(`${cap(f.level)} focus · your break comes when it ends at ${mTime(f.end)}`); return refuse($("#ov .display.big"));
+  }
+  function startBreak(min, id) {
+    closeOv();
+    const now = Date.now();
+    S.brk = { id: id || null, start: now, end: now + min * MIN, min };
+    CA.sound.ok(); showBreak(true); renderAll();
+    CA.fx.osd("❚❚", "Pause", $("#ov .focus")); // the tape pauses
+  }
+  function showBreak(fresh) {
+    const b = S.brk; if (!b) return;
+    const it = brkNext(b.id);
+    openOv("brk", `<div class="focus"><div class="fo-top">Break · ${b.min} min · ends ${mTime(b.end)}</div>
+      <div class="fo-task">Step away from the screen</div>
+      <div class="display big${b.end - Date.now() <= MIN ? " hot" : ""}"><span class="d-lbl">Break left</span><span class="d-num fo-time num" data-cd data-f="clock" data-t="${b.end}"></span></div>
+      <div class="fo-bar meter" id="foBar">${Array.from({ length: 24 }, (_, i) => `<i style="--i:${i}"></i>`).join("")}</div>
+      ${it ? `<div class="fo-top">Next · ${esc(it.title)}</div>` : ""}
+      <div class="nb" style="justify-content:center"><button class="btn" data-act="brkAdd">+5 min</button><button class="btn" data-act="brkMin">Minimize<kbd>Esc</kbd></button>${it ? `<button class="btn primary" data-act="focus" data-id="${it.id}" data-min="25">${ic("play")}Back to focus · 25<kbd>F</kbd></button>` : ""}<button class="btn" data-act="brkEnd">End break</button></div></div>`, "full");
+    focusBar();
+    if (fresh) MO.ack($("#ov .display.big"), "boot");
+  }
+  function finishBreak() {
+    const b = S.brk; if (!b) return;
+    S.brk = null;
+    const it = brkNext(b.id);
+    // over another dialog (a note you came back to early) it rings as a toast instead of taking the screen
+    if (S.overlay && S.overlay !== "brk") toast(`${ic("bell")}Break over${it ? " · next: " + esc(it.title) : ""}`, { ms: 12000, ring: true, actions: it ? [["Focus 25", () => startFocus(it.id, 25)]] : [] });
+    else openOv("brkdone", `<div class="focus"><div class="fo-top">Break over</div><div class="fo-task">${it ? esc(it.title) : "Nothing on Do first"}</div>
+      <div class="nb" style="justify-content:center">${it ? `<button class="btn primary" data-act="focus" data-id="${it.id}" data-min="25">${ic("play")}Focus 25<kbd>F</kbd></button>` : ""}<button class="btn" data-act="closeOv">Close<kbd>Esc</kbd></button></div></div>`, "full");
+    CA.sound.alarm(); renderAll();
+    if (LIVE) CA.store.invoke("break_over", { next: it ? it.title : null }).catch(() => {});
   }
 
   /* ─────────── interruptions ─────────── */
@@ -3074,7 +3122,11 @@
     }, foMin: () => { closeOv(); renderAll(); toast("Focus continues · the timer is in the island and the top bar"); },
     foDone: () => { const it = find(S.focus.id); if (it && it.status !== "done") { editStep(it, { status: "done" }, "done"); } focusDone(it); },
     foEnd: () => { if (S.focus.level === "soft") return endFocus(false); const x = $("#foExit"); x.hidden = false; $("#foPhrase").focus(); },
-    foSkip: () => { S.focus.end = Date.now(); finishFocus(true); },
+    foSkip: () => { S.focus.end = Date.now(); finishFocus(true); }, foBreak: () => takeBreak(5),
+    brk: (el) => startBreak(+el.dataset.min || 5, el.dataset.id), brkShow: () => showBreak(false),
+    brkAdd: () => { S.brk.end += 5 * MIN; S.brk.min += 5; showBreak(false); },
+    brkMin: () => { closeOv(); renderAll(); toast("Break continues · the timer is in the top bar"); },
+    brkEnd: () => { S.brk = null; closeOv(); renderAll(); },
     alertGo: () => { closeOv(); toast("Go. The island keeps the countdown."); CA.sound.ok(); },
     alertSkip: (el) => { $("#skipWhy").innerHTML = `<div class="actions sm" style="justify-content:center;margin-top:.5em"><span class="dim">Why?</span>${["sick", "watching recording", "exam prep", "other"].map((w) => `<button class="chip" data-act="skipWhy" data-w="${w}">${w}</button>`).join("")}</div>`; },
     skipWhy: (el) => { closeOv(); toast(`Skip logged · “${esc(el.dataset.w)}” · shows in your weekly review`); },
@@ -3438,6 +3490,12 @@
     if (S.overlay === "notetpl" && /^[1-9]$/.test(k)) { const tp = NT().TEMPLATES[+k - 1]; e.preventDefault(); if (tp) { closeOv(); newNote(tp); } return; }
     if (S.overlay === "trash" && /^[1-9]$/.test(k) && !inField && !mod) { const m = S.trash && S.trash.entries[+k - 1]; e.preventDefault(); return m && trashRestore([m.id]); }
     if (S.overlay === "fsetup" && k === "Enter") { e.preventDefault(); return ACTIONS.fsGo(); }
+    // B and F press the focus screens' keys: break, back to focus
+    if ((k === "b" || k === "f") && !inField && !mod && /^(focus|focusdone|brk|brkdone)$/.test(S.overlay || "")) {
+      const b = $(k === "b" ? '#ov :is([data-act="brk"], [data-act="foBreak"])' : '#ov [data-act="focus"]');
+      if (b) { e.preventDefault(); return b.click(); }
+      if (k === "b" && S.overlay === "focus") { e.preventDefault(); return takeBreak(5); }
+    }
     if (S.overlay === "pair" && k === "Enter" && t.tagName !== "BUTTON") { e.preventDefault(); return pairAnswer(true); }
     if (S.overlay === "feeds" && k === "Enter" && t.classList && t.classList.contains("feed-in")) { e.preventDefault(); return feedSave(); }
     if (S.overlay === "sync" && k === "Enter" && !e.shiftKey && t.tagName !== "TEXTAREA" && !(t.tagName === "BUTTON")) {
@@ -3467,6 +3525,7 @@
       case "x": case " ": e.preventDefault(); if (!tg) return refuse(hinted("x")); mirror("x"); return toggleDone(tg.id);
       case "f": e.preventDefault(); if (focusTop()) mirror("f"); return;
       case "F": e.preventDefault(); return openFocusSetup();
+      case "b": e.preventDefault(); return takeBreak(5);
       case "s": e.preventDefault(); if (!tg) return refuse(hinted("s")); mirror("s"); return openSnooze(tg.id);
       case "n": e.preventDefault(); if (skip()) mirror("n"); return;
       case "N": e.preventDefault(); if (skip(-1)) mirror("⇧N"); return;
@@ -3483,6 +3542,7 @@
     if (hideTips()) return;
     if (S.overlay) {
       if (S.overlay === "focus") { if (S.focus && S.focus.level !== "lockdown") { closeOv(); renderAll(); toast("Focus continues · the timer is in the island and the top bar"); } else { refuse($("#ov .display.big")); toast("Lockdown · Esc does nothing here"); } return; }
+      if (S.overlay === "brk") return ACTIONS.brkMin();
       if (S.overlay === "takeover") { refuse($("#ov .takeover .big")); return toast("Answer the takeover first"); }
       return closeOv();
     }
@@ -3501,9 +3561,10 @@
     updateCountdowns(); focusBar(); if (!LIVE) checkAlerts();
     const mn = Math.floor(S.now / MIN);
     if (mn !== minute) { if (minute) $$(".dv-now, .timeline .nowln").forEach((el) => MO.ack(el, "blip")); minute = mn; }
-    const fo = S.focus && S.overlay === "focus" && $("#ov .display.big");
-    if (fo && (S.focus.end - S.now <= MIN) !== fo.classList.contains("hot")) { fo.classList.toggle("hot"); if (fo.classList.contains("hot")) { MO.ack(fo, "boot"); CA.sound.beep(); } }
+    const run = S.overlay === "focus" ? S.focus : S.overlay === "brk" ? S.brk : null, fo = run && $("#ov .display.big");
+    if (fo && (run.end - S.now <= MIN) !== fo.classList.contains("hot")) { fo.classList.toggle("hot"); if (fo.classList.contains("hot")) { MO.ack(fo, "boot"); CA.sound.beep(); } }
     if (S.focus && S.now >= S.focus.end) endFocus(true);
+    if (S.brk && S.now >= S.brk.end) finishBreak();
     if (S.ticks % 8 === 0) { S.coachI++; const c = $("#coach"); if (c) c.innerHTML = "Tip: " + TIPS[S.coachI % TIPS.length]; }
     if (S.ticks % 30 === 0 && !busy() && !S.overlay) renderAll();
   }

@@ -687,6 +687,30 @@ pub fn focus_blocklist(state: State<'_, SharedState>) -> Vec<String> {
     effective_blocklist(lock(&state).data.settings.focus_blocklist.clone())
 }
 
+/// A break (a UI timer between focus sessions) ran out: a system notification naming what's
+/// next, unless the main window is already in front showing it.
+#[tauri::command]
+pub fn break_over(next: Option<String>, app: AppHandle) {
+    let in_front = app
+        .get_webview_window("main")
+        .and_then(|w| Some(w.is_visible().ok()? && w.is_focused().ok()?))
+        .unwrap_or(false);
+    if in_front {
+        return;
+    }
+    use tauri_plugin_notification::NotificationExt;
+    let body = match next.as_deref().filter(|n| !n.trim().is_empty()) {
+        Some(n) => format!("Next: {n}"),
+        None => "Time to get back to it.".into(),
+    };
+    let _ = app
+        .notification()
+        .builder()
+        .title("Break over")
+        .body(body)
+        .show();
+}
+
 // ---- ICS import ---------------------------------------------------------------------------
 
 /// This term's recurring series in an ICS export, for the "pick your classes" step.

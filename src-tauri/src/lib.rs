@@ -145,6 +145,7 @@ pub fn run() {
             commands::focus_state,
             commands::extend_focus,
             commands::focus_blocklist,
+            commands::break_over,
             commands::ics_series,
             commands::import_ics,
             commands::check_update,
