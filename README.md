@@ -54,10 +54,10 @@ From a release: on Windows, run the `-setup.exe` from the [latest release](https
 brew install --cask imanimal/tap/collegiapp
 ```
 
-While the repository is private, Homebrew and the in-app updater can't reach the release. With the GitHub CLI signed in (`gh auth login`), install the DMG yourself:
+Without Homebrew:
 
 ```bash
-gh release download -R imanimal/collegiapp -p Collegiapp_universal.dmg -D /tmp --clobber && hdiutil attach -nobrowse -mountpoint /tmp/capp /tmp/Collegiapp_universal.dmg && cp -R /tmp/capp/Collegiapp.app /Applications/ && hdiutil detach /tmp/capp && xattr -dr com.apple.quarantine /Applications/Collegiapp.app && open /Applications/Collegiapp.app
+curl -fsSL https://raw.githubusercontent.com/imanimal/homebrew-tap/main/install.sh | bash -s collegiapp
 ```
 
 On a new computer, choose **Sign in** in the top bar: your list, notes, look, calendar links and class picks come down ([SYNC.md](docs/SYNC.md)). Gradescope, WeBWorK and PocketCanvas connect on each computer from **Connect sources**.
