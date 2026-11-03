@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "collegiapp",
   "display_name": "Collegiapp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Search, read and write your Collegiapp notes and add tasks from a chat, while the app runs on this computer.",
   "long_description": "Claude reaches Collegiapp's bridge on 127.0.0.1:4747. Ask it to save something to your notes, add to a note, file a note under a class or turn a plan into tasks, and it lands in the app without opening it. The first call asks you in Collegiapp to allow the connection; text Claude replaces goes to the app's trash.",
   "author": { "name": "imanimal", "url": "https://github.com/imanimal" },
