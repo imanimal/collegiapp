@@ -258,6 +258,11 @@ html[data-frame="mac"] .mtop { padding-left: 66px; }
 .nv.on kbd { color: inherit; border-color: rgba(255, 255, 255, .25); }
 .nv.mod .lb::after { content: " · filtered"; font-weight: 400; opacity: .7; }
 .screen:not([data-guide="g1"]) .nv kbd { display: none; }
+/* a view key lifted to move (app.js bindTabSort): it rides a step above the others with an accent rim while they slide
+   aside; a long-press never brings up the phone's own menu */
+.nkeys .nv { -webkit-touch-callout: none; }
+.nkeys.sorting, .nkeys.sorting .nv { cursor: grabbing; }
+.nkeys .nv.lift { position: relative; z-index: 2; --press: -1; --ring: var(--accent); --lip: var(--accent); transition: none; }
 
 /* ───────────── shared item vocabulary ───────────── */
 .meta-row { display: flex; align-items: center; gap: .55em; flex-wrap: wrap; font-size: .86em; color: var(--text-2); }

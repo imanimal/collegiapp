@@ -33,6 +33,13 @@
     { id: "done", k: "", label: "Done", q: "is:done", sort: "updated", lens: "list" },
   ];
   const viewById = (id) => VIEWS.find((v) => v.id === id) || VIEWS[0];
+  // The view keys in your order (CA.ui.tabs, part of the look that syncs: lab.js), each numbered by its place: the
+  // first is key 1, the tenth 0, the eleventh −. Views the order doesn't name (a new one) go at the end.
+  const TAB_KEYS = "1234567890-", TAB_IDS = VIEWS.filter((v) => v.id !== "done").map((v) => v.id);
+  function tabs() {
+    const mine = ((CA.ui && CA.ui.tabs) || []).filter((id) => TAB_IDS.includes(id));
+    return [...new Set(mine.concat(TAB_IDS))].map((id, i) => Object.assign({}, viewById(id), { k: TAB_KEYS[i] || "" }));
+  }
 
   const KIND = { assignment: ["HW", "Assignment"], exam: ["EXAM", "Exam"], quiz: ["QUIZ", "Quiz"], lab: ["LAB", "Lab"], reading: ["READ", "Reading"],
     project: ["PROJ", "Project"], class: ["CLASS", "Class"], office_hours: ["OH", "Office hours"], event: ["EVENT", "Event"], ticket: ["TICKET", "Ticket"],
@@ -387,8 +394,7 @@
     const v0 = viewById(S.view), custom = S.q !== v0.q;
     const count = (v) => S.items.filter((it) => E.matchItem(it, E.parseFilter(v.q), ctx())).length;
     let out = `<div class="mnav h"><div class="nkeys" role="tablist" aria-label="Views">`;
-    VIEWS.forEach((v) => {
-      if (v.id === "done") return;
+    tabs().forEach((v) => {
       const n = ["now", "today", "inbox", "exams"].includes(v.id) ? count(v) : "", on = S.view === v.id;
       out += `<button class="nv${on ? " on" : ""}${on && custom ? " mod" : ""}" role="tab" aria-selected="${on}" data-act="go" data-v="${v.id}" data-hint="${v.k}" title="${esc(v.label)} · key ${v.k}">${ic(v.id)}<span class="lb">${esc(v.short || v.label)}</span>${n !== "" ? `<span class="ct" data-n="ct:${v.id}">${n}</span>` : ""}<kbd>${v.k}</kbd></button>`;
     });
@@ -1158,7 +1164,11 @@
       it("Duplicate", "", () => dupItem(t.id), "copy clone");
       it("Delete", "Del", () => del(t.id), "remove trash erase");
     }
-    VIEWS.forEach((v) => out.push({ sec: "Views", label: "Go to " + v.label, hint: v.k, sub: v.q, run: () => go(v.id), kw: "show open view tab" }));
+    tabs().concat(viewById("done")).forEach((v) => out.push({ sec: "Views", label: "Go to " + v.label, hint: v.k, sub: v.q, run: () => go(v.id), kw: "show open view tab" }));
+    const tv = viewById(S.view), ti = tabs().findIndex((v) => v.id === tv.id);
+    if (ti > 0) out.push({ sec: "Views", label: `Move the ${tv.label} key left`, hint: (MAC ? "⌥⇧" : "Alt+Shift+") + "←", sub: "", run: () => moveTab(tv.id, -1), kw: "reorder tab order rearrange", more: true });
+    if (ti >= 0 && ti < TAB_IDS.length - 1) out.push({ sec: "Views", label: `Move the ${tv.label} key right`, hint: (MAC ? "⌥⇧" : "Alt+Shift+") + "→", sub: "", run: () => moveTab(tv.id, 1), kw: "reorder tab order rearrange", more: true });
+    if ((CA.ui.tabs || []).length) out.push({ sec: "Views", label: "Put the view keys back in order", hint: "", sub: "", run: () => setTabs(TAB_IDS, "View keys back in their first order"), kw: "reset tab order reorder default", more: true });
     S.courses.forEach((c) => {
       const cc = (label, run, kw) => out.push({ sec: "Classes", label, sub: c.title, hint: "", run, kw: "course class " + c.tag + " " + kw, more: true });
       if (c.included) out.push({ sec: "Classes", label: c.code + " " + c.title, hint: "", sub: c.tag, run: () => setQ("is:open course:" + c.tag.toLowerCase()), kw: "show items" });
@@ -1226,7 +1236,7 @@
   }
 
   function openHelp() {
-    const keys = [["Q", "quick add (" + MOD + "+Shift+Space system-wide in the app)"], [MOD + "+K  /", "search and commands"], ["1 – 9, 0, −", "views: saved filters (− is Notes)"], ["W  Shift+W", "new note · new checklist"], ["Shift+Q", "quick jot (Tab: item · jot · list)"], ["I  " + MOD + "+J", "ask your AI"], ["Esc", "close · clear filters"], [MAC ? "⌘[  ⌘]" : "Alt+←  Alt+→", "back / forward (also the mouse's side buttons)"],["J K ↑ ↓", "move selection"], ["Enter", "open details"],
+    const keys = [["Q", "quick add (" + MOD + "+Shift+Space system-wide in the app)"], [MOD + "+K  /", "search and commands"], ["1 – 9, 0, −", "views by their place along the top"], ["Hold · drag a view key", "reorder the views (" + (MAC ? "⌥⇧" : "Alt+Shift+") + "← → moves the current one)"], ["W  Shift+W", "new note · new checklist"], ["Shift+Q", "quick jot (Tab: item · jot · list)"], ["I  " + MOD + "+J", "ask your AI"], ["Esc", "close · clear filters"], [MAC ? "⌘[  ⌘]" : "Alt+←  Alt+→", "back / forward (also the mouse's side buttons)"],["J K ↑ ↓", "move selection"], ["Enter", "open details"],
       ["X  Space", "toggle done"], ["F", "focus 25 on selection / Do first"], ["Shift+F", "focus setup"], ["S", "snooze"], ["N  Shift+N", "next / previous Do first"], ["[  ]", "calendar: previous / next week or month"], ["+", "priority up"], ["Del", "delete (undo)"], [MOD + "+Z", "undo"], [MOD + "+Shift+Z  " + MOD + "+Y", "redo"],
       [MOD + "+V", "paste a link onto the open item, or into a new one"], [MOD + "+R  F5", "refresh Canvas, Google, Gradescope and WeBWorK now"], [MOD + "+.", "appearance"], [MOD + "+=  " + MOD + "+−", "text size"], ["Hold " + ALT, "show every shortcut"], [MOD + "+P", "print the open note"], ["# ## - 1. [] > ```", "in a note: Markdown becomes formatting as you type"], ["Right-click · long-press", "radial menu (on a row: item actions)"], ["Swipe a row", "right: done · left: snooze (touch)"]];
     openOv("help", dialog("Keys & help", "Esc", `<div class="helpgrid">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join("")}</div>`));
@@ -2619,7 +2629,7 @@
       pan = { el, id: e.pointerId, x: e.clientX, left: el.scrollLeft, moved: false };
     });
     document.addEventListener("pointermove", (e) => {
-      if (!pan || e.pointerId !== pan.id) return;
+      if (!pan || e.pointerId !== pan.id || S.sorting) return;
       const dx = e.clientX - pan.x;
       if (!pan.moved) { if (Math.abs(dx) < 5) return; pan.moved = true; pan.el.classList.add("panning"); }
       pan.el.scrollLeft = pan.left - dx; stripEdges(pan.el);
@@ -2631,8 +2641,76 @@
     };
     document.addEventListener("pointerup", endPan); document.addEventListener("pointercancel", endPan);
   }
+  // Your order of the view keys. One that matches the first order is saved as none, so it syncs as the default.
+  function setTabs(ids, msg) {
+    if (!CA.lab) return;
+    CA.lab.set({ tabs: ids.join() === TAB_IDS.join() ? [] : ids }, { light: true });
+    renderAll(); if (msg) toast(esc(msg));
+  }
+  function moveTab(id, d) {
+    const ids = tabs().map((v) => v.id), i = ids.indexOf(id);
+    if (i < 0 || i + d < 0 || i + d >= ids.length) return CA.sound.nope();
+    ids.splice(i + d, 0, ids.splice(i, 1)[0]); setTabs(ids); CA.sound.tick();
+    MO.after(() => { const b = $(`.nkeys .nv[data-v="${id}"]`); if (b) { MO.ack(b); b.scrollIntoView({ block: "nearest", inline: "nearest" }); } });
+  }
+  // Hold a view key and drag it along the strip to put it somewhere else; the others make room. A mouse lifts it on a
+  // drag where the strip fits, and after a quarter-second hold where it scrolls (a quick drag pans it); touch lifts it
+  // with a long-press. Esc puts it back. A press let go where it started is still a click.
+  function bindTabSort() {
+    let s = null;
+    const keysIn = (strip) => $$(".nv", strip);
+    function lift() {
+      if (!s || s.on) return;
+      const r = s.key.getBoundingClientRect();
+      s.on = true; s.gx = s.x - r.left; S.sorting = true;
+      s.strip.classList.add("sorting"); s.key.classList.add("lift");
+      CA.sound.tick(); if (navigator.vibrate) navigator.vibrate(8);
+    }
+    // the lifted key under the pointer; it trades places with a neighbour once the pointer passes that one's middle
+    function follow(x) {
+      const strip = s.strip, a = strip.getBoundingClientRect();
+      if (hscroll(strip)) { if (x < a.left + 32) strip.scrollLeft -= 10; else if (x > a.right - 32) strip.scrollLeft += 10; stripEdges(strip); }
+      const others = keysIn(strip).filter((b) => b !== s.key);
+      const before = others.find((b) => { const r = b.getBoundingClientRect(); return x < r.left + r.width / 2; });
+      if ((before || null) !== s.key.nextElementSibling || (!before && strip.lastElementChild !== s.key)) {
+        const was = new Map(others.map((b) => [b, b.getBoundingClientRect().left]));
+        strip.insertBefore(s.key, before || null);
+        if (motion()) others.forEach((b) => { const dx = was.get(b) - b.getBoundingClientRect().left; if (dx) b.animate([{ translate: `${dx}px 0` }, { translate: "0 0" }], { duration: 160 * CA.motion.level + 1, easing: "cubic-bezier(.2, .9, .3, 1)" }); });
+      }
+      s.key.style.translate = "";
+      s.key.style.translate = `${Math.round(x - s.gx - s.key.getBoundingClientRect().left)}px 0`;
+    }
+    function finish(keep) {
+      const t = s; s = null; S.sorting = false; clearTimeout(t.t);
+      if (!t.on) return;
+      t.strip.classList.remove("sorting"); t.key.classList.remove("lift"); t.key.style.translate = "";
+      const ids = keysIn(t.strip).map((b) => b.dataset.v), same = ids.join() === tabs().map((v) => v.id).join();
+      if (!same || t.far) S.noClickUntil = Date.now() + 250; // the click that ends a drag isn't a press
+      if (same) return; // back where it was: a slow or shaky click is still a click
+      if (keep) { setTabs(ids); CA.sound.tick(); } else renderAll();
+    }
+    document.addEventListener("pointerdown", (e) => {
+      if (s || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+      const key = e.target.closest && e.target.closest(".nkeys .nv"); if (!key) return;
+      s = { key, strip: key.parentElement, pid: e.pointerId, x: e.clientX, y: e.clientY, on: false, far: false, mouse: e.pointerType === "mouse" };
+      s.t = setTimeout(lift, s.mouse ? 250 : 420);
+    });
+    document.addEventListener("pointermove", (e) => {
+      if (!s || e.pointerId !== s.pid) return;
+      const d = Math.hypot(e.clientX - s.x, e.clientY - s.y);
+      if (!s.on) { if (d <= 8) return; if (s.mouse && !hscroll(s.strip)) lift(); else { clearTimeout(s.t); s = null; return; } }
+      e.preventDefault(); s.far = s.far || d > 12;
+      follow(e.clientX);
+    });
+    document.addEventListener("pointerup", (e) => { if (s && e.pointerId === s.pid) finish(true); });
+    document.addEventListener("pointercancel", (e) => { if (s && e.pointerId === s.pid) finish(false); });
+    // a lifted key keeps the finger: the strip doesn't scroll under it
+    document.addEventListener("touchmove", (e) => { if (s && s.on) e.preventDefault(); }, { passive: false });
+    document.addEventListener("keydown", (e) => { if (s && s.on && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); } }, true);
+  }
   function bind() {
     bindStrips();
+    bindTabSort();
     document.addEventListener("click", (e) => {
       if (Date.now() < S.noClickUntil) { e.preventDefault(); return; } // a swipe or long-press just ended
       const radial = $("#radial"); if (!radial.hidden && !e.target.closest("#radial")) closeRadial();
@@ -2644,6 +2722,7 @@
     });
     document.addEventListener("dblclick", (e) => { const r = e.target.closest(".row"), it = r && find(r.dataset.id); if (it && !E.SCHEDULED(it.kind) && !isNote(it)) startFocus(it.id, 25); });
     document.addEventListener("contextmenu", (e) => {
+      if (S.sorting) return e.preventDefault();
       const content = $("#content"); if (!content.contains(e.target) || e.target.closest("input, textarea, select")) return;
       e.preventDefault(); const cr = $("#layer").getBoundingClientRect(), row =e.target.closest(".row, .un-row, .wi, .ag, .ncard"), ser = e.target.closest("[data-ser]");
       openRadial(e.clientX - cr.left, e.clientY - cr.top, row ? find(row.dataset.id) : null, ser && ser.dataset.ser);
@@ -2653,7 +2732,7 @@
     const swallow = () => { S.noClickUntil = Date.now() + 450; };
     const lpOff = () => { if (lp) { lp.remove(); lp = null; } };
     document.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" || !e.isPrimary || !$("#content").contains(e.target) || e.target.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.pointerType === "mouse" || !e.isPrimary || !$("#content").contains(e.target) || e.target.closest("input, textarea, select, [contenteditable], .nkeys")) return;
       const row = e.target.closest("#list .row.mrow"), it = row && find(row.dataset.id);
       const ser = e.target.closest("[data-ser]");
       press = { x: e.clientX, y: e.clientY, it, ser: ser && ser.dataset.ser, row: it && !E.SCHEDULED(it.kind) ? row : null, dx: 0 };
@@ -2743,6 +2822,9 @@
     if (t.closest && t.closest("#lab")) { if (k === "Escape") CA.lab.close(); return; }
     // a held Alt repeats its keydown; rebuilding the tips each time would restart their fade-in from nothing
     if (k === "Alt") { e.preventDefault(); if (!e.repeat) showTips(); return; }
+    if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && !inField && !S.overlay && (k === "ArrowLeft" || k === "ArrowRight")) {
+      e.preventDefault(); hideTips(); return moveTab(S.view, k === "ArrowLeft" ? -1 : 1);
+    }
     if (e.altKey && !e.ctrlKey && !e.metaKey) {
       // match the physical key: Option+letter on a Mac types a symbol (Option+Q is “œ”)
       const ch = ((e.code || "").match(/^(?:Key|Digit)(\w)$/) || [])[1] || k;
@@ -2812,7 +2894,7 @@
     if (S.overlay) return;
     if (mod) return;
 
-    const view = VIEWS.find((v) => v.k && v.k === k);
+    const view = tabs().find((v) => v.k && v.k === k);
     if (view) { e.preventDefault(); mirror(view.k); return go(view.id); }
     const tg = target();
     switch (k) {

@@ -45,7 +45,7 @@ v0.1 · 2026-10-31 · Fall 2026 (F26) · status: UI prototype + Rust core
 
 **Course** — `code` (CMPSC 130A), `tag` (CS130A), `aliases` (130a, cs130a, ds&a), `color`, `included`, meeting pattern, links (Canvas, Gradescope, Piazza/Ed, syllabus, Zoom), optional grade weights.
 
-**View** — `{ name, key, query, sort, lens }`. Lenses: `list`, `week`, `courses`, `links`, `index` (teletext). Built-in views:
+**View** — `{ name, key, query, sort, lens }`. Lenses: `list`, `week`, `courses`, `links`, `index` (teletext). Built-in views, in their first order (hold a view key and drag it, or Alt+Shift+← →, to reorder them; the number keys follow the order, and it syncs with the look):
 
 | key | view | query | sort |
 |---|---|---|---|

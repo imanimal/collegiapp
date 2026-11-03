@@ -249,6 +249,7 @@ The view row (`.mnav` > `.nkeys` + `.nfoot`). Every view is a saved filter, so a
 - `.ct` is a live count, used only on Do first, Today, Inbox and Exams.
 - `.mod` appends "· filtered" when you've changed the view's query.
 - The row is a horizontal strip (section 9): it scrolls sideways with the wheel or a drag, fades only at an edge with more past it, and a render brings the current key into view; on phones it sticks below the top bar.
+- The order is yours (`CA.ui.tabs`, synced with the look) and the number keys follow it: the first key is 1, the tenth 0, the eleventh −. Hold a key and drag it (a mouse drags straight away where the row fits, after a quarter-second hold where it scrolls; touch long-presses), or Alt+Shift+← → (⌥⇧ on a Mac) moves the current view's key. While it moves the key is `.lift` (a step up with an accent rim; an inset accent ring in Standard) in a `.sorting` row, and the others slide aside. Esc puts it back; the palette has **Put the view keys back in order**.
 
 ### Window keys
 

@@ -40,9 +40,10 @@
   // nightPal and themes from the defaults.
   if (saved && saved.v === 3) Object.assign(saved, { v: 4, motion: parsedFinal.motion });
   if (saved && saved.v !== 4) saved = null;
-  const DEFAULTS = Object.assign({ pal: "P9", nightPal: "P11", themes: [], btn: "b8", frm: "f3", type: "T6", glow: 0, flicker: 0, noise: 0, ab: 0, vig: 0, mask: "N", bezel: "N" }, parsedFinal, env);
-  CA.ui = Object.assign({}, DEFAULTS, { themes: [] }, saved || {});
+  const DEFAULTS = Object.assign({ pal: "P9", nightPal: "P11", themes: [], tabs: [], btn: "b8", frm: "f3", type: "T6", glow: 0, flicker: 0, noise: 0, ab: 0, vig: 0, mask: "N", bezel: "N" }, parsedFinal, env);
+  CA.ui = Object.assign({}, DEFAULTS, { themes: [], tabs: [] }, saved || {});
   if (!Array.isArray(CA.ui.themes)) CA.ui.themes = [];
+  if (!Array.isArray(CA.ui.tabs)) CA.ui.tabs = [];
   let open = false;
   let slot = null; // the Day or Night slot picked in the drawer; null follows the one in effect
   let applied = [];
@@ -142,9 +143,9 @@
   function set(patch, opts) { redraw(() => { if ("night" in patch) slot = null; Object.assign(CA.ui, patch); }, opts && opts.light); sendLook(); }
 
   // ── sync: the look follows you to your other devices (store.js save_look → cloud.rs, or cloud.js; docs/SYNC.md) ──
-  // These choices sync; text size, the desk preview, the island and the shell stay on each device. One at its default
-  // goes as null, so a new device's defaults never win over the account's.
-  const SYNCED = ["pal", "nightPal", "night", "themes", "guide", "motion", "density", "curve", "scan", "glow", "flicker", "noise", "ab", "vig", "mask", "sound", "focusLevel"];
+  // These choices sync, with the view keys' order (`tabs`, app.js); text size, the desk preview, the island and the
+  // shell stay on each device. One at its default goes as null, so a new device's defaults never win over the account's.
+  const SYNCED = ["pal", "nightPal", "night", "themes", "tabs", "guide", "motion", "density", "curve", "scan", "glow", "flicker", "noise", "ab", "vig", "mask", "sound", "focusLevel"];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function look(u) { u = u || CA.ui; const o = {}; SYNCED.forEach((k) => (o[k] = same(u[k], DEFAULTS[k]) ? null : u[k])); return o; }
   let sent = null; // the look last sent or taken, as JSON
@@ -160,7 +161,7 @@
     SYNCED.forEach((k) => {
       if (!(k in l)) return;
       const v = l[k] == null ? JSON.parse(JSON.stringify(DEFAULTS[k])) : l[k];
-      if (!same(v, CA.ui[k]) && (k !== "themes" || Array.isArray(v))) patch[k] = v;
+      if (!same(v, CA.ui[k]) && ((k !== "themes" && k !== "tabs") || Array.isArray(v))) patch[k] = v;
     });
     if (Object.keys(patch).length) redraw(() => { if ("night" in patch) slot = null; Object.assign(CA.ui, patch); });
     sent = JSON.stringify(look());
