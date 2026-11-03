@@ -1,5 +1,5 @@
 //! Live presence ("what's now / next") pushed to every OS surface:
-//! taskbar/dock progress, Windows taskbar overlay dot, macOS dock badge + menu-bar title,
+//! taskbar progress and overlay dot (Windows; progress on Linux too), macOS menu-bar title,
 //! tray tooltip, and the "presence" event (island + main window). On iOS/Android only the
 //! event is sent; the UI shows it in-app.
 //!
@@ -25,7 +25,7 @@ use chrono::{DateTime, Duration, FixedOffset, Local, Utc};
 use collegiapp_core::filter::{run_query, Ctx};
 use collegiapp_core::{alerts_due, next_up, Course, InterruptLevel, ItemKind, Presence, Sort};
 use serde::Serialize;
-#[cfg(desktop)]
+#[cfg(all(desktop, not(target_os = "macos")))]
 use tauri::window::{ProgressBarState, ProgressBarStatus};
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
@@ -290,6 +290,9 @@ pub fn apply(app: &AppHandle, p: Option<&Presence>) {
 
 #[cfg(desktop)]
 fn desktop_surfaces(app: &AppHandle, p: Option<&Presence>) {
+    // the dock icon stays plain on a Mac: a badge and a bar there read as a count and a download,
+    // and the menu-bar title already says what's next
+    #[cfg(not(target_os = "macos"))]
     if let Some(win) = app.get_webview_window("main") {
         let bar = match p.and_then(|p| p.progress) {
             Some(f) => ProgressBarState {
@@ -308,10 +311,6 @@ fn desktop_surfaces(app: &AppHandle, p: Option<&Presence>) {
             // green dot while something is on or starts within 15 minutes
             let soon = p.is_some_and(|p| p.progress.is_some() || p.starts_in_secs <= 15 * 60);
             let _ = win.set_overlay_icon(if soon { Some(overlay_dot()) } else { None });
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let _ = win.set_badge_label(p.map(|p| p.short_text()));
         }
     }
 

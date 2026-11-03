@@ -7,8 +7,8 @@ Goal: the next class and the running focus timer stay visible **outside** the ap
 | | Windows 11 | macOS |
 |---|---|---|
 | **Island** (`ui/island.html`, window label `island`) | 380×64 frameless, transparent, always-on-top pill; drag to move; double-click opens the app; toggled from the tray or `toggle_island` | same |
-| **App icon progress** | taskbar button progress bar (`set_progress_bar`) fills through the class or focus session | dock icon progress |
-| **App icon badge** | overlay icon (green dot) while something is on or starting within 15 min | dock badge text, e.g. `130A 12m` |
+| **App icon progress** | taskbar button progress bar (`set_progress_bar`) fills through the class or focus session | none: the dock icon stays plain |
+| **App icon badge** | overlay icon (green dot) while something is on or starting within 15 min | none: a dock badge reads as unread notifications |
 | **Text** | tray tooltip on hover (Windows can't draw text in the tray) | **menu-bar title** next to the tray icon: `130A 12m` / `130A 45m left` |
 | **Notifications** | Windows toasts | Notification Center |
 
