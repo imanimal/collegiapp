@@ -253,17 +253,22 @@ The view row (`.mnav` > `.nkeys` + `.nfoot`). Every view is a saved filter, so a
 
 ### Sidebar and path bar
 
-The places as folders (`docs/NAVIGATION.md`): `#side` > `.panel.sd` (an F3 module: the graphite band "Folders" with the side and hide keys, then `.sd-tree`, then `.sd-foot` with calendars, trash, appearance and help) and `.sd-grip` on its inner edge. `#nav` holds the `.pathbar` instead of the key row.
+The places as folders (`docs/NAVIGATION.md`): `#side` > `.panel.sd` (an F3 module: the graphite band "Folders" with the edit, side and hide keys, then `.sd-tree`, then `.sd-foot` with calendars, trash, appearance and help) and `.sd-grip` on its inner edge. `#nav` holds the `.pathbar` instead of the key row. The tree is compact: `.sd-tree` runs at .82 of the text size in 1.75-line rows (40 px on touch).
+
+Every node is an `.sd-it` wrapper (`role="none"`) holding its `.sd-row` (the `treeitem`, whose `aria-owns` names its group) and, while it's open, its `.sd-grp` (`role="group"`). The wrapper carries what dragging needs: `data-drag` (`sec`, `view` or `class`), `data-sec`, `data-v` or `data-course`. A group of views is `.sd-grp[data-sec]`.
 
 ```html
-<div class="sd-row on" role="treeitem" aria-level="3" aria-expanded="true" aria-selected="true" style="--lvl:1" data-act="sdGo" data-node="c:cs130a:work">
-  <span class="sd-tw" data-act="sdFold" data-node="c:cs130a:work">{tw}</span>{work}<span class="sd-l">Assignments</span><span class="sd-n">2</span></div>
+<div class="sd-it" role="none" data-node="c:cs130a:work">
+  <div class="sd-row on" role="treeitem" aria-level="3" aria-expanded="true" aria-owns="sdg7" aria-selected="true" tabindex="0" style="--lvl:1" data-act="sdGo" data-node="c:cs130a:work">
+    <span class="sd-tw" data-act="sdFold" data-node="c:cs130a:work">{tw}</span>{work}<span class="sd-l">Assignments</span><span class="sd-n">2</span></div>
+  <div role="group" id="sdg7" class="sd-grp">…</div></div>
 ```
 
-- `.sd-sec` is a section (Views, Classes, Notes, Tags): the module's printed label, uppercase in Pocket and sentence case in Standard; it only folds.
-- `.sd-row.on` is the place you're in: graphite like a pressed program key, with an orange icon and count (an orange rim at night; a solid chrome row in Standard). Indent is `--lvl` × 1.05 em.
+- `.sd-sec` is a section (Plan, Coursework, Classes, Notes, More, Tags, or one you named): the module's printed label, uppercase in Pocket and sentence case in Standard; it only folds.
+- `.sd-row.on` is the place you're in: graphite like a pressed program key, with an orange icon and count (an orange rim at night; a solid chrome row in Standard). Indent is `--lvl` × .95 em.
 - `.sd-tw` turns its 9×9 triangle a quarter (`rotate`) when the folder is open. A class shows `.sd-dot` in its colour; a count is `.sd-n`; a file's due day is `.sd-d` (`.late` in `--bad`); a pinned note has `.sd-pin`; done items strike through.
-- `.sd-sort` holds the Views rows; dragging one (a mouse straight away, touch with a long-press) makes it `.lift` in a `.sorting` group, like a program key.
+- Sections, views and classes drag (a mouse once it moves, touch with a long-press or at once from a handle): the part is `.sd-it.lift` in a `.sd-tree.sorting[data-kind]`, which folds the sections or classes while one of them moves.
+- **Editing** (`sideEdit`): the band reads "Edit the sidebar" with a Done key, an `.sd-tip` says what to do, rows are `.sd-row.ed` with an `.sd-hd` handle ({grip}), a section's name is an `.sd-name` field, `.sd-tg` keys hide ({eye}/{eyeoff}, `aria-pressed`) and delete a group ({trash}), a hidden part is `.sd-it.off` (faded, struck through), an empty group shows a dashed `.sd-drop`, and `.sd-edfoot` holds New group and Reset.
 - `.sd-grip` is a 12 px band in the gap beside the page (22 px on touch) with an accent line on hover, focus and drag; it's a focusable `role="separator"` (← → resize, Home, End, Enter hides).
 - `#content[data-sd]`: `dock`, `over` (a drawer with `sideInL`/`sideInR` over `.sd-scrim`), `off` or `none` (the key row instead); `data-side` and `--side-w` place and size it.
 - `.pathbar`: `.sd-show` (the Folders key, only while the sidebar isn't docked), then `.pb-path` of `.pb-b` steps (buttons), `.pb-sep` › and the `.pb-cur` place (`aria-current="page"`); then `.pb-f` "filtered" and Clear when chips or a search narrowed it.

@@ -74,10 +74,10 @@
 
 /* the sidebar: flush with the window's edge, a plain list on the second surface with a hairline on the page side; the
    place you're in is a solid chrome row, like the current tab */
-:root[data-look="standard"] .content:is([data-sd="dock"], [data-sd="over"]) .side { padding: 0; }
-:root[data-look="standard"] .side > .panel { border-radius: 0; background: var(--surface-2); box-shadow: inset -1px 0 0 var(--line); }
-:root[data-look="standard"] .content[data-side="right"] .side > .panel { box-shadow: inset 1px 0 0 var(--line); }
-:root[data-look="standard"] .content[data-sd="over"] .side > .panel { box-shadow: var(--drop); }
+:root[data-look="standard"] .content:is([data-sd="dock"], [data-sd="over"]) .sidebar { padding: 0; }
+:root[data-look="standard"] .sidebar > .panel { border-radius: 0; background: var(--surface-2); box-shadow: inset -1px 0 0 var(--line); }
+:root[data-look="standard"] .content[data-side="right"] .sidebar > .panel { box-shadow: inset 1px 0 0 var(--line); }
+:root[data-look="standard"] .content[data-sd="over"] .sidebar > .panel { box-shadow: var(--drop); }
 :root[data-look="standard"] .content[data-side="left"] .sd-grip { right: -6px; }
 :root[data-look="standard"] .content[data-side="right"] .sd-grip { left: -6px; }
 :root[data-look="standard"] .sd-row { border-radius: 6px; }
@@ -85,13 +85,14 @@
 :root[data-look="standard"] .sd-row.on .i { color: inherit; }
 :root[data-look="standard"] .sd-row.on .sd-n { background: color-mix(in srgb, var(--chrome-fg) 18%, transparent); color: inherit; }
 :root[data-look="standard"] .sd-n { font-weight: 600; background: var(--surface); }
-:root[data-look="standard"] .sd-sec { font-size: .8em; font-weight: 600; text-transform: none; letter-spacing: 0; }
+:root[data-look="standard"] .sd-sec { font-size: .9em; font-weight: 600; text-transform: none; letter-spacing: 0; }
 :root[data-look="standard"] .sd-row kbd { border-bottom-width: 1px; }
 :root[data-look="standard"] .sd-row.on kbd { border-color: color-mix(in srgb, var(--chrome-fg) 30%, transparent); }
-:root[data-look="standard"] .sd-row.lift { background: var(--surface); box-shadow: inset 0 0 0 2px var(--accent); }
-/* on a Mac the traffic lights sit in the sidebar's header */
-html[data-frame="mac"][data-look="standard"] .content[data-sd="dock"][data-side="left"] .side { padding-top: 0; }
-html[data-frame="mac"][data-look="standard"] .content[data-sd="dock"][data-side="left"] .side > .panel > .ph { padding-left: 76px; }
+:root[data-look="standard"] .sd-it.lift > .sd-row { background: var(--surface); box-shadow: inset 0 0 0 2px var(--accent); }
+/* on a Mac the traffic lights sit in a clear strip at the sidebar's top, level with the top bar; its band starts level
+   with the path bar */
+html[data-frame="mac"][data-look="standard"] .content[data-sd="dock"][data-side="left"] .sidebar { padding-top: 0; }
+html[data-frame="mac"][data-look="standard"] .content[data-sd="dock"][data-side="left"] .sidebar > .panel { padding-top: var(--nav-top, 3.6em); }
 
 /* top bar */
 :root[data-look="standard"] .logo { background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: none; padding-top: 0; font: 700 1em/1 var(--font-ui); }
@@ -238,7 +239,7 @@ html[data-look="standard"][data-vt="theme"]::view-transition-new(root) { animati
 
 @media (hover: hover) {
   :root[data-look="standard"] .nv:not(.on):hover { background: var(--surface-2); }
-  :root[data-look="standard"] :is(.sd-row:not(.on, .sd-sec, .lift), .sd-add):hover { background: color-mix(in srgb, var(--text) 7%, var(--surface-2)); }
+  :root[data-look="standard"] :is(.sd-row:not(.on, .sd-sec, .ed), .sd-add, .sd-tg):hover { background: color-mix(in srgb, var(--text) 7%, var(--surface-2)); }
   :root[data-look="standard"] .wk:hover { background: var(--surface-2); }
   :root[data-look="standard"] .wk-x:hover { background: var(--bad); color: var(--on-bad); }
   :root[data-look="standard"] .lab-btn:hover { background: var(--surface-2); }

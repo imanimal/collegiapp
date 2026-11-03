@@ -21,23 +21,24 @@
   const VIEWS = [
     { id: "now", k: "1", label: "Do first", q: "is:open is:actionable", sort: "score", lens: "list" },
     { id: "today", k: "2", label: "Today", q: "is:open due<=today", sort: "due", lens: "list" },
-    { id: "inbox", k: "3", label: "Inbox", q: "status:inbox", sort: "updated", lens: "list" },
-    { id: "work", k: "4", label: "Assignments", short: "Work", q: "is:open kind:work", sort: "due", lens: "list" },
-    { id: "exams", k: "5", label: "Exams", q: "kind:exam", sort: "due", lens: "list" },
-    { id: "week", k: "6", label: "Calendar", short: "Cal", q: "is:open", sort: "due", lens: "week" },
+    { id: "week", k: "3", label: "Calendar", short: "Cal", q: "is:open", sort: "due", lens: "week" },
+    { id: "inbox", k: "4", label: "Inbox", q: "status:inbox", sort: "updated", lens: "list" },
+    { id: "work", k: "5", label: "Assignments", short: "Work", q: "is:open kind:work", sort: "due", lens: "list" },
+    { id: "exams", k: "6", label: "Exams", q: "kind:exam", sort: "due", lens: "list" },
     { id: "classes", k: "7", label: "Classes", q: "", sort: "due", lens: "courses" },
-    { id: "events", k: "8", label: "Events", q: "is:open kind:event,ticket,office_hours", sort: "due", lens: "list" },
-    { id: "links", k: "9", label: "Links", q: "", sort: "due", lens: "links" },
-    { id: "all", k: "0", label: "Everything", short: "All", q: "is:open", sort: "due", lens: "list" },
-    { id: "notes", k: "-", label: "Notes", q: "is:open kind:note", sort: "updated", lens: "notes" },
+    { id: "notes", k: "8", label: "Notes", q: "is:open kind:note", sort: "updated", lens: "notes" },
+    { id: "events", k: "9", label: "Events", q: "is:open kind:event,ticket,office_hours", sort: "due", lens: "list" },
+    { id: "links", k: "0", label: "Links", q: "", sort: "due", lens: "links" },
+    { id: "all", k: "-", label: "Everything", short: "All", q: "is:open", sort: "due", lens: "list" },
     { id: "done", k: "", label: "Done", q: "is:done", sort: "updated", lens: "list" },
   ];
   const viewById = (id) => VIEWS.find((v) => v.id === id) || VIEWS[0];
-  // The view keys in your order (CA.ui.tabs, part of the look that syncs: lab.js), each numbered by its place: the
-  // first is key 1, the tenth 0, the eleventh −. Views the order doesn't name (a new one) go at the end.
+  // The views in your order, each numbered by its place: the first is key 1, the tenth 0, the eleventh −. With the
+  // sidebar that's its order (sideOrder); with the key row along the top, CA.ui.tabs. Both sync with the look (lab.js).
+  // Views the order doesn't name (a new one) go at the end.
   const TAB_KEYS = "1234567890-", TAB_IDS = VIEWS.filter((v) => v.id !== "done").map((v) => v.id);
   function tabs() {
-    const mine = ((CA.ui && CA.ui.tabs) || []).filter((id) => TAB_IDS.includes(id));
+    const mine = (navMode() === "side" ? sideOrder(sideLayout()) : (CA.ui && CA.ui.tabs) || []).filter((id) => TAB_IDS.includes(id));
     return [...new Set(mine.concat(TAB_IDS))].map((id, i) => Object.assign({}, viewById(id), { k: TAB_KEYS[i] || "" }));
   }
 
@@ -235,6 +236,10 @@
     folder: ".........|####.....|#...#####|#.......#|#.......#|#.......#|#.......#|#########|.........",
     file: ".#####...|.#...##..|.#....##.|.#.....#.|.#.....#.|.#.....#.|.#.....#.|.#######.|.........",
     tw: ".........|..#......|..##.....|..###....|..####...|..###....|..##.....|..#......|.........",
+    eye: ".........|.........|..#####..|.#..#..#.|#..###..#|.#..#..#.|..#####..|.........|.........",
+    eyeoff: "........#|.......#.|..#####..|.#...#.#.|#...#...#|.#.#...#.|..#####..|.#.......|#........",
+    grip: ".........|...#.#...|.........|...#.#...|.........|...#.#...|.........|...#.#...|.........",
+    edit: "......##.|.....#..#|....#..#.|...#..#..|..#..#...|.#..#....|.#.#.....|.##......|.........",
   };
   const ICONS = {};
   for (const n in PIX) ICONS[n] = PIX[n].split("|").map((row, y) => row.replace(/#+/g, (run, x) => `M${x} ${y}h${run.length}v1h-${run.length}z`).replace(/\./g, "")).join("");
@@ -271,6 +276,9 @@
     erase: "M7 21l-4.3-4.3a1.7 1.7 0 0 1 0-2.4l9.6-9.6a1.7 1.7 0 0 1 2.4 0l5.6 5.6a1.7 1.7 0 0 1 0 2.4L13 21zM22 21H7M5 11l9 9",
     line: "M5 19L19 5", arrow: "M5 19L19 5M10 5h9v9", box: "M4 5h16v14H4z", oval: "M12 5c5 0 9 3.1 9 7s-4 7-9 7-9-3.1-9-7 4-7 9-7z",
     side: "M4 5h16v14H4zM9 5v14", folder: "M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", file: "M6 3h8l4 4v14H6zM14 3v4h4", tw: "M10 7l5 5-5 5",
+    eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z",
+    eyeoff: "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2",
+    grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01", edit: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
   };
   const ic = (n, c, as) => ((as || document.documentElement.dataset.look) === "standard"
     ? `<svg class="i ln${c ? " " + c : ""}" viewBox="0 0 24 24" aria-hidden="true"><path d="${LINE[n] || ""}"/></svg>`
@@ -366,7 +374,7 @@
     const grip = (e) => {
       if (e.button !== 0 || e.target.closest("button, a, input, textarea, select, [data-act], .sd-grip")) return false;
       const side = e.target.closest("#side"), band = side ? $("#side .ph") : $("#top");
-      return !!band && (side ? e.target === side || !!e.target.closest("#side .ph") : e.target === content || e.target.id === "page" || !!e.target.closest("#top"))
+      return !!band && (side ? !e.target.closest(".sd-tree, .sd-tip, .sd-foot, .sd-edfoot") : e.target === content || e.target.id === "page" || !!e.target.closest("#top"))
         && e.clientY <= band.getBoundingClientRect().bottom;
     };
     let down = null;
@@ -404,19 +412,76 @@
     if (window.ResizeObserver) new ResizeObserver(() => root.style.setProperty("--top-h", $("#top").offsetHeight + "px")).observe($("#top"));
   }
   /* ─────────── the sidebar: every place in the app as folders (docs/NAVIGATION.md) ───────────
-     Views (in your order, numbered 1–0 −), Classes (a folder per class with its assignments, exams, calendar and notes;
-     the work and the notes are files in them), Notes (by class, pinned ones first) and Tags. Clicking a folder opens
-     its list in the page and unfolds it; its arrow only folds. A file opens: an item's details, a note's editor. The
-     path bar (#nav) spells out where you are, and the place you're in unfolds to show itself. It docks beside the page
-     when the screen has room (900 px), else it's a drawer over it. CA.ui.nav ("side" or "top", the old key row) and
-     CA.ui.side ("left" or "right") sync with the look; the width, whether it's hidden and which folders are open stay
-     on this device (localStorage capp.side). */
-  const SIDE_KEY = "capp.side", SIDE_MIN = 200, SIDE_MAX = 440, SIDE_DOCK = 900, SIDE_FILES = 12;
+     Sections in your order: groups of views (Plan, Coursework and More at first; the views are numbered 1–0 − in the
+     order they show), Classes (a folder per class with its assignments, exams, calendar and notes; the work and the
+     notes are files in them), Notes (by class, pinned ones first) and Tags. Clicking a folder opens its list in the page
+     and unfolds it; its arrow only folds. A file opens: an item's details, a note's editor. The path bar (#nav) spells
+     out where you are, and the place you're in unfolds to show itself. It docks beside the page when the screen has
+     room (900 px), else it's a drawer over it. Synced with the look: CA.ui.nav ("side" or "top", the old key row),
+     CA.ui.side ("left" or "right") and CA.ui.sideLayout (how you arranged it, null for the usual way: sideLayout()).
+     The width, whether it's hidden and which folders are open stay on this device (localStorage capp.side). */
+  const SIDE_KEY = "capp.side", SIDE_MIN = 180, SIDE_MAX = 440, SIDE_DOCK = 900, SIDE_FILES = 12;
   const sideP = Object.assign({ w: 0, hidden: false, open: {} }, (() => { try { return JSON.parse(localStorage.getItem(SIDE_KEY)) || {}; } catch (e) { return {}; } })());
   function sideSave() { try { localStorage.setItem(SIDE_KEY, JSON.stringify(sideP)); } catch (e) { /* a private window: it forgets */ } }
   const navMode = () => (CA.ui && CA.ui.nav === "top" ? "top" : "side");
   const sideAt = () => (CA.ui && CA.ui.side === "right" ? "right" : "left");
-  const sideW = () => Math.max(SIDE_MIN, Math.min(SIDE_MAX, sideP.w || Math.round(17 * (parseFloat(getComputedStyle($("#content")).fontSize) || 15))));
+  const sideW = () => Math.max(SIDE_MIN, Math.min(SIDE_MAX, sideP.w || Math.round(15 * (parseFloat(getComputedStyle($("#content")).fontSize) || 15))));
+  // The usual arrangement, what you open most first. Classes, Notes and Tags are built in: they hold folders, and the
+  // Classes and Notes views are their first rows. The others are groups of views to rename, refill, delete or add to.
+  const SIDE_DEF = [
+    { id: "plan", label: "Plan", views: ["now", "today", "week", "inbox"] },
+    { id: "work", label: "Coursework", views: ["work", "exams"] },
+    { id: "classes", label: "Classes" },
+    { id: "notes", label: "Notes" },
+    { id: "more", label: "More", views: ["events", "links", "all", "done"] },
+    { id: "tags", label: "Tags" },
+  ];
+  const SIDE_BUILT = { classes: "classes", notes: "notes", tags: "" }; // a built-in section, and the view that's its first row
+  const SIDE_SHUT = ["more", "tags"]; // folded until you open them
+  // An arrangement made whole: every section once, every view in one group (a new view joins the first), the hidden
+  // views in `off`, and the classes' order in `classes` (course ids; a class it doesn't name goes after).
+  function sideLayout(raw) {
+    raw = raw === undefined ? CA.ui && CA.ui.sideLayout : raw;
+    raw = raw && typeof raw === "object" ? raw : {};
+    const VID = VIEWS.map((v) => v.id).filter((id) => !(id in SIDE_BUILT)), seen = new Set(), secs = [];
+    (Array.isArray(raw.secs) && raw.secs.length ? raw.secs : SIDE_DEF).forEach((s) => {
+      if (!s || typeof s.id !== "string" || !s.id || secs.some((x) => x.id === s.id)) return;
+      const d = SIDE_DEF.find((x) => x.id === s.id), sec = { id: s.id, label: String(s.label || (d && d.label) || "Group").slice(0, 40) };
+      if (s.hide) sec.hide = true;
+      if (!(s.id in SIDE_BUILT)) sec.views = (Array.isArray(s.views) ? s.views : []).filter((v) => VID.includes(v) && !seen.has(v) && seen.add(v));
+      secs.push(sec);
+    });
+    Object.keys(SIDE_BUILT).forEach((id) => { if (!secs.some((s) => s.id === id)) secs.push(Object.assign({}, SIDE_DEF.find((x) => x.id === id))); });
+    const left = VID.filter((v) => !seen.has(v));
+    if (left.length) { let g = secs.find((s) => s.views); if (!g) secs.unshift((g = { id: "views", label: "Views", views: [] })); g.views.push(...left); }
+    return {
+      secs,
+      off: [...new Set((Array.isArray(raw.off) ? raw.off : []).filter((v) => VIEWS.some((x) => x.id === v)))],
+      classes: [...new Set((Array.isArray(raw.classes) ? raw.classes : []).filter((c) => typeof c === "string"))],
+    };
+  }
+  // the views in the order the sidebar shows them, the hidden ones after: that numbers them 1–0 −
+  function sideOrder(L) {
+    const vis = [], hid = [];
+    L.secs.forEach((s) => (s.views || (SIDE_BUILT[s.id] ? [SIDE_BUILT[s.id]] : [])).forEach((v) => (s.hide || L.off.includes(v) ? hid : vis).push(v)));
+    return vis.concat(hid);
+  }
+  // the included classes in your order
+  function classOrder(L) {
+    const rank = (c) => { const i = L.classes.indexOf(c.id); return i < 0 ? 1e6 + S.courses.indexOf(c) : i; };
+    return S.courses.filter((c) => c.included).sort((a, b) => rank(a) - rank(b));
+  }
+  // Keep an arrangement (the usual one keeps as null, so it syncs as the default). sideStore only saves (a rename, whose
+  // field is still on screen); sideSaveLayout redraws too, with a toast that can take it back.
+  function sideStore(L) {
+    if (!CA.lab) return;
+    const n = L && sideLayout(L);
+    CA.lab.set({ sideLayout: !n || JSON.stringify(n) === JSON.stringify(sideLayout(null)) ? null : n }, { light: true });
+  }
+  function sideSaveLayout(L, msg, was) {
+    sideStore(L); renderAll();
+    if (msg) toast(esc(msg), was !== undefined ? { actions: [["Undo", () => { sideSaveLayout(was); CA.sound.tick(); }]] } : {});
+  }
   // none (the key row instead), dock (beside the page), over (a drawer, open), off (hidden, or a drawer that's shut)
   function sideState() {
     if (navMode() !== "side") return "none";
@@ -428,6 +493,8 @@
     if (c.dataset.sd !== st) c.dataset.sd = st;
     if (c.dataset.side !== sideAt()) c.dataset.side = sideAt();
     c.style.setProperty("--side-w", sideW() + "px");
+    // on a Mac a sidebar on the left starts level with the path bar, under the traffic lights (pocket.css, standard.css)
+    if (FRAME === "mac") c.style.setProperty("--nav-top", $("#nav").offsetTop + "px");
     $("#side").hidden = st === "none" || st === "off";
     $("#sdScrim").hidden = st !== "over";
     return st;
@@ -438,9 +505,12 @@
     return diff === 0 ? "Today" : diff === 1 ? "Tmr" : diff > 1 && diff < 7 ? DNM[d.getDay()] : `${MNM[d.getMonth()]} ${d.getDate()}`;
   };
   // The tree. A node: { id, label, to: { view, q, lens, sort } (what it opens), kids, n (a count), icon or course,
-  // item or note (a file), sec (a section's header), def (open by default), up (its folder) }.
+  // item or note (a file), sec (a section's id), views (a group of views), def (open by default), off (hidden: it shows
+  // only while you edit), drag (what moving it moves: view, class), up (its folder) }. Hidden parts stay in the tree, so
+  // the path bar can still say where you are.
   function sideTree() {
     const c0 = ctx(), all = (q) => { const t = E.parseFilter(q); return S.items.filter((it) => E.matchItem(it, t, c0)); };
+    const Lay = sideLayout(), keys = new Map(tabs().map((v) => [v.id, v.k]));
     const L = (q) => ({ view: "all", q, lens: "list", sort: "due" }), NL = (q) => ({ view: "notes", q, lens: "notes", sort: "updated" });
     const byDue = (a, b) => (a.due == null) - (b.due == null) || (a.due || 0) - (b.due || 0) || a.title.localeCompare(b.title);
     const byNote = (a, b) => isPinned(b) - isPinned(a) || b.updated - a.updated;
@@ -449,13 +519,16 @@
     const note = (it) => ({ id: "n:" + it.id, label: it.title || "Untitled note", note: it.id, icon: "notes", pin: isPinned(it) });
     // a folder's files: the first SIDE_FILES, then a key that opens the folder for the rest
     const files = (id, list, to) => (list.length > SIDE_FILES ? list.slice(0, SIDE_FILES).concat({ id: id + ":more", label: `${list.length - SIDE_FILES} more`, more: true, to }) : list);
-    const views = tabs().concat(viewById("done")).map((v) => ({ id: "v:" + v.id, label: v.label, icon: v.id, view: v.id, k: v.k, to: { view: v.id, q: v.q, lens: v.lens, sort: v.sort },
-      n: ["now", "today", "inbox", "work", "exams"].includes(v.id) ? all(v.q).length : null }));
+    const view = (id) => {
+      const v = viewById(id), own = id in SIDE_BUILT;
+      return { id: "v:" + v.id, label: own ? "All " + v.label.toLowerCase() : v.label, icon: v.id, view: v.id, k: keys.get(v.id) || "", off: Lay.off.includes(v.id), drag: own ? "" : "view",
+        to: { view: v.id, q: v.q, lens: v.lens, sort: v.sort }, n: ["now", "today", "inbox", "work", "exams"].includes(v.id) ? all(v.q).length : null };
+    };
     const notes = all("is:open kind:note").sort(byNote);
-    const classes = S.courses.filter((c) => c.included).map((c) => {
+    const classes = classOrder(Lay).map((c) => {
       const t = c.tag.toLowerCase(), q = (s) => s + " course:" + t, id = "c:" + c.id;
       const work = all(q("is:open kind:work")).sort(byDue), exams = all(q("kind:exam")).sort(byDue), mine = notes.filter((it) => it.course === c.id);
-      return { id, label: c.code, title: c.title, course: c, to: L(q("is:open")), n: work.length || null, kids: [
+      return { id, label: c.code, title: c.title, course: c, drag: "class", to: L(q("is:open")), n: work.length || null, kids: [
         { id: id + ":work", label: "Assignments", icon: "work", to: L(q("is:open kind:work")), n: work.length || null, kids: files(id + ":work", work.map(item), L(q("is:open kind:work"))) },
         { id: id + ":exams", label: "Exams", icon: "exams", to: L(q("kind:exam")), n: exams.filter((it) => it.status !== "done").length || null, kids: files(id + ":exams", exams.map(item), L(q("kind:exam"))) },
         { id: id + ":cal", label: "Calendar", icon: "week", to: { view: "week", q: q("is:open"), lens: "week", sort: "due" } },
@@ -473,12 +546,11 @@
     const tagN = new Map();
     all("is:open").forEach((it) => (it.tags || []).forEach((g) => { const k = String(g).toLowerCase(); if (k !== "pinned" && k !== "section") tagN.set(k, (tagN.get(k) || 0) + 1); }));
     const tags = [...tagN].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([g, n]) => ({ id: "t:" + g, label: "#" + g, icon: "filter", to: L("is:open tag:" + g), n }));
-    const tree = [
-      { id: "s:views", label: "Views", sec: true, def: true, sort: true, kids: views },
-      { id: "s:classes", label: "Classes", sec: true, def: true, to: Object.assign({ view: "classes" }, viewById("classes")), kids: classes },
-      { id: "s:notes", label: "Notes", sec: true, def: true, add: true, to: Object.assign({ view: "notes" }, viewById("notes")), kids: notes.filter(isPinned).map(note).concat(folders) },
-    ];
-    if (tags.length) tree.push({ id: "s:tags", label: "Tags", sec: true, def: false, kids: tags });
+    const tree = Lay.secs.map((s) => ({
+      id: "s:" + s.id, label: s.label, sec: s.id, views: !!s.views, def: !SIDE_SHUT.includes(s.id), off: !!s.hide, add: s.id === "notes",
+      to: s.id === "classes" || s.id === "notes" ? Object.assign({ view: s.id }, viewById(s.id)) : null,
+      kids: s.views ? s.views.map(view) : s.id === "classes" ? [view("classes")].concat(classes) : s.id === "notes" ? [view("notes")].concat(notes.filter(isPinned).map(note), folders) : tags,
+    }));
     const map = new Map(), link = (list, up) => list.forEach((n) => { n.up = up; map.set(n.id, n); if (n.kids) link(n.kids, n); });
     link(tree, null);
     return { tree, map };
@@ -490,38 +562,59 @@
   function sideLoc(T) {
     const q = qn(S.q), hits = [], hit = (n) => n.to && !n.more && !n.sec && n.to.lens === S.lens && qn(n.to.q) === q;
     T.map.forEach((n) => { if (hit(n)) hits.push(n); });
-    const at = T.map.get(S.sideAt), exact = (at && hits.includes(at) && at) || hits[0];
+    const at = T.map.get(S.sideAt), exact = (at && hits.includes(at) && at) || hits.find((n) => !n.off) || hits[0];
     if (exact) return { cur: exact, path: pathTo(exact), filtered: false };
     const base = at && at.to && at.to.lens === S.lens && at.to.view === S.view ? at : T.map.get("v:" + S.view) || T.map.get("v:now");
     return { cur: base, path: pathTo(base), filtered: true };
   }
   function mSide(el) {
     const st = sideApply(); if (st === "none" || st === "off") { if (el.firstChild) el.innerHTML = ""; return; }
-    const T = S.side || sideTree(), loc = sideLoc(T), side = sideAt();
+    const T = S.side || sideTree(), loc = sideLoc(T), side = sideAt(), ed = !!S.sideEdit;
     // the place you went to unfolds the folders it's in, once per arrival, so you can still fold them after
-    if (S.sideShown !== loc.cur.id) { S.sideShown = loc.cur.id; S.sideReveal = true; loc.path.slice(0, -1).forEach((n) => { if (n.kids && !sideOpenQ(n)) sideP.open[n.id] = true; }); sideSave(); }
+    if (!ed && S.sideShown !== loc.cur.id) { S.sideShown = loc.cur.id; S.sideReveal = true; loc.path.slice(0, -1).forEach((n) => { if (n.kids && !sideOpenQ(n)) sideP.open[n.id] = true; }); sideSave(); }
     const lead = (n) => (n.course ? `<span class="sd-dot" style="${kc(n.course)}"></span>` : ic(n.icon || "folder"));
-    const row = (n, lvl) => {
-      const kids = !!(n.kids && n.kids.length), open = kids && sideOpenQ(n), on = n === loc.cur;
-      const tail = n.due != null ? `<span class="sd-d${!n.done && n.due < S.now ? " late" : ""}">${esc(dueShort(n.due))}</span>` : n.n ? `<span class="sd-n">${n.n}</span>` : "";
-      const r = n.sec
-        ? `<div class="sd-row sd-sec" role="treeitem" aria-level="1"${kids ? ` aria-expanded="${open}"` : ""} tabindex="-1"${kids ? ` data-act="sdFold"` : ""} data-node="${esc(n.id)}"><span class="sd-tw">${kids ? ic("tw") : ""}</span><span class="sd-l">${esc(n.label)}</span>${n.add ? `<button class="sd-add" data-act="noteNew" tabindex="-1" title="New note (W)" aria-label="New note">${ic("plus")}</button>` : ""}</div>`
-        : `<div class="sd-row${on ? " on" : ""}${n.done ? " done" : ""}${n.more ? " more" : ""}" role="treeitem" aria-level="${lvl}"${kids ? ` aria-expanded="${open}"` : ""} aria-selected="${on}" tabindex="-1" style="--lvl:${lvl - 2}" data-act="sdGo" data-node="${esc(n.id)}"${n.view && n.k ? ` data-v="${n.view}" data-hint="${n.k}"` : ""}${n.item ? ` data-id="${esc(n.item)}"` : ""} title="${esc(n.title ? n.label + " · " + n.title : n.label)}">`
-          + `<span class="sd-tw"${kids ? ` data-act="sdFold" data-node="${esc(n.id)}"` : ""}>${kids ? ic("tw") : ""}</span>${n.more ? "" : lead(n)}<span class="sd-l">${esc(n.label)}</span>${n.pin ? `<span class="sd-pin" title="Pinned">${ic("pin")}</span>` : ""}${tail}${n.view && n.k ? `<kbd>${n.k}</kbd>` : ""}</div>`;
-      return r + (open ? `<div role="group" class="sd-grp${n.sort ? " sd-sort" : ""}">${n.kids.map((k) => row(k, lvl + 1)).join("")}</div>` : "");
+    const hd = `<span class="sd-hd" title="Drag to move">${ic("grip")}</span>`;
+    const eye = (attr, off, what) => `<button class="sd-tg" data-act="sdHide" ${attr} tabindex="-1" aria-pressed="${off}" title="${off ? "Show" : "Hide"} ${esc(what)}" aria-label="${off ? "Show" : "Hide"} ${esc(what)}">${ic(off ? "eyeoff" : "eye")}</button>`;
+    // what shows under a node: everything not hidden; while you edit, the parts you can arrange (no files)
+    const under = (n, lvl) => (n.kids || []).filter((k) => (ed ? lvl === 1 && !!(k.view || k.drag || k.id === "c:none") : !k.off));
+    let gi = 0;
+    const node = (n, lvl) => {
+      const kids = under(n, lvl), has = kids.length > 0, open = (has && (ed || sideOpenQ(n))) || (ed && n.views), gid = open ? "sdg" + ++gi : "";
+      const aria = `role="treeitem" aria-level="${lvl}"${has || (ed && n.views) ? ` aria-expanded="${open}"` : ""}${gid ? ` aria-owns="${gid}"` : ""} tabindex="-1" data-node="${esc(n.id)}"`;
+      const on = !ed && n === loc.cur, tail = n.due != null ? `<span class="sd-d${!n.done && n.due < S.now ? " late" : ""}">${esc(dueShort(n.due))}</span>` : n.n ? `<span class="sd-n">${n.n}</span>` : "";
+      let r;
+      if (n.sec && ed) r = `<div class="sd-row sd-sec ed" ${aria}>${hd}<input class="sd-name" value="${esc(n.label)}" maxlength="40" spellcheck="false" autocomplete="off" tabindex="-1" aria-label="Section name" data-sec="${esc(n.sec)}">`
+        + eye(`data-sec="${esc(n.sec)}"`, n.off, "this section")
+        + (n.views ? `<button class="sd-tg" data-act="sdDelSec" data-sec="${esc(n.sec)}" tabindex="-1" title="Delete this group (its views move to the one above)" aria-label="Delete this group">${ic("trash")}</button>` : "") + `</div>`;
+      else if (n.sec) r = `<div class="sd-row sd-sec" ${aria}${has ? ` data-act="sdFold"` : ""}><span class="sd-tw">${has ? ic("tw") : ""}</span><span class="sd-l">${esc(n.label)}</span>${n.add ? `<button class="sd-add" data-act="noteNew" tabindex="-1" title="New note (W)" aria-label="New note">${ic("plus")}</button>` : ""}</div>`;
+      else if (ed) r = `<div class="sd-row ed" ${aria} style="--lvl:${lvl - 2}" title="${esc(n.label)}">${n.drag ? hd : `<span class="sd-tw"></span>`}${lead(n)}<span class="sd-l">${esc(n.label)}</span>${n.view ? eye(`data-v="${n.view}"`, n.off, n.label) : ""}</div>`;
+      else r = `<div class="sd-row${on ? " on" : ""}${n.done ? " done" : ""}${n.more ? " more" : ""}" ${aria} aria-selected="${on}" style="--lvl:${lvl - 2}" data-act="sdGo"${n.view && n.k ? ` data-hint="${n.k}"` : ""}${n.item ? ` data-id="${esc(n.item)}"` : ""} title="${esc(n.title ? n.label + " · " + n.title : n.label)}">`
+        + `<span class="sd-tw"${has ? ` data-act="sdFold" data-node="${esc(n.id)}"` : ""}>${has ? ic("tw") : ""}</span>${n.more ? "" : lead(n)}<span class="sd-l">${esc(n.label)}</span>${n.pin ? `<span class="sd-pin" title="Pinned">${ic("pin")}</span>` : ""}${tail}${n.view && n.k ? `<kbd>${n.k}</kbd>` : ""}</div>`;
+      const drag = n.sec ? "sec" : n.drag;
+      const wrap = `class="sd-it${n.sec ? " sd-secw" : ""}${ed && n.off ? " off" : ""}" role="none" data-node="${esc(n.id)}"${drag ? ` data-drag="${drag}"` : ""}${n.sec ? ` data-sec="${esc(n.sec)}"` : ""}${n.view ? ` data-v="${n.view}"` : ""}${n.drag === "class" ? ` data-course="${esc(n.course.id)}"` : ""}`;
+      const grp = open ? `<div role="group" id="${gid}" class="sd-grp"${n.views ? ` data-sec="${esc(n.sec)}"` : ""}>${kids.map((k) => node(k, lvl + 1)).join("")}${ed && n.views ? `<div class="sd-drop" aria-hidden="true">Drag views here</div>` : ""}</div>` : "";
+      return `<div ${wrap}>${r}${grp}</div>`;
     };
+    // a section shows while it has something to show (Notes always, for its + key); every one shows while you edit
+    const secs = T.tree.filter((n) => ed || (!n.off && (n.add || under(n, 1).length)));
     const key = (act, icon, label, k) => `<button class="btn ghost sm" data-act="${act}" title="${esc(label)}${k ? " (" + esc(k) + ")" : ""}" aria-label="${esc(label)}">${ic(icon)}</button>`;
-    el.innerHTML = `<div class="panel sd"><div class="ph"><span class="pt">${ic("folder")}Folders</span><span class="sp"></span>`
-      + key("sideSwap", side === "left" ? "next" : "prev", side === "left" ? "Move the sidebar to the right" : "Move the sidebar to the left")
-      + key("sideToggle", "side", st === "over" ? "Close the sidebar" : "Hide the sidebar", MOD + "+\\") + `</div>`
-      + `<div class="sd-tree" role="tree" aria-label="Folders">${T.tree.map((n) => row(n, 1)).join("")}</div>`
-      + `<div class="sd-foot">${key("feedsOpen", "week", "Calendars and sources")}${key("trash", "trash", "Trash")}<span class="sp"></span>${key("lab", "lab", "Appearance", MOD + "+.")}${key("help", "help", "Keyboard shortcuts", "?")}</div></div>`
+    el.innerHTML = `<div class="panel sd">` + (ed
+      ? `<div class="ph"><span class="pt">${ic("edit")}Edit the sidebar</span><span class="sp"></span><button class="btn sm" data-act="sideEdit" title="Done (Esc)">Done</button></div>`
+        + `<div class="sd-tip">Drag ${ic("grip")} to move views, sections and classes, from one group to another too. Type over a section's name to rename it; the eye hides.</div>`
+      : `<div class="ph"><span class="pt">${ic("folder")}Folders</span><span class="sp"></span>${key("sideEdit", "edit", "Edit the sidebar")}`
+        + key("sideSwap", side === "left" ? "next" : "prev", side === "left" ? "Move the sidebar to the right" : "Move the sidebar to the left")
+        + key("sideToggle", "side", st === "over" ? "Close the sidebar" : "Hide the sidebar", MOD + "+\\") + `</div>`)
+      + `<div class="sd-tree" role="tree" aria-label="Folders">${secs.map((n) => node(n, 1)).join("")}</div>`
+      + (ed
+        ? `<div class="sd-edfoot"><button class="btn sm" data-act="sdNewSec">${ic("plus")}New group</button><span class="sp"></span><button class="btn ghost sm" data-act="sdReset" title="Put back the usual sections, order and names">Reset</button></div></div>`
+        : `<div class="sd-foot">${key("feedsOpen", "week", "Calendars and sources")}${key("trash", "trash", "Trash")}<span class="sp"></span>${key("lab", "lab", "Appearance", MOD + "+.")}${key("help", "help", "Keyboard shortcuts", "?")}</div></div>`)
       + `<div class="sd-grip" role="separator" aria-orientation="vertical" aria-label="Sidebar width" tabindex="0" aria-valuemin="${SIDE_MIN}" aria-valuemax="${SIDE_MAX}" aria-valuenow="${sideW()}" title="Drag to resize · double-click for the usual width"></div>`;
     // one row takes Tab (the place you're in); the arrows move between the rest
     const rows = $$(".sd-tree .sd-row", el), on = $(".sd-tree .sd-row.on", el);
+    const name = S.sideFocus && S.sideFocus.startsWith("name:") && $(`.sd-name[data-sec="${CSS.escape(S.sideFocus.slice(5))}"]`, el);
     const want = S.sideFocus === "@on" ? on : S.sideFocus && rows.find((r) => r.dataset.node === S.sideFocus);
     if (rows.length) (want || on || rows[0]).tabIndex = 0;
-    if (want) want.focus({ preventScroll: true });
+    if (name) { name.focus(); name.select(); } else if (want) want.focus({ preventScroll: true });
     S.sideFocus = null;
     if (on && S.sideReveal) { S.sideReveal = false; MO.after(() => on.isConnected && on.scrollIntoView({ block: "nearest" })); }
   }
@@ -572,7 +665,7 @@
     if ($("#screen").clientWidth < SIDE_DOCK) S.sideOver = show != null ? show : !S.sideOver;
     else { sideP.hidden = show != null ? !show : !sideP.hidden; sideSave(); }
     const st = sideState(), shown = st === "dock" || st === "over";
-    if (shown) { S.sideFocus = "@on"; S.sideReveal = true; }
+    if (shown) { S.sideFocus = "@on"; S.sideReveal = true; } else S.sideEdit = false;
     CA.sound.click(); renderAll();
     if (!shown) { const b = $("#nav .sd-show"); if (b) b.focus({ preventScroll: true }); }
   }
@@ -584,11 +677,97 @@
   function setNavMode(m) {
     if (!CA.lab) return;
     CA.lab.set({ nav: m }, { light: true });
-    if (m === "side") { sideP.hidden = false; sideSave(); }
+    if (m === "side") { sideP.hidden = false; sideSave(); } else S.sideEdit = false;
     renderAll(); toast(m === "side" ? "Folders are in the sidebar" : `The view keys are back along the top · ${esc(MOD)}+K, “Use the sidebar” brings it back`);
   }
+  // Editing: the sidebar shows its shape (sections, views, classes) to drag, rename, hide, add to and delete from.
+  // Turning it on shows the sidebar first (from the key row too).
+  function sideEdit(on) {
+    const want = on != null ? !!on : !S.sideEdit, inside = $("#side").contains(document.activeElement);
+    if (want) {
+      if (navMode() !== "side" && CA.lab) CA.lab.set({ nav: "side" }, { light: true });
+      if ($("#screen").clientWidth < SIDE_DOCK) S.sideOver = true; else if (sideP.hidden) { sideP.hidden = false; sideSave(); }
+    }
+    S.sideEdit = want; S.sideFocus = want ? null : inside ? "@on" : null;
+    CA.sound.click(); renderAll();
+    if (want) { const t = $("#side .sd-tree"), r = $("#side .sd-tree .sd-row"); if (t) t.scrollTop = 0; if (r) { r.tabIndex = 0; r.focus({ preventScroll: true }); } }
+  }
+  function sdHide(el) {
+    const L = sideLayout(), sec = el.dataset.sec, v = el.dataset.v;
+    if (sec) { const s = L.secs.find((x) => x.id === sec); if (!s) return; if (s.hide) delete s.hide; else s.hide = true; }
+    else if (v) L.off = L.off.includes(v) ? L.off.filter((x) => x !== v) : L.off.concat(v);
+    S.sideFocus = sec ? "s:" + sec : "v:" + v;
+    CA.sound.tick(); sideSaveLayout(L);
+  }
+  // delete a group of views; its views go to the group above it (or the first, if it was the first)
+  function sdDelSec(el) {
+    const L = sideLayout(), i = L.secs.findIndex((x) => x.id === el.dataset.sec), s = L.secs[i];
+    if (!s || !s.views) return;
+    const to = L.secs.slice(0, i).reverse().find((x) => x.views) || L.secs.slice(i + 1).find((x) => x.views);
+    if (!to) { CA.sound.nope(); return toast("Keep one group for your views"); }
+    to.views.push(...s.views); L.secs.splice(i, 1);
+    sideSaveLayout(L, s.views.length ? `Deleted “${s.label}” · its views moved to ${to.label}` : `Deleted “${s.label}”`, CA.ui.sideLayout);
+  }
+  // a new group goes after the last group of views, its name ready to type over
+  function sdNewSec() {
+    const L = sideLayout(), id = "g" + Date.now().toString(36), at = L.secs.map((s) => !!s.views).lastIndexOf(true);
+    L.secs.splice(at + 1, 0, { id, label: "New group", views: [] });
+    S.sideFocus = "name:" + id; CA.sound.tick(); sideSaveLayout(L);
+  }
+  function sdReset() {
+    const was = CA.ui.sideLayout;
+    if (!was) return toast("The sidebar already has its usual layout");
+    sideSaveLayout(null, "The sidebar is back to its usual layout", was);
+  }
+  // Alt+Shift+↑ ↓ moves a view, a section or a class one place (a view at a group's edge goes into the next group)
+  function sideMove(kind, id, d) {
+    const L = sideLayout(), ed = !!S.sideEdit, nope = () => CA.sound.nope();
+    if (kind === "view") {
+      const list = [];
+      L.secs.forEach((s) => s.views && (ed || !s.hide) && s.views.forEach((v) => (ed || !L.off.includes(v)) && list.push([v, s])));
+      const i = list.findIndex((x) => x[0] === id), j = i + d; if (i < 0 || j < 0 || j >= list.length) return nope();
+      const from = list[i][1], [nb, to] = list[j];
+      from.views.splice(from.views.indexOf(id), 1);
+      const at = to.views.indexOf(nb);
+      to.views.splice(from === to ? (d > 0 ? at + 1 : at) : d > 0 ? at : at + 1, 0, id);
+    } else if (kind === "sec") {
+      const vis = L.secs.filter((s) => ed || !s.hide), i = vis.findIndex((s) => s.id === id), j = i + d;
+      if (i < 0 || j < 0 || j >= vis.length) return nope();
+      const a = L.secs.indexOf(vis[i]), b = L.secs.indexOf(vis[j]); [L.secs[a], L.secs[b]] = [L.secs[b], L.secs[a]];
+    } else {
+      const ids = classOrder(L).map((c) => c.id), i = ids.indexOf(id), j = i + d;
+      if (i < 0 || j < 0 || j >= ids.length) return nope();
+      [ids[i], ids[j]] = [ids[j], ids[i]]; L.classes = ids.concat(L.classes.filter((c) => !ids.includes(c)));
+    }
+    const nid = (kind === "view" ? "v:" : kind === "sec" ? "s:" : "c:") + id;
+    if ($("#side").contains(document.activeElement)) S.sideFocus = nid;
+    CA.sound.tick(); sideSaveLayout(L);
+    MO.after(() => { const r = $(`#side .sd-it[data-node="${CSS.escape(nid)}"] > .sd-row`); if (r) { MO.ack(r); r.scrollIntoView({ block: "nearest" }); } });
+  }
+  // where a dragged part landed (by its neighbours in the sidebar), into your arrangement
+  function sidePlace(kind, el) {
+    const L = sideLayout(), sib = (dir) => { let x = el; while ((x = x[dir]) && x.dataset.drag !== kind); return x; };
+    const prev = sib("previousElementSibling"), next = sib("nextElementSibling");
+    if (kind === "view") {
+      const v = el.dataset.v, to = L.secs.find((x) => x.id === el.parentElement.dataset.sec); if (!to) return renderAll();
+      L.secs.forEach((x) => { if (x.views) x.views = x.views.filter((y) => y !== v); });
+      const at = prev ? to.views.indexOf(prev.dataset.v) + 1 : next ? to.views.indexOf(next.dataset.v) : to.views.length;
+      to.views.splice(Math.max(0, at), 0, v);
+    } else if (kind === "sec") {
+      const me = L.secs.find((x) => x.id === el.dataset.sec); if (!me) return renderAll();
+      L.secs = L.secs.filter((x) => x !== me);
+      const at = prev ? L.secs.findIndex((x) => x.id === prev.dataset.sec) + 1 : next ? L.secs.findIndex((x) => x.id === next.dataset.sec) : L.secs.length;
+      L.secs.splice(Math.max(0, at), 0, me);
+    } else {
+      // the classes as they now stand, then the ones the sidebar isn't showing
+      const ids = $$(':scope > .sd-it[data-drag="class"]', el.parentElement).map((x) => x.dataset.course);
+      L.classes = ids.concat(L.classes.filter((c) => !ids.includes(c)));
+    }
+    CA.sound.tick(); sideSaveLayout(L);
+  }
   // The tree's keys (the WAI-ARIA tree pattern): ↑ ↓ move, → unfolds or steps in, ← folds or steps out, Home and End,
-  // Enter or Space opens, Esc goes back to the page (or shuts the drawer). Letters stay the app's shortcuts.
+  // Enter or Space opens, Esc goes back to the page (or shuts the drawer). Letters stay the app's shortcuts. While you
+  // edit, Enter renames a section, Space hides or shows the row, and Esc is done.
   function sideKey(e) {
     const k = e.key;
     if (e.target.matches && e.target.matches(".sd-grip")) {
@@ -597,8 +776,16 @@
       else if (k === "Enter") { e.preventDefault(); e.stopPropagation(); sideToggle(false); }
       return;
     }
+    // a section's name: Enter keeps it (the change event saves it), Esc puts the old one back
+    if (e.target.matches && e.target.matches(".sd-name")) {
+      if (k !== "Enter" && k !== "Escape") return;
+      e.preventDefault(); e.stopPropagation();
+      if (k === "Escape") e.target.value = e.target.defaultValue;
+      e.target.closest(".sd-row").focus();
+      return;
+    }
     const row = e.target.closest && e.target.closest(".sd-tree .sd-row"); if (!row || e.ctrlKey || e.metaKey || e.altKey) return;
-    const rows = $$(".sd-tree .sd-row", $("#side")), i = rows.indexOf(row), exp = row.getAttribute("aria-expanded");
+    const rows = $$(".sd-tree .sd-row", $("#side")), i = rows.indexOf(row), exp = row.getAttribute("aria-expanded"), ed = !!S.sideEdit;
     const to = (r) => { if (!r) return; rows.forEach((x) => (x.tabIndex = -1)); r.tabIndex = 0; r.focus(); };
     const parent = () => { const g = row.parentElement.closest('[role="group"]'); return g && g.previousElementSibling; };
     const stop = () => { e.preventDefault(); e.stopPropagation(); };
@@ -606,10 +793,14 @@
     else if (k === "ArrowUp") { stop(); to(rows[i - 1]); }
     else if (k === "Home") { stop(); to(rows[0]); }
     else if (k === "End") { stop(); to(rows[rows.length - 1]); }
-    else if (k === "ArrowRight") { stop(); if (exp === "false") sideFold(row.dataset.node); else if (exp === "true") to(rows[i + 1]); }
-    else if (k === "ArrowLeft") { stop(); if (exp === "true") sideFold(row.dataset.node); else to(parent()); }
+    else if (k === "ArrowRight") { stop(); if (!ed && exp === "false") sideFold(row.dataset.node); else if (exp === "true") to(rows[i + 1]); }
+    else if (k === "ArrowLeft") { stop(); if (!ed && exp === "true") sideFold(row.dataset.node); else to(parent()); }
+    else if (ed && (k === "Enter" || k === " ")) {
+      stop(); const name = $(".sd-name", row), tg = $('.sd-tg[data-act="sdHide"]', row);
+      if (k === "Enter" && name) { name.focus(); name.select(); } else if (tg) sdHide(tg); else CA.sound.nope();
+    }
     else if (k === "Enter" || k === " ") { stop(); if (row.classList.contains("sd-sec")) sideFold(row.dataset.node); else sideGo(row.dataset.node); }
-    else if (k === "Escape") { stop(); if (S.sideOver) sideToggle(false); else row.blur(); }
+    else if (k === "Escape") { stop(); if (ed) sideEdit(false); else if (S.sideOver) sideToggle(false); else row.blur(); }
   }
   // the edge drags the width (well past the narrowest, it hides); a double-click puts back the usual width
   function bindSide() {
@@ -632,14 +823,93 @@
     const end = (e) => {
       if (!g || e.pointerId !== g.id) return;
       const t = g; g = null; c().classList.remove("sd-sizing", "sd-shut");
-      if (t.shut && e.type === "pointerup") { sideP.hidden = true; sideSave(); renderAll(); return toast(`Sidebar hidden · ${esc(MOD)}+\\ brings it back`); }
+      if (t.shut && e.type === "pointerup") { sideP.hidden = true; S.sideEdit = false; sideSave(); renderAll(); return toast(`Sidebar hidden · ${esc(MOD)}+\\ brings it back`); }
       sideP.w = t.w; sideSave(); sideApply(); const gr = $("#side .sd-grip"); if (gr) gr.setAttribute("aria-valuenow", sideW());
     };
     document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
     document.addEventListener("dblclick", (e) => { if (e.target.closest && e.target.closest(".sd-grip")) { sideP.w = 0; sideSave(); sideApply(); } });
     $("#side").addEventListener("keydown", sideKey);
+    // a renamed section keeps its new name without a redraw: the field you typed in stays where it is
+    $("#side").addEventListener("change", (e) => {
+      const inp = e.target.closest && e.target.closest(".sd-name"); if (!inp) return;
+      const L = sideLayout(), s = L.secs.find((x) => x.id === inp.dataset.sec), v = inp.value.replace(/\s+/g, " ").trim().slice(0, 40);
+      if (!s) return;
+      if (!v || v === s.label) { inp.value = s.label; return; }
+      s.label = v; inp.value = inp.defaultValue = v; sideStore(L);
+    });
     // a screen that grows or shrinks past the docking width (the window, the Appearance drawer) docks or undocks it
     if (window.ResizeObserver) new ResizeObserver(() => { if (sideState() !== $("#content").dataset.sd) { S.sideOver = false; renderAll(); } }).observe($("#screen"));
+    bindSideSort();
+  }
+  // Drag a part of the sidebar to put it somewhere else: a view (into any open group of views), a section, or a class
+  // (Personal stays last). A mouse lifts it once it moves; touch lifts it with a long-press, or at once from an edit
+  // handle. The others slide aside, and Esc puts it back. Alt+Shift+↑ ↓ does the same from the keyboard (sideMove).
+  function bindSideSort() {
+    let s = null;
+    const tree = () => $("#side .sd-tree");
+    const peers = (box) => $$(`:scope > .sd-it[data-drag="${s.kind}"]`, box).filter((x) => x !== s.it);
+    const top = (x) => x.firstElementChild.getBoundingClientRect();
+    function lift() {
+      if (!s || s.on) return;
+      const t = tree(); if (!t) { s = null; return; }
+      s.on = true; S.sorting = true; t.dataset.kind = s.kind; t.classList.add("sorting"); s.it.classList.add("lift");
+      CA.sound.tick(); if (navigator.vibrate) navigator.vibrate(8);
+      follow(s.y);
+    }
+    // the lifted part under the pointer, in the group it's over (views) or among its own; it trades places with a
+    // neighbour once the pointer passes that one's middle
+    function follow(y) {
+      const t = tree(), a = t.getBoundingClientRect();
+      if (y < a.top + 24) t.scrollTop -= 8; else if (y > a.bottom - 24) t.scrollTop += 8;
+      let box = s.it.parentElement;
+      if (s.kind === "view") {
+        const boxes = $$(".sd-grp[data-sec]", t), dist = (b) => { const r = b.getBoundingClientRect(); return y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; };
+        box = boxes.reduce((best, b) => (dist(b) < dist(best) ? b : best), boxes[0] || box);
+      }
+      const others = peers(box), mid = (x) => { const r = top(x); return r.top + r.height / 2; };
+      const end = s.kind === "class" ? $(':scope > .sd-it[data-node="c:none"]', box) : s.kind === "view" ? $(":scope > .sd-drop", box) : null;
+      const before = others.find((x) => y < mid(x)) || end;
+      if (s.it.parentElement !== box || s.it.nextElementSibling !== before) {
+        const rows = $$(".sd-row", t).filter((r) => !s.it.contains(r)), was = new Map(rows.map((r) => [r, r.getBoundingClientRect().top]));
+        box.insertBefore(s.it, before);
+        if (motion()) rows.forEach((r) => { const d = was.get(r) - r.getBoundingClientRect().top; if (d) r.animate([{ translate: `0 ${d}px` }, { translate: "0 0" }], { duration: 160 * CA.motion.level + 1, easing: "cubic-bezier(.2, .9, .3, 1)" }); });
+      }
+      s.it.style.translate = "";
+      s.it.style.translate = `0 ${Math.round(y - s.g - top(s.it).top)}px`;
+    }
+    function finish(keep) {
+      const t = s; s = null; S.sorting = false; clearTimeout(t.t);
+      if (!t.on) return;
+      const tr = tree(); if (tr) { tr.classList.remove("sorting"); delete tr.dataset.kind; }
+      t.it.classList.remove("lift"); t.it.style.translate = "";
+      const moved = t.it.parentElement !== t.box || t.it.nextElementSibling !== t.next;
+      if (moved || t.far) S.noClickUntil = Date.now() + 250; // the click that ends a drag isn't a press
+      if (!moved) return; // back where it was: a slow or shaky click is still a click
+      if (!keep) return renderAll();
+      if ($("#side").contains(document.activeElement)) S.sideFocus = t.it.dataset.node;
+      sidePlace(t.kind, t.it);
+    }
+    document.addEventListener("pointerdown", (e) => {
+      if (s || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+      const row = e.target.closest && e.target.closest("#side .sd-tree .sd-row"), it = row && row.parentElement;
+      if (!it || !it.dataset.drag || e.target.closest(".sd-tw[data-act], .sd-tg, .sd-add, .sd-name")) return;
+      const mouse = e.pointerType === "mouse";
+      s = { it, kind: it.dataset.drag, pid: e.pointerId, x: e.clientX, y: e.clientY, g: e.clientY - row.getBoundingClientRect().top, box: it.parentElement, next: it.nextElementSibling, on: false, far: false, mouse };
+      // a finger on an edit handle lifts at once; elsewhere it's a long-press, so a swipe still scrolls the tree
+      if (!mouse && e.target.closest(".sd-hd")) { e.preventDefault(); lift(); } else if (!mouse) s.t = setTimeout(lift, 420);
+    });
+    document.addEventListener("pointermove", (e) => {
+      if (!s || e.pointerId !== s.pid) return;
+      const d = Math.hypot(e.clientX - s.x, e.clientY - s.y);
+      if (!s.on) { if (d <= 6) return; if (s.mouse) lift(); else { clearTimeout(s.t); s = null; return; } }
+      e.preventDefault(); s.far = s.far || d > 12;
+      follow(e.clientY);
+    });
+    document.addEventListener("pointerup", (e) => { if (s && e.pointerId === s.pid) finish(true); });
+    document.addEventListener("pointercancel", (e) => { if (s && e.pointerId === s.pid) finish(false); });
+    // a lifted part keeps the finger: the tree doesn't scroll under it
+    document.addEventListener("touchmove", (e) => { if (s && s.on) e.preventDefault(); }, { passive: false });
+    document.addEventListener("keydown", (e) => { if (s && s.on && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); } }, true);
   }
   function mNav(el) {
     if (navMode() === "side") return mPath(el);
@@ -1391,6 +1661,8 @@
       const shown = ["dock", "over"].includes(sideState());
       cmd(shown ? "Hide the sidebar" : "Show the sidebar", MOD + "+\\", () => sideToggle(), "folders navigation nav bar panel tree explorer files");
       cmd(`Move the sidebar to the ${sideAt() === "left" ? "right" : "left"}`, "", sideSwap, "side switch swap flip folders navigation nav bar panel", true);
+      cmd(S.sideEdit ? "Done editing the sidebar" : "Edit the sidebar…", "", () => sideEdit(), "customize customise arrange rearrange reorder sections groups rename hide folders layout organize");
+      if (CA.ui.sideLayout) cmd("Put the sidebar back to its usual layout", "", sdReset, "reset default sections groups order arrangement folders", true);
       if (sideP.w) cmd("Put the sidebar back to its usual width", "", () => { sideP.w = 0; sideSave(); sideApply(); }, "reset size resize narrow wide folders", true);
       cmd("Use the view keys along the top instead", "", () => setNavMode("top"), "sidebar tabs key row classic old layout navigation nav bar folders", true);
     } else cmd("Use the sidebar (folders)", MOD + "+\\", () => setNavMode("side"), "folders navigation nav bar panel tree explorer files new layout");
@@ -1426,8 +1698,13 @@
     }
     tabs().concat(viewById("done")).forEach((v) => out.push({ sec: "Views", label: "Go to " + v.label, hint: v.k, sub: v.q, run: () => go(v.id), kw: "show open view tab" }));
     const tv = viewById(S.view), ti = tabs().findIndex((v) => v.id === tv.id);
-    if (ti > 0) out.push({ sec: "Views", label: `Move the ${tv.label} key left`, hint: (MAC ? "⌥⇧" : "Alt+Shift+") + "←", sub: "", run: () => moveTab(tv.id, -1), kw: "reorder tab order rearrange", more: true });
-    if (ti >= 0 && ti < TAB_IDS.length - 1) out.push({ sec: "Views", label: `Move the ${tv.label} key right`, hint: (MAC ? "⌥⇧" : "Alt+Shift+") + "→", sub: "", run: () => moveTab(tv.id, 1), kw: "reorder tab order rearrange", more: true });
+    if (navMode() === "side" && !(tv.id in SIDE_BUILT)) {
+      const mv = (MAC ? "⌥⇧" : "Alt+Shift+");
+      out.push({ sec: "Views", label: `Move ${tv.label} up the sidebar`, hint: mv + "↑", sub: "", run: () => sideMove("view", tv.id, -1), kw: "reorder order rearrange sidebar", more: true });
+      out.push({ sec: "Views", label: `Move ${tv.label} down the sidebar`, hint: mv + "↓", sub: "", run: () => sideMove("view", tv.id, 1), kw: "reorder order rearrange sidebar", more: true });
+    } else if (navMode() === "side") { /* Classes and Notes stay at the top of their sections */ }
+    else if (ti > 0) out.push({ sec: "Views", label: `Move the ${tv.label} key left`, hint: (MAC ? "⌥⇧" : "Alt+Shift+") + "←", sub: "", run: () => moveTab(tv.id, -1), kw: "reorder tab order rearrange", more: true });
+    if (navMode() !== "side" && ti >= 0 && ti < TAB_IDS.length - 1) out.push({ sec: "Views", label: `Move the ${tv.label} key right`, hint: (MAC ? "⌥⇧" : "Alt+Shift+") + "→", sub: "", run: () => moveTab(tv.id, 1), kw: "reorder tab order rearrange", more: true });
     if ((CA.ui.tabs || []).length) out.push({ sec: "Views", label: "Put the view keys back in order", hint: "", sub: "", run: () => setTabs(TAB_IDS, "View keys back in their first order"), kw: "reset tab order reorder default", more: true });
     S.courses.forEach((c) => {
       const cc = (label, run, kw) => out.push({ sec: "Classes", label, sub: c.title, hint: "", run, kw: "course class " + c.tag + " " + kw, more: true });
@@ -2725,6 +3002,7 @@
     focus: (el) => startFocus(el.dataset.id, +el.dataset.min || 25), snooze: (el) => openSnooze(el.dataset.id), skip: () => skip(), back: () => skip(-1),
     del: (el) => del(el.dataset.id), quick: () => openQuick(), palette: () => openPalette(), help: () => openHelp(), lab: openLab,
     sdGo: (el) => sideGo(el.dataset.node), sdFold: (el) => sideFold(el.dataset.node), sideToggle: () => sideToggle(), sideSwap,
+    sideEdit: () => sideEdit(), sdHide, sdDelSec, sdNewSec, sdReset,
     clearQ, rmTerm: (el) => { const t = E.parseFilter(S.q); t.splice(+el.dataset.i, 1); setQ(t.map((x) => x.raw).join(" ")); },
     toggleTerm: (el) => toggleTerm(el.dataset.t), closeInsp: () => { S.insp = false; renderAll(); }, closeOv,
     open: (el) => openLink(el.dataset.url),
@@ -2911,64 +3189,57 @@
   function moveTab(id, d) {
     const ids = tabs().map((v) => v.id), i = ids.indexOf(id);
     if (i < 0 || i + d < 0 || i + d >= ids.length) return CA.sound.nope();
-    if ($("#side").contains(document.activeElement)) S.sideFocus = "v:" + id;
     ids.splice(i + d, 0, ids.splice(i, 1)[0]); setTabs(ids); CA.sound.tick();
-    MO.after(() => { const b = $(`:is(.nkeys .nv, .sd-sort .sd-row)[data-v="${id}"]`); if (b) { MO.ack(b); b.scrollIntoView({ block: "nearest", inline: "nearest" }); } });
+    MO.after(() => { const b = $(`.nkeys .nv[data-v="${id}"]`); if (b) { MO.ack(b); b.scrollIntoView({ block: "nearest", inline: "nearest" }); } });
   }
-  // Hold a view key and drag it along the strip (or a row up and down the sidebar's Views) to put it somewhere else;
-  // the others make room. A mouse lifts it on a drag where the strip fits or in the sidebar, and after a quarter-second
-  // hold where the strip scrolls (a quick drag pans it); touch lifts it with a long-press. Esc puts it back. A press let
-  // go where it started is still a click.
+  // Hold a view key and drag it along the strip to put it somewhere else; the others make room. A mouse lifts it on a
+  // drag where the strip fits, and after a quarter-second hold where it scrolls (a quick drag pans it); touch lifts it
+  // with a long-press. Esc puts it back. A press let go where it started is still a click.
   function bindTabSort() {
     let s = null;
-    const keysIn = (t) => $$(t.sel, t.strip);
+    const keysIn = (strip) => $$(".nv", strip);
     function lift() {
       if (!s || s.on) return;
       const r = s.key.getBoundingClientRect();
-      s.on = true; s.g = s.y ? s.py - r.top : s.x - r.left; S.sorting = true;
+      s.on = true; s.gx = s.x - r.left; S.sorting = true;
       s.strip.classList.add("sorting"); s.key.classList.add("lift");
       CA.sound.tick(); if (navigator.vibrate) navigator.vibrate(8);
     }
     // the lifted key under the pointer; it trades places with a neighbour once the pointer passes that one's middle
-    function follow(x, y) {
-      const strip = s.strip, p = s.y ? y : x, lo = s.y ? "top" : "left", size = s.y ? "height" : "width";
-      if (s.y) { const sc = strip.closest(".sd-tree"), a = sc.getBoundingClientRect(); if (y < a.top + 24) sc.scrollTop -= 8; else if (y > a.bottom - 24) sc.scrollTop += 8; }
-      else if (hscroll(strip)) { const a = strip.getBoundingClientRect(); if (x < a.left + 32) strip.scrollLeft -= 10; else if (x > a.right - 32) strip.scrollLeft += 10; stripEdges(strip); }
-      const others = keysIn(s).filter((b) => b !== s.key);
-      const to = others.find((b) => { const r = b.getBoundingClientRect(); return p < r[lo] + r[size] / 2; }) || s.end;
-      if (to !== s.key.nextElementSibling) {
-        const was = new Map(others.map((b) => [b, b.getBoundingClientRect()[lo]]));
-        strip.insertBefore(s.key, to);
-        if (motion()) others.forEach((b) => { const d = was.get(b) - b.getBoundingClientRect()[lo]; if (d) b.animate([{ translate: s.y ? `0 ${d}px` : `${d}px 0` }, { translate: "0 0" }], { duration: 160 * CA.motion.level + 1, easing: "cubic-bezier(.2, .9, .3, 1)" }); });
+    function follow(x) {
+      const strip = s.strip, a = strip.getBoundingClientRect();
+      if (hscroll(strip)) { if (x < a.left + 32) strip.scrollLeft -= 10; else if (x > a.right - 32) strip.scrollLeft += 10; stripEdges(strip); }
+      const others = keysIn(strip).filter((b) => b !== s.key);
+      const before = others.find((b) => { const r = b.getBoundingClientRect(); return x < r.left + r.width / 2; });
+      if ((before || null) !== s.key.nextElementSibling || (!before && strip.lastElementChild !== s.key)) {
+        const was = new Map(others.map((b) => [b, b.getBoundingClientRect().left]));
+        strip.insertBefore(s.key, before || null);
+        if (motion()) others.forEach((b) => { const dx = was.get(b) - b.getBoundingClientRect().left; if (dx) b.animate([{ translate: `${dx}px 0` }, { translate: "0 0" }], { duration: 160 * CA.motion.level + 1, easing: "cubic-bezier(.2, .9, .3, 1)" }); });
       }
       s.key.style.translate = "";
-      const off = Math.round(p - s.g - s.key.getBoundingClientRect()[lo]);
-      s.key.style.translate = s.y ? `0 ${off}px` : `${off}px 0`;
+      s.key.style.translate = `${Math.round(x - s.gx - s.key.getBoundingClientRect().left)}px 0`;
     }
     function finish(keep) {
       const t = s; s = null; S.sorting = false; clearTimeout(t.t);
       if (!t.on) return;
       t.strip.classList.remove("sorting"); t.key.classList.remove("lift"); t.key.style.translate = "";
-      const ids = keysIn(t).map((b) => b.dataset.v), same = ids.join() === tabs().map((v) => v.id).join();
+      const ids = keysIn(t.strip).map((b) => b.dataset.v), same = ids.join() === tabs().map((v) => v.id).join();
       if (!same || t.far) S.noClickUntil = Date.now() + 250; // the click that ends a drag isn't a press
       if (same) return; // back where it was: a slow or shaky click is still a click
-      if (t.y && $("#side").contains(document.activeElement)) S.sideFocus = t.key.dataset.node;
       if (keep) { setTabs(ids); CA.sound.tick(); } else renderAll();
     }
     document.addEventListener("pointerdown", (e) => {
       if (s || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
-      const key = e.target.closest && e.target.closest(".nkeys .nv, .sd-sort > .sd-row[data-v]"); if (!key || e.target.closest(".sd-tw[data-act]")) return;
-      const y = key.classList.contains("sd-row"), strip = key.parentElement;
-      // the sidebar's Done row isn't a view key: the keys stay above it
-      s = { key, strip, y, sel: y ? ".sd-row[data-v]" : ".nv", end: y ? $(".sd-row:not([data-v])", strip) : null, pid: e.pointerId, x: e.clientX, py: e.clientY, on: false, far: false, mouse: e.pointerType === "mouse" };
+      const key = e.target.closest && e.target.closest(".nkeys .nv"); if (!key) return;
+      s = { key, strip: key.parentElement, pid: e.pointerId, x: e.clientX, y: e.clientY, on: false, far: false, mouse: e.pointerType === "mouse" };
       s.t = setTimeout(lift, s.mouse ? 250 : 420);
     });
     document.addEventListener("pointermove", (e) => {
       if (!s || e.pointerId !== s.pid) return;
-      const d = Math.hypot(e.clientX - s.x, e.clientY - s.py);
-      if (!s.on) { if (d <= 8) return; if (s.mouse && (s.y || !hscroll(s.strip))) lift(); else { clearTimeout(s.t); s = null; return; } }
+      const d = Math.hypot(e.clientX - s.x, e.clientY - s.y);
+      if (!s.on) { if (d <= 8) return; if (s.mouse && !hscroll(s.strip)) lift(); else { clearTimeout(s.t); s = null; return; } }
       e.preventDefault(); s.far = s.far || d > 12;
-      follow(e.clientX, e.clientY);
+      follow(e.clientX);
     });
     document.addEventListener("pointerup", (e) => { if (s && e.pointerId === s.pid) finish(true); });
     document.addEventListener("pointercancel", (e) => { if (s && e.pointerId === s.pid) finish(false); });
@@ -3092,8 +3363,11 @@
     // a held Alt repeats its keydown; rebuilding the tips each time would restart their fade-in from nothing
     if (k === "Alt") { e.preventDefault(); if (!e.repeat) showTips(); return; }
     if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && !inField && !S.overlay && /^Arrow(Left|Right|Up|Down)$/.test(k)) {
-      const row = t.closest && t.closest(".sd-sort .sd-row[data-v]"); // the focused row in the sidebar's Views, else your view
-      e.preventDefault(); hideTips(); return moveTab(row ? row.dataset.v : S.view, k === "ArrowLeft" || k === "ArrowUp" ? -1 : 1);
+      // the focused part of the sidebar, else your view
+      const d = k === "ArrowLeft" || k === "ArrowUp" ? -1 : 1, it = t.closest && t.closest("#side .sd-it");
+      e.preventDefault(); hideTips();
+      if (it) return it.dataset.drag ? sideMove(it.dataset.drag, it.dataset.drag === "view" ? it.dataset.v : it.dataset.drag === "sec" ? it.dataset.sec : it.dataset.course, d) : CA.sound.nope();
+      return navMode() === "side" ? sideMove("view", S.view, d) : moveTab(S.view, d);
     }
     if (e.altKey && !e.ctrlKey && !e.metaKey) {
       // match the physical key: Option+letter on a Mac types a symbol (Option+Q is “œ”)
@@ -3201,6 +3475,7 @@
       if (S.overlay === "takeover") { refuse($("#ov .takeover .big")); return toast("Answer the takeover first"); }
       return closeOv();
     }
+    if (S.sideEdit) return sideEdit(false);
     if (S.sideOver) return sideToggle(false);
     const t = e.target;
     if (/INPUT|TEXTAREA/.test(t.tagName)) { if (t.value) { t.value = ""; t.dispatchEvent(new Event("input", { bubbles: true })); } else t.blur(); return; }
@@ -3313,6 +3588,6 @@
     toast(`Done${it ? " · " + esc(it.title) : ""}. Still focusing until ${mTime(f.end)}${next ? " · next: " + esc(next.title) : ""}`, { ms: 7000 });
     if (S.overlay === "focus") showFocus(false); else renderAll();
   }
-  CA.app = { init() { bind(); bridge(); renderAll(); bindFrame(); bindPower(); setInterval(tick, 1000); }, renderAll, toast, openQuick, openPalette, startFocus, simulate, go, VIEWS, focusTop, openFocusSetup, select, openNote, newNote, openAI,
+  CA.app = { init() { bind(); bridge(); renderAll(); bindFrame(); bindPower(); setInterval(tick, 1000); }, renderAll, toast, sideEdit, openQuick, openPalette, startFocus, simulate, go, VIEWS, focusTop, openFocusSetup, select, openNote, newNote, openAI,
     ic, icons: Object.keys(PIX) }; // the pixel icons, also drawn by the UI kit sheet (docs/UIKit/index.html)
 })();

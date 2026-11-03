@@ -220,35 +220,49 @@
       </div>
       <div class="uk-h3" style="margin-top:1.6em">Sidebar · every place as folders (docs/NAVIGATION.md)</div>
       <div class="uk-row" style="align-items:flex-start;gap:1.4em;flex-wrap:wrap">
-        <div class="side" style="width:18em;height:31em"><div class="panel sd"><div class="ph"><span class="pt"><i data-ic="folder"></i>Folders</span><span class="sp"></span><button class="btn ghost sm" aria-label="Move the sidebar to the right"><i data-ic="next"></i></button><button class="btn ghost sm" aria-label="Hide the sidebar"><i data-ic="side"></i></button></div>
+        <div class="sidebar" style="width:15em;height:31em"><div class="panel sd"><div class="ph"><span class="pt"><i data-ic="folder"></i>Folders</span><span class="sp"></span><button class="btn ghost sm" aria-label="Edit the sidebar"><i data-ic="edit"></i></button><button class="btn ghost sm" aria-label="Move the sidebar to the right"><i data-ic="next"></i></button><button class="btn ghost sm" aria-label="Hide the sidebar"><i data-ic="side"></i></button></div>
           <div class="sd-tree" role="tree" aria-label="Folders">
-            <div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Views</span></div>
-            <div role="group" class="sd-grp sd-sort">
-              <div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="now"></i><span class="sd-l">Do first</span><span class="sd-n">5</span><kbd>1</kbd></div>
-              <div class="sd-row lift" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="today"></i><span class="sd-l">Today</span><span class="sd-n">3</span><kbd>2</kbd></div>
-              <div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="inbox"></i><span class="sd-l">Inbox</span><span class="sd-n">2</span><kbd>3</kbd></div>
-            </div>
-            <div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Classes</span></div>
-            <div role="group" class="sd-grp">
-              <div class="sd-row" role="treeitem" aria-level="2" aria-expanded="true" style="--lvl:0"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-dot" style="--kc: var(--k1)"></span><span class="sd-l">CMPSC 130A</span><span class="sd-n">2</span></div>
+            <div class="sd-it sd-secw" role="none" data-drag="sec"><div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Plan</span></div>
               <div role="group" class="sd-grp">
-                <div class="sd-row on" role="treeitem" aria-level="3" aria-expanded="true" aria-selected="true" style="--lvl:1"><span class="sd-tw"><i data-ic="tw"></i></span><i data-ic="work"></i><span class="sd-l">Assignments</span><span class="sd-n">2</span></div>
-                <div role="group" class="sd-grp">
-                  <div class="sd-row" role="treeitem" aria-level="4" style="--lvl:2"><span class="sd-tw"></span><i data-ic="file"></i><span class="sd-l">PA3: heaps and hash tables</span><span class="sd-d">Fri</span></div>
-                  <div class="sd-row" role="treeitem" aria-level="4" style="--lvl:2"><span class="sd-tw"></span><i data-ic="file"></i><span class="sd-l">HW 4: amortized analysis</span><span class="sd-d late">Oct 30</span></div>
-                </div>
-                <div class="sd-row" role="treeitem" aria-level="3" aria-expanded="false" style="--lvl:1"><span class="sd-tw"><i data-ic="tw"></i></span><i data-ic="exams"></i><span class="sd-l">Exams</span><span class="sd-n">1</span></div>
-                <div class="sd-row" role="treeitem" aria-level="3" style="--lvl:1"><span class="sd-tw"></span><i data-ic="week"></i><span class="sd-l">Calendar</span></div>
-              </div>
-              <div class="sd-row" role="treeitem" aria-level="2" aria-expanded="false" style="--lvl:0"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-dot" style="--kc: var(--k3)"></span><span class="sd-l">PSTAT 120A</span><span class="sd-n">1</span></div>
-            </div>
-            <div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Notes</span><button class="sd-add" aria-label="New note"><i data-ic="plus"></i></button></div>
-            <div role="group" class="sd-grp"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="notes"></i><span class="sd-l">Lecture 12: B-trees</span><span class="sd-pin"><i data-ic="pin"></i></span></div></div>
+                <div class="sd-it" role="none" data-drag="view"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="now"></i><span class="sd-l">Do first</span><span class="sd-n">5</span><kbd>1</kbd></div></div>
+                <div class="sd-it lift" role="none" data-drag="view"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="today"></i><span class="sd-l">Today</span><span class="sd-n">3</span><kbd>2</kbd></div></div>
+                <div class="sd-it" role="none" data-drag="view"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="week"></i><span class="sd-l">Calendar</span><kbd>3</kbd></div></div>
+                <div class="sd-it" role="none" data-drag="view"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="inbox"></i><span class="sd-l">Inbox</span><span class="sd-n">2</span><kbd>4</kbd></div></div>
+              </div></div>
+            <div class="sd-it sd-secw" role="none" data-drag="sec"><div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Classes</span></div>
+              <div role="group" class="sd-grp">
+                <div class="sd-it" role="none"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="classes"></i><span class="sd-l">All classes</span><kbd>7</kbd></div></div>
+                <div class="sd-it" role="none" data-drag="class"><div class="sd-row" role="treeitem" aria-level="2" aria-expanded="true" style="--lvl:0"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-dot" style="--kc: var(--k1)"></span><span class="sd-l">CMPSC 130A</span><span class="sd-n">2</span></div>
+                  <div role="group" class="sd-grp">
+                    <div class="sd-it" role="none"><div class="sd-row on" role="treeitem" aria-level="3" aria-expanded="true" aria-selected="true" style="--lvl:1"><span class="sd-tw"><i data-ic="tw"></i></span><i data-ic="work"></i><span class="sd-l">Assignments</span><span class="sd-n">2</span></div>
+                      <div role="group" class="sd-grp">
+                        <div class="sd-it" role="none"><div class="sd-row" role="treeitem" aria-level="4" style="--lvl:2"><span class="sd-tw"></span><i data-ic="file"></i><span class="sd-l">PA3: heaps and hash tables</span><span class="sd-d">Fri</span></div></div>
+                        <div class="sd-it" role="none"><div class="sd-row" role="treeitem" aria-level="4" style="--lvl:2"><span class="sd-tw"></span><i data-ic="file"></i><span class="sd-l">HW 4: amortized analysis</span><span class="sd-d late">Oct 30</span></div></div>
+                      </div></div>
+                    <div class="sd-it" role="none"><div class="sd-row" role="treeitem" aria-level="3" aria-expanded="false" style="--lvl:1"><span class="sd-tw"><i data-ic="tw"></i></span><i data-ic="exams"></i><span class="sd-l">Exams</span><span class="sd-n">1</span></div></div>
+                    <div class="sd-it" role="none"><div class="sd-row" role="treeitem" aria-level="3" style="--lvl:1"><span class="sd-tw"></span><i data-ic="week"></i><span class="sd-l">Calendar</span></div></div>
+                  </div></div>
+                <div class="sd-it" role="none" data-drag="class"><div class="sd-row" role="treeitem" aria-level="2" aria-expanded="false" style="--lvl:0"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-dot" style="--kc: var(--k3)"></span><span class="sd-l">PSTAT 120A</span><span class="sd-n">1</span></div></div>
+              </div></div>
+            <div class="sd-it sd-secw" role="none" data-drag="sec"><div class="sd-row sd-sec" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-tw"><i data-ic="tw"></i></span><span class="sd-l">Notes</span><button class="sd-add" aria-label="New note"><i data-ic="plus"></i></button></div>
+              <div role="group" class="sd-grp"><div class="sd-it" role="none"><div class="sd-row" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-tw"></span><i data-ic="notes"></i><span class="sd-l">Lecture 12: B-trees</span><span class="sd-pin"><i data-ic="pin"></i></span></div></div></div></div>
           </div>
           <div class="sd-foot"><button class="btn ghost sm" aria-label="Calendars and sources"><i data-ic="week"></i></button><button class="btn ghost sm" aria-label="Trash"><i data-ic="trash"></i></button><span class="sp"></span><button class="btn ghost sm" aria-label="Appearance"><i data-ic="lab"></i></button><button class="btn ghost sm" aria-label="Keyboard shortcuts"><i data-ic="help"></i></button></div></div></div>
+        <div class="sidebar" style="width:15em;height:31em"><div class="panel sd"><div class="ph"><span class="pt"><i data-ic="edit"></i>Edit the sidebar</span><span class="sp"></span><button class="btn sm">Done</button></div>
+          <div class="sd-tip">Drag <i data-ic="grip"></i> to move views, sections and classes, from one group to another too. Type over a section's name to rename it; the eye hides.</div>
+          <div class="sd-tree" role="tree" aria-label="Folders">
+            <div class="sd-it sd-secw" role="none" data-drag="sec"><div class="sd-row sd-sec ed" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-hd"><i data-ic="grip"></i></span><input class="sd-name" value="Plan" aria-label="Section name"><button class="sd-tg" aria-pressed="false" aria-label="Hide this section"><i data-ic="eye"></i></button><button class="sd-tg" aria-label="Delete this group"><i data-ic="trash"></i></button></div>
+              <div role="group" class="sd-grp">
+                <div class="sd-it" role="none" data-drag="view" data-v="now"><div class="sd-row ed" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-hd"><i data-ic="grip"></i></span><i data-ic="now"></i><span class="sd-l">Do first</span><button class="sd-tg" aria-pressed="false" aria-label="Hide Do first"><i data-ic="eye"></i></button></div></div>
+                <div class="sd-it off" role="none" data-drag="view" data-v="inbox"><div class="sd-row ed" role="treeitem" aria-level="2" style="--lvl:0"><span class="sd-hd"><i data-ic="grip"></i></span><i data-ic="inbox"></i><span class="sd-l">Inbox</span><button class="sd-tg" aria-pressed="true" aria-label="Show Inbox"><i data-ic="eyeoff"></i></button></div></div>
+              </div></div>
+            <div class="sd-it sd-secw" role="none" data-drag="sec"><div class="sd-row sd-sec ed" role="treeitem" aria-level="1" aria-expanded="true"><span class="sd-hd"><i data-ic="grip"></i></span><input class="sd-name" value="Reading" aria-label="Section name"><button class="sd-tg" aria-pressed="false" aria-label="Hide this section"><i data-ic="eye"></i></button><button class="sd-tg" aria-label="Delete this group"><i data-ic="trash"></i></button></div>
+              <div role="group" class="sd-grp" data-sec="g1"><div class="sd-drop" aria-hidden="true">Drag views here</div></div></div>
+          </div>
+          <div class="sd-edfoot"><button class="btn sm"><i data-ic="plus"></i>New group</button><span class="sp"></span><button class="btn ghost sm">Reset</button></div></div></div>
         <div class="uk-specs" style="flex:1;min-width:18em">
           <figure class="uk-spec"><div class="uk-frame"><div class="region"><div class="pathbar"><button class="btn sm sd-show"><i data-ic="side"></i><span class="bl">Folders</span></button><nav class="pb-path" aria-label="You are here"><button class="pb-b">Classes</button><span class="pb-sep" aria-hidden="true">›</span><button class="pb-b">CMPSC 130A</button><span class="pb-sep" aria-hidden="true">›</span><span class="pb-cur" aria-current="page"><i data-ic="work"></i>Assignments</span></nav><span class="pb-f">filtered</span><button class="btn ghost sm">Clear</button></div></div></div><figcaption><code>.pathbar</code> where you are: <code>.sd-show</code> while the sidebar isn't docked, <code>.pb-b</code> steps back up, <code>.pb-cur</code> the place, <code>.pb-f</code> once it's narrowed</figcaption></figure>
-          <figure class="uk-spec"><div class="uk-row"><span class="dim">See the tree:</span></div><figcaption><code>.sd-sec</code> sections fold · <code>.sd-row.on</code> the place you're in · <code>.sd-row.lift</code> a view being moved · <code>.sd-dot</code> a class · <code>.sd-n</code> a count · <code>.sd-d.late</code> overdue · <code>.sd-pin</code> pinned</figcaption></figure>
+          <figure class="uk-spec"><div class="uk-row"><span class="dim">See the tree:</span></div><figcaption><code>.sd-sec</code> sections fold · <code>.sd-row.on</code> the place you're in · <code>.sd-it.lift</code> a part being moved · <code>.sd-dot</code> a class · <code>.sd-n</code> a count · <code>.sd-d.late</code> overdue · <code>.sd-pin</code> pinned · editing: <code>.sd-hd</code> handles, <code>.sd-name</code> names, <code>.sd-tg</code> eye and bin, <code>.sd-it.off</code> hidden, <code>.sd-drop</code> an empty group</figcaption></figure>
         </div>
       </div>
       <div class="uk-h3" style="margin-top:1.6em">Top bar · the window's title bar on Windows and Linux</div>

@@ -14,25 +14,39 @@ Apps that hold a lot of places solved this the same way, and they agree on most 
 
 | what we looked at | what it says | what we took |
 |---|---|---|
-| Apple HIG, sidebars | A sidebar is for top-level navigation through a hierarchy. Keep the hierarchy shallow, let people hide the sidebar, and let them choose what's in it. | Three levels at most: section, folder, file. It hides. You reorder the Views. |
+| Apple HIG, sidebars | A sidebar is for top-level navigation through a hierarchy. Keep the hierarchy shallow, let people hide the sidebar, and let them choose what's in it. | Three levels at most: section, folder, file. It hides. You arrange what's in it. |
 | W3C ARIA APG, tree navigation | A navigation tree uses one Tab stop, ↑ ↓ to move, → ← to unfold, step in and step out, Home and End, Enter to open, and marks the current page. | `role="tree"` with a roving tabindex, `aria-expanded`, `aria-level` and `aria-selected`. Letters stay the app's shortcuts. |
 | VS Code, custom layout | The side bar moves to either side, toggles with one shortcut and resizes by dragging its edge. | `data-side` left or right, `Mod+\`, and a grip on the inner edge. |
 | Notion | `Mod+\` toggles the sidebar. Pages nest as a tree: clicking a page opens it, and only its arrow folds it. | The same shortcut. Clicking a folder opens it and unfolds it; the arrow only folds. |
-| Linear (2024 and 2025 changelogs) | The sidebar is personal: reorder items, hide some, fold sections. | Views drag to reorder, and the number keys follow. Sections fold, and what's open is remembered. |
+| Linear (2024 and 2025 changelogs) | The sidebar is personal: reorder items, hide some, fold sections. | Sections, views and classes drag; you rename, hide, add and delete groups; the number keys follow. Sections fold, and what's open is remembered. |
+| Finder and Mail sidebars | Sections you can rename, reorder and hide; the most used places (Recents, Inbox) first. | What you open most comes first: Plan, then Coursework. The rest waits in More, folded. |
 | Material 3: navigation drawer and rail | Docked beside the content on wide screens, a modal drawer over a scrim on narrow ones. M3 Expressive (2025) folds the drawer into an expandable rail. | It docks at 900 px and wider. Below that it's a drawer over a scrim, and Esc or the scrim shuts it. |
 | Obsidian forum, sidebar sizing | People want to resize it with the keyboard too, not just the mouse. | The grip is focusable: ← → resize it, Home and End jump to the narrowest and widest, Enter hides it. |
 
 ## How it works
 
-**The tree.** Each part is a filter or lens over the one item list (`docs/SPEC.md`), never a separate store.
+**The tree.** Each part is a filter or lens over the one item list (`docs/SPEC.md`), never a separate store. It starts with what you open most and divides the rest:
 
-- **Views:** your views in your order, numbered 1–0 and −, with live counts. Done comes last.
-- **Classes:** one folder per included class, plus Personal. A class folder opens its open items and holds:
+- **Plan:** Do first, Today, Calendar and Inbox, numbered 1 to 4, with live counts.
+- **Coursework:** Assignments and Exams (5 and 6).
+- **Classes:** All classes (7), then one folder per included class, then Personal. A class folder opens its open items and holds:
   - Assignments and Exams, whose files are the items themselves
   - Calendar: the week, showing that class only
   - Notes
-- **Notes:** pinned notes first, then a folder per class, then "No class". The + key writes a new note.
-- **Tags:** every tag on an open item, by count. This section starts folded.
+- **Notes:** All notes (8), pinned notes, then a folder per class, then "No class". The + key writes a new note.
+- **More:** Events, Links, Everything and Done (9, 0, −). This section starts folded.
+- **Tags:** every tag on an open item, by count. This section starts folded too.
+
+The number keys follow the order the views show in, so moving a view renumbers it; a hidden view keeps a key after the shown ones.
+
+**Making it yours.** The pencil key in the band (or Appearance › Navigation, or "Edit the sidebar" in `Mod+K`) turns on editing. The tree then shows only its shape, the sections, the views and the classes, without files:
+
+- **Move:** drag a handle. A view can go into any group, a section anywhere in the list, a class anywhere among the classes (Personal stays last). Outside editing, a mouse drags rows the same way, and touch lifts a row with a long-press. `Alt+Shift+↑ ↓` moves the focused row, or your view.
+- **Rename:** type over a section's name. Enter keeps it and Esc puts it back.
+- **Hide:** the eye hides a view or a whole section. Hidden parts stay in the list, faded, while you edit.
+- **Groups:** New group adds one after the last group, ready to name. The bin deletes a group, and its views move to the group above it. Classes, Notes and Tags are built in: they move, rename and hide, but don't delete.
+- **Reset** puts back the usual sections, order and names. A toast can undo it, and undo a deleted group.
+- Done, or Esc, ends editing.
 
 A folder lists its first 12 files, then an "N more" row that opens the folder.
 
@@ -48,12 +62,13 @@ A folder lists its first 12 files, then an "N more" row that opens the folder.
 
 - **The drawer** stays open while you unfold folders, and shuts when you open a view or a file.
 - **Hiding it:** `Mod+\` toggles it, as do the Folders key in the path bar, its band's hide key, and dragging the edge well past its narrowest width.
-- **Width:** drag the edge between 200 and 440 px. A double-click puts back the usual 17 em.
+- **Width:** drag the edge between 180 and 440 px. A double-click puts back the usual 15 em.
+- **Compact rows:** the tree's text is .82 of the app's, in rows 1.75 lines tall (about 22 px at the usual size), so a screen holds about twice as many places. Touch screens keep 40 px rows.
 - **Side:** the band's arrow key moves it to the other edge. So do Appearance › Navigation and the palette.
 
 **The page.** The page lays out in the room the sidebar leaves it: `.main` is a container named `screen`, so the page's width breakpoints, such as two columns from 1100 px, count only the page's own width. Dialogs in `#layer` still answer to the whole screen.
 
-**On a desktop window,** the sidebar's band drags the window like the top bar does. On a Mac, with the sidebar docked on the left, the traffic lights sit over the sidebar's top instead of the top bar's.
+**On a desktop window,** the sidebar's band drags the window like the top bar does, and so does the space above it. On a Mac, with the sidebar docked on the left, the traffic lights sit in a clear strip above the sidebar, level with the top bar, and the sidebar starts level with the path bar (`--nav-top`, measured in `sideApply`). In Standard, the strip is the top of the sidebar's own pane, the way Finder does it.
 
 ## Keys
 
@@ -64,12 +79,14 @@ A folder lists its first 12 files, then an "N more" row that opens the folder.
 | → ← | unfold or step in · fold or step out |
 | Enter · Space | open (a section folds) |
 | Esc | back to the page, or shut the drawer |
-| Alt+Shift+↑ ↓ | move the focused view (or your view) up or down |
+| Alt+Shift+↑ ↓ | move the focused view, section or class (or your view) up or down |
+| Enter · Space, while editing | rename the section · hide or show the row |
+| Esc, while editing | done |
 | 1–0, − | open a view by its place, as before |
 
 ## What's saved where
 
-- **On every device (the look, synced):** `CA.ui.nav`, which is `"side"` (the default) or `"top"` for the key row, and `CA.ui.side`, which is `"left"` or `"right"`. They travel as `look.nav` and `look.side` (`docs/SYNC.md`).
+- **On every device (the look, synced):** `CA.ui.nav`, which is `"side"` (the default) or `"top"` for the key row; `CA.ui.side`, which is `"left"` or `"right"`; and `CA.ui.sideLayout`, how you arranged the sidebar, null for the usual way. They travel as `look.nav`, `look.side` and `look.sideLayout` (`docs/SYNC.md`). The arrangement is `{ secs: [{ id, label, hide, views }], off: [view ids], classes: [course ids] }`; `sideLayout()` makes any arrangement whole (every section once, every view in one group, a new view in the first group), so an old or partial one still works. The key row along the top keeps its own order, `CA.ui.tabs`.
 - **On this device only:** the width, whether the sidebar is hidden, and which folders are open, all in localStorage `capp.side`. A phone and a desktop want different widths.
 
 ## Sources
