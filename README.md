@@ -64,6 +64,8 @@ On a new computer, choose **Sign in** in the top bar: your list, notes, look, ca
 
 For Canvas in Firefox, add [PocketCanvas](https://github.com/imanimal/pocketcanvas): it reads Canvas, WeBWorK and Gradescope with your browser's sign-in (Google included) and sends your classes and work here. Connect it from its settings; Collegiapp asks you to allow it.
 
+To have Claude write your notes from a chat, choose **Add to Claude Desktop** or **Add to Claude Code** under Assistants in **Connect sources** ([integrations/claude-desktop](integrations/claude-desktop)). Each release also carries `Collegiapp.mcpb` for Claude Desktop.
+
 From source, build the installer and install it for your Windows user (Start menu entry and desktop shortcut, no admin prompt):
 
 ```bash

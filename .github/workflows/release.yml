@@ -73,6 +73,7 @@ jobs:
           releaseName: Collegiapp ${{ github.ref_name }}
           releaseBody: |
             Windows: download the `-setup.exe` (or the `.msi`).
+            Claude Desktop: open `Collegiapp.mcpb` and click Install, so Claude can write your notes from a chat (or use Connect sources › Assistants in the app).
             macOS (Apple Silicon + Intel): `brew install --cask imanimal/tap/collegiapp`, or download the `.dmg`. First launch of the .dmg copy: right-click > Open (build is not notarized; the Homebrew cask clears that for you).
             Already installed? Collegiapp offers this update by itself once the release is published.
           releaseDraft: true
@@ -81,6 +82,16 @@ jobs:
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+
+      # The MCP server as a Claude Desktop extension (integrations/claude-desktop), packed once
+      - name: Attach the Claude Desktop extension
+        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python tools/build_mcpb.py Collegiapp.mcpb
+          gh release upload "${{ github.ref_name }}" Collegiapp.mcpb --clobber
 
       # Homebrew (imanimal/homebrew-tap) installs releases/latest/download/Collegiapp_universal.dmg,
       # so every release carries the DMG under that stable name too.

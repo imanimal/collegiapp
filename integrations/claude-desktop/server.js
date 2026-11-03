@@ -10,7 +10,8 @@
 "use strict";
 const http = require("http"), fs = require("fs"), os = require("os"), path = require("path"), { spawn } = require("child_process");
 
-const VERSION = "0.1.3";
+// the manifest beside it carries the version (the app stamps its own when it hands the server out, src-tauri/src/mcp.rs)
+const VERSION = (() => { try { return require("./manifest.json").version; } catch (e) { return "0.0.0"; } })();
 const BRIDGE = new URL(process.env.COLLEGIAPP_BRIDGE || "http://127.0.0.1:4747");
 const TOKEN_FILE = process.env.COLLEGIAPP_TOKEN_FILE || path.join(os.homedir(), ".collegiapp", "assistant.json");
 const PROTOCOLS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];

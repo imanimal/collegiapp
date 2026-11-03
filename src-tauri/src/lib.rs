@@ -39,6 +39,7 @@ mod export;
 mod feeds;
 mod focus;
 mod gradescope;
+mod mcp;
 mod power;
 mod presence;
 mod start;
@@ -100,6 +101,8 @@ pub fn run() {
             bridge::bridge_answer,
             bridge::bridge_pending,
             bridge::bridge_forget,
+            mcp::mcp_desktop,
+            mcp::mcp_code,
             commands::save_items,
             commands::set_feed,
             commands::refresh_feeds,

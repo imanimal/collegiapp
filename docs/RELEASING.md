@@ -56,7 +56,7 @@ gh secret set AMO_JWT_SECRET -R imanimal/pocketcanvas
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-The Release workflow builds Windows and macOS (universal) into a **draft** release. Open it on GitHub, read it over and press Publish: installed apps only see published releases.
+The Release workflow builds Windows and macOS (universal) into a **draft** release, with `Collegiapp.mcpb` (the Claude Desktop extension, `tools/build_mcpb.py`) beside the installers. Open it on GitHub, read it over and press Publish: installed apps only see published releases.
 
 **PocketCanvas:** the first release is the manifest's version as it is (tag `v0.1.0`). After that: `python tools/build.py --bump 0.1.1` (it updates the manifest), commit, tag `v0.1.1` and push the tag. The workflow has Mozilla sign the package and publishes the release with the `.xpi` and `updates.json`. Firefox refuses an unsigned `.xpi`, so the first real install has to come from a release, not a local build.
 

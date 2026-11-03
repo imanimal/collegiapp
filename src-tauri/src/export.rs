@@ -9,9 +9,9 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 
 type CmdResult<T> = Result<T, String>;
 
-const KINDS: [&str; 7] = ["md", "txt", "html", "docx", "pdf", "zip", "json"];
+const KINDS: [&str; 8] = ["md", "txt", "html", "docx", "pdf", "zip", "json", "mcpb"];
 
-fn downloads(app: &AppHandle) -> CmdResult<PathBuf> {
+pub(crate) fn downloads(app: &AppHandle) -> CmdResult<PathBuf> {
     let p = app.path();
     p.download_dir()
         .or_else(|_| p.document_dir())
@@ -55,7 +55,7 @@ fn clean_name(name: &str) -> CmdResult<(String, String)> {
 }
 
 /// `name.ext`, or `name (2).ext` and so on when that's taken.
-fn unique(dir: &Path, stem: &str, ext: &str) -> PathBuf {
+pub(crate) fn unique(dir: &Path, stem: &str, ext: &str) -> PathBuf {
     let first = dir.join(format!("{stem}.{ext}"));
     if !first.exists() {
         return first;

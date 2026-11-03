@@ -101,7 +101,7 @@ fn search_dirs() -> Vec<PathBuf> {
 }
 
 /// The CLI's executable: a native binary first, then an npm shim.
-fn locate(name: &str) -> Option<PathBuf> {
+pub(crate) fn locate(name: &str) -> Option<PathBuf> {
     let names: Vec<String> = if cfg!(windows) {
         ["exe", "cmd", "bat"]
             .iter()

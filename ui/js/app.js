@@ -1661,6 +1661,8 @@
       const st = S.settings || {};
       cmd("Refresh sources", "", syncNow, "sync update pull fetch reload");
       cmd("Connect sources…", "", () => openFeeds(), "add calendar canvas google gradescope webwork import sync link");
+      cmd("Add Collegiapp to Claude Desktop", "", mcpDesktop, "claude desktop mcp extension connector assistant ai chat write notes", true);
+      cmd("Add Collegiapp to Claude Code", "", mcpCode, "claude code mcp connector assistant ai cli write notes", true);
       [["Canvas", st.canvas_feed_url], ["Google Calendar", st.gcal_feed_url], ["Gradescope", st.gradescope], ["WeBWorK", (st.webwork_courses || []).length]].forEach(([n, on]) =>
         cmd((on ? "Disconnect " : "Connect ") + n + "…", "", () => openFeeds(), on ? "remove stop unlink source sync" : "add source sync import link calendar", true));
       cmd("Pick which calendar events are classes", "", () => go("classes"), "google series lecture section not a class", true);
@@ -2515,7 +2517,8 @@
       <div class="dim feed-st" id="wwSt">${wwOn ? wwCourses + " · " + feedLine(fd.webwork, "webwork") : "Not connected"} · <button class="chip ${wwOn ? "" : "on"}" data-act="wwConnect">${wwOn ? "Sign in again or add a course" : "Sign in to WeBWorK…"}</button>${wwOn ? ' <button class="chip" data-act="wwOff">Disconnect</button>' : ""}</div></div>
       ${LIVE ? `<div class="feed"><b>PocketCanvas</b><div class="dim">The Firefox extension for Canvas. It sends your classes with their priority, ghost and hidden choices, all your work (undated work too), and the due dates it reads from WeBWorK and Gradescope with Firefox's own sign-in, so a Google sign-in works there. Connect it from its settings; the app asks you here first.</div>
       <div class="dim feed-st" id="pcSt">Checking…</div></div>
-      <div class="feed"><b>Assistants</b><div class="dim">Claude Desktop and Claude Code can search and read your notes, write new ones and add to them from a chat, while the app runs in the tray. Add Collegiapp's connector to Claude (integrations/claude-desktop), ask for a note, and the app asks you here first. Text an assistant replaces goes to the trash.</div>
+      <div class="feed"><b>Assistants</b><div class="dim">Claude Desktop and Claude Code can search and read your notes, write new ones and add to them from a chat, while the app runs in the tray. Add Collegiapp to one of them, ask Claude for a note, and the app asks you here first. Text an assistant replaces goes to the trash.</div>
+      <div class="dim feed-st"><button class="chip on" data-act="mcpDesktop">Add to Claude Desktop</button> <button class="chip" data-act="mcpCode">Add to Claude Code</button></div>
       <div class="dim feed-st" id="asSt">Checking…</div></div>` : ""}
       <div class="nb"><button class="btn primary" data-act="feedSave">${ic("check")}Save and import<kbd>Enter</kbd></button>${st.canvas_feed_url || st.gcal_feed_url || gsOn || wwOn ? '<button class="btn" data-act="syncNow">Refresh now<kbd>F5</kbd></button>' : ""}<button class="btn" data-act="feedFile">Import a .ics file…</button><button class="btn" data-act="closeOv">Close<kbd>Esc</kbd></button></div>
       <input type="file" id="feedFileIn" accept=".ics,text/calendar" hidden></div>`));
@@ -2532,6 +2535,21 @@
       put("#pcSt", cs.filter((c) => !ai(c)), "No browser connected");
       put("#asSt", cs.filter(ai), "No assistant connected");
     }).catch(() => {});
+  }
+  // Collegiapp's MCP server for Claude (src-tauri/src/mcp.rs): Claude Desktop gets it as an extension saved to Downloads
+  // and opened, which shows Claude's Install dialog; Claude Code gets `claude mcp add`, or the command on the clipboard.
+  function mcpDesktop() {
+    CA.store.invoke("mcp_desktop").then((r) => {
+      const file = esc(String(r.path).split(/[\\/]/).pop()), show = [["Show", () => CA.store.invoke("reveal_export", { path: r.path }).catch(() => {})]];
+      toast(r.opened ? `Opening ${file} in Claude Desktop · click Install there, then ask Claude for a note` : `Saved ${file} to Downloads · drag it into Claude Desktop › Settings › Extensions`, { ms: 12000, actions: show });
+      CA.sound.ok();
+    }, (e) => toast(esc(String(e))));
+  }
+  function mcpCode() {
+    CA.store.invoke("mcp_code").then((r) => {
+      if (r.added) { toast("Added to Claude Code for every project · ask for a note in a new session", { ms: 9000 }); return CA.sound.ok(); }
+      copyOut(r.command, null, `${esc(r.error || "Not added")} · the command that adds it is on your clipboard`);
+    }, (e) => toast(esc(String(e))));
   }
   // Sync across devices: your own Firebase project with Google sign-in (src-tauri/src/cloud.rs in the app, cloud.js in the
   // web app; docs/SYNC.md). The app uses the project built in from cloud-config.js (or one pasted here) and signs in on
@@ -3099,6 +3117,7 @@
     courseDel: (el) => openCourseDel(el.dataset.c, el.dataset.v), courseDelGo: (el) => courseDelGo(el.dataset.c, el.dataset.v),
     gsConnect, gsOff: () => CA.store.invoke("gradescope_disconnect").then((f) => { S.feeds = f; S.settings.gradescope = false; toast("Gradescope disconnected · its items stay"); openFeeds(); renderAll(); }).catch((e) => toast(esc(String(e)))),
     pairAnswer: (el) => pairAnswer(!!el.dataset.v),
+    mcpDesktop, mcpCode,
     pcForget: (el) => CA.store.invoke("bridge_forget", { id: el.dataset.id }).then(() => { toast("Disconnected · its items stay"); pcClients(); }).catch((e) => toast(esc(String(e)))),
     wwConnect, wwOff: () => CA.store.invoke("webwork_disconnect").then((f) => { S.feeds = f; S.settings.webwork_courses = []; toast("WeBWorK disconnected · its items stay"); openFeeds(); renderAll(); }).catch((e) => toast(esc(String(e)))),
     source: (el) => {

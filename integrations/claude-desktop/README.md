@@ -5,17 +5,28 @@ An MCP server that lets Claude Desktop, Claude Code or any MCP client write your
 | file | what it does |
 |---|---|
 | `server.js` | The server: plain Node, no dependencies, MCP over stdio. It talks to the app's bridge on 127.0.0.1:4747 (`src-tauri/src/bridge.rs`). |
-| `install.py` | Adds the server to Claude Desktop's config and to Claude Code (user scope). `--remove` takes it out. |
-| `manifest.json` | The same server as a Claude Desktop extension (MCPB), for packing with `npx @anthropic-ai/mcpb pack integrations/claude-desktop`. |
+| `manifest.json` | Makes the server a Claude Desktop extension (MCPB). The app and `tools/build_mcpb.py` stamp it with the app's version when they pack it, and the server reads its version from it. |
+| `install.py` | For working on the server: adds this folder's copy to Claude Desktop's config and to Claude Code (user scope). `--remove` takes it out. |
 | `test.js` | Runs the server against a fake bridge. |
 
 ## Install
+
+The app carries the server, so you don't need this repo. In Collegiapp, open **Connect sources** (or search for "Claude") and find **Assistants**:
+
+| key | what happens |
+|---|---|
+| **Add to Claude Desktop** | `Collegiapp.mcpb` goes to Downloads and opens. Claude Desktop shows its Install dialog; click **Install**. It runs the server on its own Node, so you don't need Node. If nothing opens, drag the file into Claude Desktop's Settings › Extensions. |
+| **Add to Claude Code** | The server goes to `~/.collegiapp/server.js`, and the app runs `claude mcp add --scope user collegiapp` for every project. This needs Node 18 or later. Without Node or Claude Code, the command goes on your clipboard instead. |
+
+Each release also has `Collegiapp.mcpb` for Claude Desktop (`python tools/build_mcpb.py` packs it). Adding Collegiapp again after an update gives Claude the newer server.
+
+To work on the server itself, use the repo's copy instead, and not both at once, or Claude sees every tool twice:
 
 ```bash
 python integrations/claude-desktop/install.py
 ```
 
-Then quit Claude Desktop from its tray or menu bar icon and open it again. You need Node 18 or later on your PATH. The server runs from this folder, so run the script again if you move the repo.
+Then quit Claude Desktop from its tray or menu bar icon and open it again. This needs Node on your PATH, and the server runs from this folder, so run the script again if you move the repo.
 
 The first time Claude uses a tool, Collegiapp comes to the front and asks you to **Connect an assistant**. Check the code against the one Claude shows in the chat and click **Allow**. The token is kept in `~/.collegiapp/assistant.json`, one for every Claude on this computer. **Connect sources** in the app lists it under Assistants, where **Disconnect** stops it at once.
 
@@ -44,7 +55,7 @@ Drawings and pasted pictures are tens of kilobytes of base64, so Claude sees the
 
 ## Claude Desktop on Windows
 
-Claude Desktop from the Microsoft Store runs its servers inside its package, which redirects their AppData. That's why the token lives in your home folder and why the server starts Collegiapp through Explorer: a direct start would run a private copy of the app with its own data. The Store build also keeps its config in `%LOCALAPPDATA%\Claude-Data\claude_<id>\claude_desktop_config.json`, which `install.py` finds.
+Claude Desktop from the Microsoft Store runs its servers inside its package, which redirects their AppData. That's why the token lives in your home folder and why the server starts Collegiapp through Explorer: a direct start would run a private copy of the app with its own data. Inside the package, `%LOCALAPPDATA%\Collegiapp` can also show a stale copy of the app, so nothing should point a Claude config at the app's exe. The Store build keeps its config in `%LOCALAPPDATA%\Claude-Data\claude_<id>\claude_desktop_config.json`, which `install.py` finds.
 
 ## Testing
 
