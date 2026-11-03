@@ -207,7 +207,7 @@ Every icon is a 9×9 bitmap in `PIX` in `ui/js/app.js`: nine rows joined by `|`,
 - **Size in whole 9 px steps.** `.i` is 1.1 em rounded to the nearest 9 px (18, 27, 36 px), so every icon pixel covers whole screen pixels. `.i.big` is 2.4 em (empty states). Location, agenda and fact icons are 1.25 em; window keys and checkmarks 0.9 em.
 - **Colour comes from context.** `--accent` on label bands and on the pressed program key, `--text-3` on idle program keys and facts, inherited everywhere else.
 - **Icons sit next to a word.** Icon-only buttons (window keys, close, checkboxes) carry `title` and `aria-label`; the SVG itself is `aria-hidden`.
-- **View icons are keyed by view id:** `now today inbox work exams week classes events links all`. The rest: `done search plus focus play check clock next prev pin go ext lab help filter ticket flag flame building walk bell close video trash wmin wmax wrest sun moon` (`sun` and `moon` mark the Day and Night theme slots).
+- **View icons are keyed by view id:** `now today inbox work exams week classes events links all`. The rest: `done search plus focus play check clock next prev pin go ext lab help filter ticket flag flame building walk bell close video trash wmin wmax wrest sun moon draw pick erase line arrow box oval` (`sun` and `moon` mark the Day and Night theme slots; `draw` is the editor's Drawing key and `pick` to `oval` are the drawing layer's tools).
 
 To add one, draw it on a 9×9 grid with 1 px strokes and no diagonals thinner than a pixel, add it to `PIX`, draw its line version on a 24 grid in `LINE`, and use `ic("name")`. Pocket Start (`start.js`) and the Windhawk assets (`build_assets.py`) draw from their own copies; add it there too if they need it.
 
@@ -399,10 +399,12 @@ Rows group under `.grp` headers (Overdue, Today, Tomorrow …) when sorted by du
 
 ### Notes
 
-- **Notes lens** (`.nbar`, `.ngrid` > `.ncard` > `.nc-top`, `.nc-t`, `.nc-p`, `.nc-bar`, `.nc-tags`, `.nc-when`; `.nc-pin`, `.nc-ck`): notes as cards with a preview. A checklist's progress is a segmented meter (`.nc-bar`). Pinned notes come first with a pin.
+- **Notes lens** (`.nbar`, `.ngrid` > `.ncard` > `.nc-top`, `.nc-t`, `.nc-img`, `.nc-p`, `.nc-bar`, `.nc-tags`, `.nc-when`; `.nc-pin`, `.nc-ck`): notes as cards with a preview. A note's first drawing shows under its title (`.nc-img`, at most 6.5 em tall). A checklist's progress is a segmented meter (`.nc-bar`). Pinned notes come first with a pin.
 - **Editor sheet** (`.nsheet` > `.ns-bar` with `.ns-tools` and `.ns-g` groups, `.ns-page` > `.ns-title` and `.ned`, `.ns-side`, `.ns-foot`): nearly the whole screen, the page centred in it.
   - **Toolbar:** `.ns-tools` is a strip that scrolls like the others (`bindStrips`). The link and table controls appear as a strip under it while they're needed.
   - **Page:** `.ned` draws exactly what the note holds and what prints (`docs/NOTES.md`). A checklist item's box is its left padding.
+  - **Pictures and drawings:** an `img` in `.ned`, `.ai-doc` or `.ai-msg` sits in the line, or by `data-place` floats `left` or `right` with the text wrapping, or takes a `center` line; `data-w` is its width as a share of the column. The picked one (`.picked`) has a 2 px accent ring 3 px out, and the bar under the tools holds its controls: Edit drawing, a `.ns-seg` of place chips, the `.ns-imgw` width slider and Delete. In a dark scheme drawings (`img[src^="data:image/svg+xml"]`) are inverted, so black ink reads white.
+  - **Drawing layer** (`.ns-draw`, `ui/js/draw.js`): covers the sheet with its own `.ph` band (Discard, Done), a `.ns-tools.dr-tools` strip (tools with `.on`, ink keys with a `.dr-dot` swatch, size keys with a `.dr-w` dot, undo, redo, clear), `.dr-scroll` > `.dr-page` (the same width as `.ns-page`, so a drawing goes in at its drawn size) > `.dr-box` on a dot grid, holding `svg.dr-cv`, the `svg.dr-ui` overlay (`.dr-sel` dashed box around the selection, `.dr-marq` the drag box) and `.dr-in` for text; then a `.ns-foot` of keys. The cursor follows the tool (`data-tool`). In a dark scheme the canvas, text field and swatches are inverted with the drawings.
   - **Narrower screens:** the AI side panel overlays the page, and the sheet fills the screen on phones.
 - **Capture modes** (`.qa-mode`): a `.seg` of Item · Jot · List above the quick-add box. Jot and List type into a textarea.
 

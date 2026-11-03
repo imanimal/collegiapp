@@ -1148,6 +1148,47 @@ html[data-motion="0"] .screen *, html[data-motion="0"] .screen *::before, html[d
 :is(.ned, .ai-doc, .ai-msg) :is(th, td) { padding: .35em .6em; border: 1px solid var(--line); vertical-align: top; text-align: left; min-width: 3em; }
 :is(.ned, .ai-doc, .ai-msg) th { background: var(--surface-2); font-weight: 700; }
 .ned :is(th, td):focus-within { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent); }
+/* images and drawings: in the line of text, wrapped by the text on either side, or on a line of their own; data-w is
+   their share of the column. A drawing's ink is chosen for paper, so a dark theme shows it inverted (black reads white). */
+.ned { display: flow-root; }
+:is(.ned, .ai-doc, .ai-msg) img { max-width: 100%; height: auto; vertical-align: middle; }
+:is(.ned, .ai-doc, .ai-msg) img[data-place="center"] { display: block; margin: .6em auto; }
+:is(.ned, .ai-doc, .ai-msg) img[data-place="left"] { float: left; margin: .3em 1.2em .5em 0; }
+:is(.ned, .ai-doc, .ai-msg) img[data-place="right"] { float: right; margin: .3em 0 .5em 1.2em; }
+.ned img { cursor: default; border-radius: 3px; }
+.ned img.picked { outline: 2px solid var(--accent); outline-offset: 3px; }
+:root[data-scheme="dark"] :is(.ned, .ai-doc, .ai-msg, .ncard) img[src^="data:image/svg+xml"] { filter: invert(1) hue-rotate(180deg); }
+@media (hover: hover) { .ned img:not(.picked):hover { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 3px; } }
+.nc-img { display: block; align-self: flex-start; max-width: 100%; max-height: 6.5em; object-fit: contain; object-position: left top; pointer-events: none; }
+/* the picked image's tools in the bar under the formatting strip */
+.ns-seg { display: inline-flex; flex-wrap: wrap; gap: .3em; }
+.ns-imgw { display: inline-flex; align-items: center; gap: .45em; flex: 0 1 15em; min-width: 9em; }
+.screen .ns-imgw input { flex: 1; min-width: 4em; padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.ns-imgw .num { min-width: 3.4em; font-size: .86em; color: var(--text-2); }
+#nsBar .chip .i { width: 1em; height: 1em; }
+
+/* the drawing layer (draw.js) covers the sheet: its own label band, a tool strip, the canvas on a page as wide as the
+   note's column (so a drawing goes in at the size it was drawn), and a footer of keys */
+.ns-draw { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; min-height: 0; background: var(--surface); outline: none; animation: barIn calc(var(--m) * 160ms + 1ms) ease-out; }
+.ns-draw > .ph { position: relative; }
+.dr-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; background: var(--bg2); }
+.dr-page { box-sizing: border-box; max-width: 46em; min-height: 100%; margin: 0 auto; padding: 1.6em 2em 2em; background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.dr-box { position: relative; background-image: radial-gradient(circle, color-mix(in srgb, var(--text) 24%, transparent) 0 1px, transparent 1.5px); background-position: 0 0; }
+.dr-cv { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; -webkit-user-select: none; user-select: none; }
+.ns-draw[data-tool="select"] .dr-cv { cursor: default; }
+.ns-draw[data-tool="text"] .dr-cv { cursor: text; }
+.ns-draw[data-tool="erase"] .dr-cv { cursor: cell; }
+.dr-ui { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.dr-sel, .dr-marq { display: none; fill: none; stroke: var(--accent); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; }
+.dr-marq { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke-dasharray: 3 3; }
+.screen .dr-in { position: absolute; z-index: 1; box-sizing: content-box; min-width: 3em; height: auto; margin: 0; padding: 0 .1em; border: 1px dashed color-mix(in srgb, var(--text) 45%, transparent); border-radius: 2px; background: transparent; box-shadow: none; outline: none; font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; line-height: 1.15; }
+.dr-dot { display: block; width: 1em; height: 1em; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .28); }
+.dr-w { display: block; margin: auto; border-radius: 50%; background: currentColor; }
+.dr-w-s { width: .3em; height: .3em; }
+.dr-w-m { width: .5em; height: .5em; }
+.dr-w-l { width: .8em; height: .8em; }
+.bset-b8 .btn.ns-t.dr-ink, .bset-b8 .btn.ns-t.dr-size { min-width: 2.1em; }
+:root[data-scheme="dark"] :is(.dr-cv, .dr-in, .dr-dot) { filter: invert(1) hue-rotate(180deg); }
 
 /* capture modes: Item / Jot / List above the box; Jot and List type into a textarea */
 .qa-mode { margin-bottom: .75em; align-items: center; }
@@ -1226,6 +1267,7 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
   .ns-body.side { grid-template-columns: minmax(0, 1fr); position: relative; }
   .ns-body.side .ns-side { position: absolute; inset: 0 0 0 auto; width: min(21em, 88%); z-index: 3; box-shadow: var(--drop); animation: drawerIn calc(var(--m) * 220ms + 1ms) cubic-bezier(.2, .9, .3, 1); }
   .ns-page { padding: 1.3em 1.4em 4em; }
+  .dr-page { padding: 1.3em 1.4em 2em; }
 }
 @container (max-width: 44em) { .ns-foot .dim, .nsheet .ph .btn kbd { display: none; } }
 @container (max-width: 34em) { .nsheet .ph .btn .bl { display: none; } .ns-meta .dim { display: none; } }
@@ -1363,8 +1405,9 @@ html[data-motion="0"] .ai-dots i { animation: none; opacity: .7; }
   .ov.sheet { place-items: stretch; padding: 0; }
   .nsheet { width: 100%; border-radius: 0 !important; animation-name: sheetIn; }
   .nsheet > .ph { padding-top: max(.5em, env(safe-area-inset-top)); }
-  .ns-scroll { background: var(--surface); }
+  :is(.ns-scroll, .dr-scroll) { background: var(--surface); }
   .ns-page { padding: 1em max(1em, env(safe-area-inset-right)) 5em max(1em, env(safe-area-inset-left)); box-shadow: none; }
+  .dr-page { padding: 1em max(1em, env(safe-area-inset-right)) 2em max(1em, env(safe-area-inset-left)); box-shadow: none; }
   .ns-title { font-size: 1.6em; }
   .ns-foot { padding-bottom: max(.5em, env(safe-area-inset-bottom)); }
   .ns-body.side .ns-side { width: 100%; }

@@ -15,11 +15,14 @@
 //! pulled from another device puts the local version in the trash. The sample item never syncs.
 //!
 //! Settings that follow you (the look, the calendar feed links, the Google class picks:
-//! `Settings::synced` in store.rs) are one more document, `users/{uid}/meta/settings`: `j` the core's `SyncedSettings` as
-//! JSON (each key with its value and the time and device of its last change), `d` and `s` as
-//! above. Each cycle reads it after the items, merges it key by key (`merge_settings`, later
-//! change wins) and writes it back when this device has something newer. The store stamps a
-//! setting when it changes here, so a new device's defaults never win over the account's.
+//! `Settings::synced` in store.rs) and the courses, each as "course.<id>" (null once deleted),
+//! are one more document, `users/{uid}/meta/settings`: `j` the core's `SyncedSettings` as JSON
+//! (each key with its value and the time and device of its last change), `d` and `s` as above.
+//! Each cycle reads it before the items, merges it key by key (`merge_settings`, later change
+//! wins) and writes it back when this device has something newer. The store stamps a key when
+//! it changes here, so a new device's defaults never win over the account's. A course with a
+//! key there comes only from there, never from an item's `c` again, so an edit or a delete made
+//! elsewhere sticks.
 //!
 //! The project is the one in `ui/js/cloud-config.js`, built in, so the app and the web app share
 //! it with nothing to fill in; the Sync dialog can set another. Beside the store: `cloud.json`
@@ -368,6 +371,10 @@ fn run(app: &AppHandle, cloud: &Cloud) -> Result<(), String> {
     };
     let token = id_token(app, cloud, &cfg, &session)?;
     let root = format!("projects/{}/databases/(default)/documents", cfg.project_id);
+    // the courses before the items, so a new device takes the account's and not the items'
+    // older copies; its error waits until the items are through, so a project whose rules
+    // predate the settings document still syncs them
+    let settings = sync_settings(app, cloud, &token, &root, &session.uid);
     pull(
         app,
         cloud,
@@ -375,8 +382,7 @@ fn run(app: &AppHandle, cloud: &Cloud) -> Result<(), String> {
         &format!("{API}/{root}/users/{}", session.uid),
     )?;
     push(app, cloud, &token, &root, &session.uid)?;
-    // after the items, so a project whose rules predate the settings document still syncs them
-    sync_settings(app, cloud, &token, &root, &session.uid)
+    settings
 }
 
 const API: &str = "https://firestore.googleapis.com/v1";
@@ -512,6 +518,7 @@ fn merge_remote(
     items: &mut Vec<Item>,
     courses: &mut Vec<Course>,
     marks: &mut Marks,
+    synced: &SyncedSettings,
     docs: &[Remote],
 ) -> (bool, Vec<(Item, String, bool)>) {
     let (mut changed, mut gone) = (false, Vec::new());
@@ -522,7 +529,8 @@ fn merge_remote(
         let Some(item) = &r.item else { continue };
         marks.pushed.insert(item.id, item.updated_at);
         if let (Some(cid), Some(c)) = (&item.course_id, &r.course) {
-            if &c.id == cid && !courses.iter().any(|x| &x.id == cid) {
+            let synced_here = synced.contains_key(&format!("course.{cid}"));
+            if &c.id == cid && !synced_here && !courses.iter().any(|x| &x.id == cid) {
                 courses.push(c.clone());
                 changed = true;
             }
@@ -554,8 +562,13 @@ fn apply(app: &AppHandle, cloud: &Cloud, docs: &[Remote]) {
         let st = app.state::<SharedState>();
         let mut g = lock(&st);
         let data = &mut g.data;
-        let (changed, gone) =
-            merge_remote(&mut data.items, &mut data.courses, &mut c.saved.marks, docs);
+        let (changed, gone) = merge_remote(
+            &mut data.items,
+            &mut data.courses,
+            &mut c.saved.marks,
+            &data.synced,
+            docs,
+        );
         if changed {
             g.trash_put(gone);
             if let Err(e) = g.save() {
@@ -667,7 +680,7 @@ fn sync_settings(
         let mut merged = g.data.synced.clone();
         let report = merge_settings(&mut merged, &remote);
         for k in &report.pulled {
-            g.data.settings.set_synced(k, &merged[k].v);
+            g.data.set_synced(k, &merged[k].v);
             // a new feed link starts a new log, as when it's pasted here (commands.rs set_feed)
             match k.as_str() {
                 "canvas_feed_url" => g.data.feeds.canvas = Default::default(),
@@ -700,10 +713,14 @@ fn sync_settings(
     Ok(())
 }
 
-/// Settings came from another device: the windows reload (the main one takes the look), a new
-/// feed link is read now, and new class picks re-import the Google calendar this device reads.
+/// Settings or courses came from another device: the windows reload (the main one takes the
+/// look), presence follows the courses, a new feed link is read now, and new class picks
+/// re-import the Google calendar this device reads.
 fn settings_pulled(app: &AppHandle, keys: &[String]) {
     let _ = app.emit("items-changed", "sync");
+    if keys.iter().any(|k| k.starts_with("course.")) {
+        crate::presence::refresh(app);
+    }
     let gcal = {
         let st = app.state::<SharedState>();
         let g = lock(&st);
@@ -1253,12 +1270,13 @@ mod tests {
         let new = item("from the phone", "2026-11-01T10:30:00Z");
         let mut items = vec![mine.clone(), gone.clone()];
         let (mut courses, mut marks) = (Vec::new(), Marks::default());
+        let synced = SyncedSettings::new();
         let docs = [
             doc(&older, "2026-11-01T12:00:01Z"),
             doc(&deleted, "2026-11-01T12:00:02Z"),
             doc(&new, "2026-11-01T12:00:00Z"),
         ];
-        let (changed, trashed) = merge_remote(&mut items, &mut courses, &mut marks, &docs);
+        let (changed, trashed) = merge_remote(&mut items, &mut courses, &mut marks, &synced, &docs);
         assert!(changed);
         assert_eq!(items[0].title, "mine"); // newer here: kept, and still to push
         assert!(items[1].deleted);
@@ -1269,8 +1287,54 @@ mod tests {
         let left: Vec<&str> = unpushed(&items, &marks).map(|i| i.title.as_str()).collect();
         assert_eq!(left, ["mine"]);
         // pulling the same documents again changes nothing
-        let (again, _) = merge_remote(&mut items, &mut courses, &mut marks, &docs[1..]);
+        let (again, _) = merge_remote(&mut items, &mut courses, &mut marks, &synced, &docs[1..]);
         assert!(!again);
+    }
+
+    /// An item's `c` adds a course only while the settings document has no say on it: once it
+    /// has a key there (edited, or deleted as null), the item's older copy never brings it back.
+    #[test]
+    fn an_items_course_comes_only_when_the_account_has_none() {
+        let mut it = item("hw", "2026-11-01T10:00:00Z");
+        it.course_id = Some("cs16-f26".into());
+        let mut d = doc(&it, "2026-11-01T12:00:00Z");
+        d.course = Some(Course::new("cs16-f26", "CMPSC 16"));
+        let mut deleted = SyncedSettings::new();
+        deleted.insert(
+            "course.cs16-f26".into(),
+            collegiapp_core::Setting {
+                v: Value::Null,
+                at: d.at,
+                by: "dev-b".into(),
+            },
+        );
+        let (mut items, mut courses, mut marks) = (Vec::new(), Vec::new(), Marks::default());
+        merge_remote(
+            &mut items,
+            &mut courses,
+            &mut marks,
+            &deleted,
+            std::slice::from_ref(&d),
+        );
+        assert!(
+            courses.is_empty(),
+            "deleted on another device: stays deleted"
+        );
+        assert_eq!(items.len(), 1, "the item still comes");
+        let (mut items, mut courses, mut marks) = (Vec::new(), Vec::new(), Marks::default());
+        let none = SyncedSettings::new();
+        merge_remote(
+            &mut items,
+            &mut courses,
+            &mut marks,
+            &none,
+            std::slice::from_ref(&d),
+        );
+        assert_eq!(
+            courses.len(),
+            1,
+            "no say yet: the item's copy is all there is"
+        );
     }
 
     #[test]

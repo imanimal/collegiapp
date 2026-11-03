@@ -1,7 +1,8 @@
 /* Collegiapp — notes. A note is an Item of kind "note" whose `notes` field holds its document in Collegiapp Markdown
    (docs/NOTES.md): # ## ### headings, paragraphs (a single newline is a line break), - bullets, 1. numbers, - [ ] / - [x]
    checklists (nested by indenting), > quotes, > [!TIP] callouts (NOTE TIP IMPORTANT WARNING), ``` code ```, ---,
-   | pipe | tables |, and inline **bold** *italic* <u>underline</u> ~~strike~~ ==highlight== `code` [links](url) ![images](url).
+   | pipe | tables |, and inline **bold** *italic* <u>underline</u> ~~strike~~ ==highlight== `code` [links](url) ![images](url);
+   ![alt|right 40%](url) places an image (drawings are SVG images with a data address, draw.js).
    This file is pure: Markdown in, the editor's HTML out (toHTML), the editor's DOM back to Markdown (fromDOM), and the
    files a note goes out as and comes in from (.md .txt .html .docx, a .json backup). app.js owns the editor and the
    Notes lens; print and PDF go through the page's print view (#printArea). */
@@ -13,10 +14,11 @@
   const CALLOUT_LABEL = { note: "Note", tip: "Tip", important: "Important", warning: "Warning" };
   // only web and mail links; anything else (javascript:, data:) becomes plain text
   const safeUrl = (u) => (/^(https?:|mailto:|#)/i.test(String(u).trim()) ? String(u).trim() : "");
-  const safeImg = (u) => (/^(https?:|data:image\/(png|jpe?g|gif|webp);)/i.test(String(u).trim()) ? String(u).trim() : "");
+  // images from the web, pasted pictures, and drawings (SVG, which an <img> never runs a script in)
+  const safeImg = (u) => (/^(https?:|data:image\/(png|jpe?g|gif|webp);|data:image\/svg\+xml;base64,)/i.test(String(u).trim()) ? String(u).trim() : "");
 
   /* ───────────── inline: Markdown text → a small tree ─────────────
-     nodes: { t: "text", v } { t: "br" } { t: "code", v } { t: "b"|"i"|"u"|"s"|"mark", c } { t: "a", href, c } { t: "img", src, alt } */
+     nodes: { t: "text", v } { t: "br" } { t: "code", v } { t: "b"|"i"|"u"|"s"|"mark", c } { t: "a", href, c } { t: "img", src, alt, place, w } */
   const DELIMS = [["**", "b"], ["__", "b"], ["~~", "s"], ["==", "mark"], ["*", "i"], ["_", "i"]];
   const isWord = (c) => !!c && /[\p{L}\p{N}]/u.test(c);
   const isSpace = (c) => !c || /\s/.test(c);
@@ -35,6 +37,13 @@
     if (k >= s.length) return null;
     const url = s.slice(j + 2, k).trim().replace(/\s+"[^"]*"$/, "");
     return { text: s.slice(i + 1, j), url, end: k + 1 };
+  }
+  // ![alt|place width%](src): what follows the last | places the image, left or right with the text wrapping round it
+  // or center on a line of its own, and sizes it as a share of the text column (5–100%)
+  function imgAlt(text) {
+    const a = text.replace(/\\([\\`*_{}\[\]()#+\-.!|~=<>])/g, "$1"), m = /^([\s\S]*?)\s*\|\s*(left|right|center|centre)?\s*(?:(\d{1,3})\s*%)?\s*$/i.exec(a);
+    if (!m || (!m[2] && !m[3])) return { alt: a, place: "", w: 0 };
+    return { alt: m[1], place: m[2] ? m[2].toLowerCase().replace("centre", "center") : "", w: m[3] ? Math.max(5, Math.min(100, +m[3])) : 0 };
   }
   const canOpen = (s, i, d) => !isSpace(s[i + d.length]) && (d[0] !== "_" || !isWord(s[i - 1]));
   // the closer of delimiter d from j: not after a space, `_` not inside a word, skipping escapes, code and nested pairs
@@ -67,7 +76,7 @@
         if (m) { let v = s.slice(m.k, m.end); if (/^ .* $/.test(v) && v.trim()) v = v.slice(1, -1); push({ t: "code", v }); i = m.end + m.run.length; continue; }
         let k = i; while (s[k] === "`") k++; buf += s.slice(i, k); i = k; continue;
       }
-      if (c === "!" && s[i + 1] === "[") { const m = linkAt(s, i + 1); if (m && safeImg(m.url)) { push({ t: "img", src: safeImg(m.url), alt: m.text }); i = m.end; continue; } }
+      if (c === "!" && s[i + 1] === "[") { const m = linkAt(s, i + 1); if (m && safeImg(m.url)) { push(Object.assign({ t: "img", src: safeImg(m.url) }, imgAlt(m.text))); i = m.end; continue; } }
       if (c === "[") { const m = linkAt(s, i); if (m) { const href = safeUrl(m.url); if (href) { push({ t: "a", href, c: inline(m.text) }); i = m.end; continue; } } }
       if (c === "<") {
         if (s.startsWith("<u>", i)) { const e = s.indexOf("</u>", i + 3); if (e > i + 3) { push({ t: "u", c: inline(s.slice(i + 3, e)) }); i = e + 4; continue; } }
@@ -92,9 +101,10 @@
     return out;
   }
   const TAGS = { b: "strong", i: "em", u: "u", s: "s", mark: "mark" };
+  const imgHTML = (n) => `<img src="${esc(n.src)}" alt="${esc(n.alt || "")}"${n.place ? ` data-place="${n.place}"` : ""}${n.w ? ` data-w="${n.w}" style="width:${n.w}%"` : ""}>`;
   function inlineHTML(nodes) {
     return nodes.map((n) => n.t === "text" ? esc(n.v) : n.t === "br" ? "<br>" : n.t === "code" ? `<code>${esc(n.v)}</code>`
-      : n.t === "a" ? `<a href="${esc(n.href)}" rel="noopener">${inlineHTML(n.c)}</a>` : n.t === "img" ? `<img src="${esc(n.src)}" alt="${esc(n.alt)}">`
+      : n.t === "a" ? `<a href="${esc(n.href)}" rel="noopener">${inlineHTML(n.c)}</a>` : n.t === "img" ? imgHTML(n)
       : `<${TAGS[n.t]}>${inlineHTML(n.c)}</${TAGS[n.t]}>`).join("");
   }
   function inlineText(nodes) {
@@ -217,6 +227,14 @@
     const w = /font-weight\s*:\s*(\d+|bold)/i.exec(st), fs = /font-style\s*:\s*italic/i.test(st), td = /text-decoration[^;]*?(underline|line-through)/i.exec(st);
     return { b: !!w && (w[1] === "bold" || +w[1] >= 600), i: fs, u: !!td && td[1] === "underline", s: !!td && td[1] === "line-through" };
   }
+  // an image's place and width: the editor's data-place and data-w, or a pasted page's float and width in %
+  function imgPlace(n) {
+    const st = n.getAttribute("style") || "", dp = n.getAttribute("data-place") || "";
+    const pl = /^(left|right|center)$/.test(dp) ? dp : ((/float\s*:\s*(left|right)/i.exec(st) || [])[1] || "").toLowerCase();
+    const w = Math.round(+(n.getAttribute("data-w") || (/(?:^|;)\s*width\s*:\s*(\d{1,3}(?:\.\d+)?)%/i.exec(st) || [])[1] || 0));
+    const ww = w >= 5 && w <= 100 ? w : 0;
+    return pl || ww ? "|" + [pl, ww ? ww + "%" : ""].filter(Boolean).join(" ") : "";
+  }
   function wrap(inner, open, close) {
     const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(inner);
     return m[2] ? m[1] + open + m[2] + (close == null ? open : close) + m[3] : inner;
@@ -230,7 +248,7 @@
       if (n.nodeType !== 1 || SKIP.test(n.tagName)) continue;
       const tag = n.tagName;
       if (tag === "BR") { out += "\n"; continue; }
-      if (tag === "IMG") { const src = safeImg(n.getAttribute("src") || ""); if (src) out += `![${(n.getAttribute("alt") || "").replace(/[\[\]]/g, "")}](${src})`; continue; }
+      if (tag === "IMG") { const src = safeImg(n.getAttribute("src") || ""); if (src) out += `![${(n.getAttribute("alt") || "").replace(/[\[\]|]/g, "")}${imgPlace(n)}](${src})`; continue; }
       if (tag === "CODE" || tag === "KBD" || tag === "SAMP" || tag === "TT") {
         const v = n.textContent.replace(/\n/g, " "); if (!v) continue;
         const runs = (v.match(/`+/g) || []).map((r) => r.length), tick = "`".repeat(runs.length ? Math.max(...runs) + 1 : 1), pad = /^`|`$/.test(v) ? " " : "";
@@ -402,7 +420,8 @@ blockquote{margin:.8em 0;padding:.1em 1em;border-left:3px solid #d3ccbd;color:#4
 .callout[data-kind=tip]{border-color:#2f8f5b;background:#eaf6ef}.callout[data-kind=important]{border-color:#7b4fd0;background:#f2edfb}.callout[data-kind=warning]{border-color:#c4581f;background:#fbf0e8}
 .callout::before{content:attr(data-label);display:block;font-weight:700;font-size:.85em;margin-top:.3em}code{font:.9em "Space Mono",ui-monospace,Menlo,Consolas,monospace;background:#efebe2;padding:.05em .3em;border-radius:4px}
 pre{background:#f3f0e8;border:1px solid #e1dbcf;border-radius:8px;padding:.8em 1em;overflow:auto;white-space:pre-wrap}pre code{background:none;padding:0}mark{background:#ffe27a;color:inherit;padding:0 .1em}
-table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #d3ccbd;padding:.35em .6em;vertical-align:top;text-align:left}th{background:#f3f0e8}hr{border:0;border-top:1px solid #d3ccbd;margin:1.4em 0}a{color:#2a5bc4}img{max-width:100%}`;
+table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #d3ccbd;padding:.35em .6em;vertical-align:top;text-align:left}th{background:#f3f0e8}hr{border:0;border-top:1px solid #d3ccbd;margin:1.4em 0}a{color:#2a5bc4}img{max-width:100%;height:auto;vertical-align:middle}
+img[data-place=left]{float:left;margin:.2em 1.2em .5em 0}img[data-place=right]{float:right;margin:.2em 0 .5em 1.2em}img[data-place=center]{display:block;margin:.6em auto}`;
   // the same styles scoped to the page's print view (#printArea, core.css), which print and PDF go through
   const PRINT_CSS = DOC_CSS.replace(/(^|\})\s*([^{}]+)\{/g, (m, close, sel) => close + sel.split(",").map((x) => (x.trim() === "body" ? "#printArea .doc" : "#printArea .doc " + x.trim())).join(",") + "{");
   // callout labels are a CSS attr() in exports, so the editor's own markup can be printed as is
@@ -423,16 +442,61 @@ table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #
         const style = n.t === "code" ? '<w:rStyle w:val="CodeChar"/>' : f.link ? '<w:rStyle w:val="Hyperlink"/>' : "";
         out += `<w:r>${style || pr ? `<w:rPr>${style}${pr}</w:rPr>` : ""}<w:t xml:space="preserve">${xe(n.v)}</w:t></w:r>`;
       } else if (n.t === "br") out += "<w:r><w:br/></w:r>";
-      else if (n.t === "img") out += docxRuns([{ t: "text", v: n.alt ? `[${n.alt}]` : "[image]" }], f, ctx);
+      else if (n.t === "img") out += ctx.img(n) || docxRuns([{ t: "text", v: n.alt ? `[${n.alt}]` : "[image]" }], f, ctx);
       else if (n.t === "a") { const id = ctx.link(n.href); out += `<w:hyperlink r:id="${id}" w:history="1">${docxRuns(n.c, Object.assign({}, f, { link: true }), ctx)}</w:hyperlink>`; }
       else out += docxRuns(n.c, Object.assign({}, f, { [n.t]: true }), ctx);
     }
     return out;
   }
-  function toDocx(it) {
-    const links = [], nums = [];
-    const ctx = { link: (href) => { links.push(href); return "rIdL" + links.length; } };
-    const para = (text, ppr, f) => `<w:p>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ""}${docxRuns(inline(text), f || {}, ctx)}</w:p>`;
+  // A drawing or pasted picture goes in as a picture in the line, its width the note's share of the column; `media`
+  // (docxMedia) has a PNG of each and a drawing's SVG, which Word 2016 and later show instead. Without it they're [alt].
+  const CW = 5943600; // the text column in EMU: 6.5 in, a letter page less its margins
+  const A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main", PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture";
+  const SVG_NS = "http://schemas.microsoft.com/office/drawing/2016/SVG/main", WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
+  function picXML(k, m, id, cx, cy, descr) {
+    const svg = m.svg ? `<a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip xmlns:asvg="${SVG_NS}" r:embed="rIdV${k}"/></a:ext></a:extLst>` : "";
+    return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Picture ${id}" descr="${xe(descr)}"/>`
+      + `<a:graphic xmlns:a="${A_NS}"><a:graphicData uri="${PIC_NS}"><pic:pic xmlns:pic="${PIC_NS}"><pic:nvPicPr><pic:cNvPr id="${id}" name="image${k}.${m.ext}"/><pic:cNvPicPr/></pic:nvPicPr>`
+      + `<pic:blipFill><a:blip r:embed="rIdM${k}">${svg}</a:blip><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>`
+      + `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+  }
+  // a note's drawings and pasted pictures for toDocx: src → { png, ext, svg, w, h, cx } (a drawing drawn at 2.5 times)
+  function docxMedia(it) {
+    const srcs = [...new Set((String(it.notes || "").match(/\]\(data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+\)/gi) || []).map((m) => m.slice(2, -1)))];
+    const bytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const one = (src) => new Promise((res) => {
+      const img = new Image();
+      img.onerror = () => res(null);
+      img.onload = () => {
+        const w = img.naturalWidth || 1, h = img.naturalHeight || 1, data = src.slice(src.indexOf(",") + 1);
+        if (!/^data:image\/svg/i.test(src)) {
+          const m = /^data:image\/(png|jpe?g|gif);/i.exec(src);
+          return res(m ? [src, { png: bytes(data), ext: m[1].toLowerCase().replace("jpg", "jpeg"), svg: null, w, h, cx: w * 9525 }] : null);
+        }
+        const k = Math.min(2.5, 4000 / Math.max(w, h)), c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob((b) => (b ? b.arrayBuffer().then((a) => res([src, { png: new Uint8Array(a), ext: "png", svg: new TextDecoder().decode(bytes(data)), w, h, cx: (CW * w) / 800 }])) : res(null)), "image/png");
+      };
+      img.src = src;
+    });
+    return Promise.all(srcs.map(one)).then((xs) => new Map(xs.filter(Boolean)));
+  }
+  function toDocx(it, media) {
+    const links = [], nums = [], pics = [];
+    const ctx = { link: (href) => { links.push(href); return "rIdL" + links.length; }, n: 0 };
+    ctx.img = (n) => {
+      const m = media && media.get(n.src); if (!m) return "";
+      if (!pics.includes(m)) pics.push(m);
+      const cx = Math.round(n.w ? (CW * n.w) / 100 : Math.min(CW, m.cx)), cy = Math.round((cx * m.h) / m.w);
+      return picXML(pics.indexOf(m) + 1, m, ++ctx.n, cx, cy, (n.alt || "Drawing") + (n.place || n.w ? "|" + [n.place, n.w ? n.w + "%" : ""].filter(Boolean).join(" ") : ""));
+    };
+    // a picture alone in its paragraph keeps its side of the page
+    const para = (text, ppr, f) => {
+      const nodes = inline(text), lone = nodes.length === 1 && nodes[0].t === "img" && nodes[0].place;
+      if (lone && lone !== "left") ppr = (ppr || "") + `<w:jc w:val="${lone}"/>`;
+      return `<w:p>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ""}${docxRuns(nodes, f || {}, ctx)}</w:p>`;
+    };
     let body = `<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t xml:space="preserve">${xe(it.title || "Note")}</w:t></w:r></w:p>`;
     const list = (l, lvl) => {
       let numId = null;
@@ -464,7 +528,7 @@ table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #
       }
     }
     const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
-    const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W} xmlns:wp="${WP_NS}"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
     const font = '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/>', mono = '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>';
     const st = (id, name, ppr, rpr, type) => `<w:style w:type="${type || "paragraph"}" w:styleId="${id}"><w:name w:val="${name}"/>${type === "character" ? "" : '<w:basedOn w:val="Normal"/><w:next w:val="Normal"/>'}<w:qFormat/>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ""}${rpr ? `<w:rPr>${rpr}</w:rPr>` : ""}</w:style>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr>${font}<w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>`
@@ -487,12 +551,15 @@ table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #
     const numbering = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering ${W}><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>${lvls("bullet")}</w:abstractNum><w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="hybridMultilevel"/>${lvls("decimal")}</w:abstractNum>`
       + `<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num>${nums.map((s, k) => `<w:num w:numId="${3 + k}"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="${s}"/></w:lvlOverride></w:num>`).join("")}</w:numbering>`;
     const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-    const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdS" Type="${R}/styles" Target="styles.xml"/><Relationship Id="rIdN" Type="${R}/numbering" Target="numbering.xml"/>${links.map((h, k) => `<Relationship Id="rIdL${k + 1}" Type="${R}/hyperlink" Target="${xe(h)}" TargetMode="External"/>`).join("")}</Relationships>`;
+    const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdS" Type="${R}/styles" Target="styles.xml"/><Relationship Id="rIdN" Type="${R}/numbering" Target="numbering.xml"/>${links.map((h, k) => `<Relationship Id="rIdL${k + 1}" Type="${R}/hyperlink" Target="${xe(h)}" TargetMode="External"/>`).join("")}`
+      + `${pics.map((m, k) => `<Relationship Id="rIdM${k + 1}" Type="${R}/image" Target="media/image${k + 1}.${m.ext}"/>${m.svg ? `<Relationship Id="rIdV${k + 1}" Type="${R}/image" Target="media/image${k + 1}.svg"/>` : ""}`).join("")}</Relationships>`;
     const now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
     const core = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xe(it.title || "Note")}</dc:title><dc:creator>Collegiapp</dc:creator>${it.tags && it.tags.length ? `<cp:keywords>${xe(it.tags.join(", "))}</cp:keywords>` : ""}<dcterms:created xsi:type="dcterms:W3CDTF">${it.created ? new Date(it.created).toISOString().replace(/\.\d+Z$/, "Z") : now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`;
-    const types = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`;
+    const types = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="svg" ContentType="image/svg+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`;
     const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`;
-    return zip([["[Content_Types].xml", types], ["_rels/.rels", rels], ["word/document.xml", doc], ["word/styles.xml", styles], ["word/numbering.xml", numbering], ["word/_rels/document.xml.rels", docRels], ["docProps/core.xml", core]]);
+    const files = [["[Content_Types].xml", types], ["_rels/.rels", rels], ["word/document.xml", doc], ["word/styles.xml", styles], ["word/numbering.xml", numbering], ["word/_rels/document.xml.rels", docRels], ["docProps/core.xml", core]];
+    pics.forEach((m, k) => { files.push([`word/media/image${k + 1}.${m.ext}`, m.png]); if (m.svg) files.push([`word/media/image${k + 1}.svg`, m.svg]); });
+    return zip(files);
   }
   // A zip of stored (uncompressed) files: local headers, the central directory, the end record.
   let CRC = null;
@@ -551,6 +618,20 @@ table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #
     const one = (el, name) => (el ? kids(el, name)[0] : null);
     const val = (el) => (el ? el.getAttributeNS(W, "val") || el.getAttribute("w:val") : null);
     const href = {}; if (rels) for (const r of rels.getElementsByTagName("Relationship")) href[r.getAttribute("Id")] = r.getAttribute("Target");
+    // pictures with an SVG (drawings, from Collegiapp or Word) come in as drawings; other pictures stay out, as in paste
+    const svgs = {}, b64 = (t) => { const b = new TextEncoder().encode(t); let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
+    for (const sb of doc.getElementsByTagNameNS(SVG_NS, "svgBlip")) {
+      const id = sb.getAttributeNS(R, "embed"), t = href[id];
+      if (t && !svgs[id]) { const x = await read("word/" + t.replace(/^\/?(word\/)?/, "")); if (x && /<svg[\s>]/.test(x)) svgs[id] = "data:image/svg+xml;base64," + b64(x); }
+    }
+    const sect = doc.getElementsByTagNameNS(W, "sectPr")[0], twip = (el, a) => (el ? +(el.getAttributeNS(W, a) || el.getAttribute("w:" + a)) || 0 : 0);
+    const pg = sect && one(sect, "pgSz"), mar = sect && one(sect, "pgMar"), col = pg && mar && twip(pg, "w") > twip(mar, "left") + twip(mar, "right") ? (twip(pg, "w") - twip(mar, "left") - twip(mar, "right")) * 635 : CW;
+    const picMD = (d) => {
+      const sb = d.getElementsByTagNameNS(SVG_NS, "svgBlip")[0], src = sb && svgs[sb.getAttributeNS(R, "embed")]; if (!src) return "";
+      const pr = d.getElementsByTagNameNS(WP_NS, "docPr")[0], ext = d.getElementsByTagNameNS(WP_NS, "extent")[0], lay = imgAlt((pr && pr.getAttribute("descr")) || "Drawing");
+      const w = lay.w || (ext ? Math.max(5, Math.min(100, Math.round((+ext.getAttribute("cx") / col) * 100))) : 0), at = [lay.place, w ? w + "%" : ""].filter(Boolean).join(" ");
+      return `![${(lay.alt || "Drawing").replace(/[\[\]|]/g, "")}${at ? "|" + at : ""}](${src})`;
+    };
     const fmtOf = {};
     if (num) {
       const abs = {};
@@ -559,16 +640,16 @@ table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #
     }
     const runMD = (r) => {
       const pr = one(r, "rPr"), on = (name) => { const x = pr && one(pr, name); return !!x && val(x) !== "0" && val(x) !== "false" && val(x) !== "none"; };
-      let t = "";
-      for (const c of kids(r)) { if (c.localName === "t") t += escText(c.textContent); else if (c.localName === "tab") t += " "; else if (c.localName === "br" || c.localName === "cr") t += "\n"; }
-      if (!t.trim()) return t;
-      if (pr && one(pr, "rStyle") && /code/i.test(val(one(pr, "rStyle")))) return "`" + t.replace(/\\(.)/g, "$1") + "`";
+      let t = "", pics = "";
+      for (const c of kids(r)) { if (c.localName === "t") t += escText(c.textContent); else if (c.localName === "tab") t += " "; else if (c.localName === "br" || c.localName === "cr") t += "\n"; else if (c.localName === "drawing") pics += picMD(c); }
+      if (!t.trim()) return t + pics;
+      if (pr && one(pr, "rStyle") && /code/i.test(val(one(pr, "rStyle")))) return "`" + t.replace(/\\(.)/g, "$1") + "`" + pics;
       if (on("highlight")) t = wrap(t, "==");
       if (on("strike")) t = wrap(t, "~~");
       if (on("u")) t = wrap(t, "<u>", "</u>");
       if (on("i")) t = wrap(t, "*");
       if (on("b")) t = wrap(t, "**");
-      return t;
+      return t + pics;
     };
     const parMD = (p) => kids(p).map((c) => c.localName === "r" ? runMD(c) : c.localName === "hyperlink" ? (() => { const id = c.getAttributeNS(R, "id"), inner = kids(c, "r").map(runMD).join(""); return id && href[id] ? `[${inner}](${href[id]})` : inner; })() : "").join("").replace(/\*\*\*\*|~~~~|====/g, "");
     const out = []; let olCount = {};
@@ -622,6 +703,9 @@ table{border-collapse:collapse;margin:.8em 0;width:100%}th,td{border:1px solid #
     return { title, body, tags };
   }
 
-  CA.notes = { parse, inline, toHTML, fromDOM, fromHTML, toText, checklist, outline, stats, preview, titleOf, withoutTitle, TEMPLATES, CALLOUTS, CALLOUT_LABEL,
-    files: { name: fileName, md: toMarkdownFile, txt: toTextFile, html: toHTMLFile, docx: toDocx, docHTML, css: DOC_CSS, printCss: PRINT_CSS }, readFile, fromDocx, zip };
+  // the first drawing in a note, for its card
+  function firstDrawing(md) { const m = /!\[[^\]]*\]\((data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+)\)/.exec(String(md || "")); return m ? m[1] : ""; }
+
+  CA.notes = { parse, inline, toHTML, fromDOM, fromHTML, toText, checklist, outline, stats, preview, titleOf, withoutTitle, TEMPLATES, CALLOUTS, CALLOUT_LABEL, imgHTML, firstDrawing,
+    files: { name: fileName, md: toMarkdownFile, txt: toTextFile, html: toHTMLFile, docx: toDocx, docxMedia, docHTML, css: DOC_CSS, printCss: PRINT_CSS }, readFile, fromDocx, zip };
 })();

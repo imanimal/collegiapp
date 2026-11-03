@@ -7,7 +7,8 @@ Collegiapp keeps your list and notes the same on your computers, your phone and 
 
 ## What syncs
 
-- **Every Item:** tasks, classes, events, exams, notes and jots, with their done state, snoozes, edits and deletions, plus each item's course so that a device without that course can add it.
+- **Every Item:** tasks, classes, events, exams, notes and jots, with their done state, snoozes, edits and deletions.
+- **Courses:** each course with its color, whether it's included, its title, names and links, and deleting or merging one.
 - **The look:** the Appearance drawer's theme, the Day and Night themes and when to switch, imported themes, shortcut hints, motion, sound, density, screen glass and scanlines, and the default focus level.
 - **Calendar feed links:** the Canvas calendar feed and the Google secret iCal address. A device that gets a new link reads it at once; disconnecting one disconnects it everywhere (the items stay).
 - **Class picks:** which Google Calendar series are lectures and sections, their courses, and the hidden ones.
@@ -109,7 +110,7 @@ Each Item is one document at `users/{uid}/items/{item id}`:
 | field | what |
 |---|---|
 | `j` | the Item's JSON (the Rust shape, `store.js` `itemOut`) |
-| `c` | its course's JSON, when it has one |
+| `c` | its course's JSON, when it has one (for devices from before courses synced on their own) |
 | `d` | the device that wrote it |
 | `s` | the server's time of the write (`REQUEST_TIME`; the rules check it) |
 
@@ -121,12 +122,13 @@ Each Item is one document at `users/{uid}/items/{item id}`:
 - **Web:** it listens to the collection live and writes whole documents with the server's time. Firestore's cache holds the list, and writes made offline wait in it until there's a connection.
 - **Size:** an item over 900 KB (Firestore's limit is 1 MiB a document) stays on its device.
 
-The settings are one more document, `users/{uid}/meta/settings`, with the same `d` and `s`. Its `j` is a map from a key (`look.pal`, `gcal_hidden`) to that setting's value and the time and device of its last change (`SyncedSettings` in the core's `sync.rs`; `ui/js/cloud.js` mirrors it):
+The settings and the courses are one more document, `users/{uid}/meta/settings`, with the same `d` and `s`. Its `j` is a map from a key (`look.pal`, `gcal_hidden`, `course.cmpsc130a-f26`) to that value and the time and device of its last change (`SyncedSettings` in the core's `sync.rs`; `ui/js/cloud.js` mirrors it). A course's value is its JSON, and null once it's deleted or merged into another:
 
-- **Stamps:** a device stamps a setting when it changes there. On the desktop the store does it on every save (`Settings::synced` in `store.rs` lists the keys); the look reaches the store through `save_look` from the Appearance drawer. A setting this device never changed that still has its default stays unstamped, so a new computer's defaults never win over what the account already has.
+- **Stamps:** a device stamps a key when it changes there. On the desktop the store does it on every save (`Snapshot::synced_values` in `store.rs`: `Settings::synced` lists the settings, then every course); the look reaches the store through `save_look` from the Appearance drawer. A setting this device never changed that still has its default stays unstamped, so a new computer's defaults never win over what the account already has.
 - **Merge:** key by key, the later stamp wins, then the greater device id. Changing the theme on one computer and the class picks on another keeps both.
-- **Desktop timing:** every cycle reads the document after the items (one read) and writes it back only when this device has a newer setting. A change made here starts a cycle within 5 s, like an item.
-- **Web:** it listens to the document live and keeps its stamps in `localStorage`; it has only the look, and passes the desktop's keys through.
+- **Desktop timing:** every cycle reads the document before the items (one read) and writes it back only when this device has a newer key. A change made here starts a cycle within 5 s, like an item.
+- **Courses:** a course with a key comes only from the document; an item's `c` adds a course only while the document has none for it, so a course deleted on one device doesn't come back with an older item. Reading the document before the items lets a new device take the account's courses rather than the items' older copies.
+- **Web:** it listens to the document live and keeps its stamps in `localStorage`; it has the look and the courses, and passes the desktop's keys through.
 
 ### Spark limits
 

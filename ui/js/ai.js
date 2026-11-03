@@ -45,7 +45,8 @@ COLLEGIAPP MARKDOWN (the only formatting a note can hold)
 > [!TIP]
 > Go to office hours before the midterm.
 - Code blocks fenced with \`\`\` (a language after the opening fence is fine), a divider is ---, tables use | pipes | with a | --- | line under the header row.
-- Nothing else: no HTML besides <u>, no images, footnotes, math markup or heading levels past ###. Write formulas in plain text or \`code\`.
+- Drawings appear as ![Drawing|center 40%](drawing:1). Keep each one exactly as written, where it belongs unless the user asks to move it; you can't make new ones.
+- Nothing else: no HTML besides <u>, no other images, footnotes, math markup or heading levels past ###. Write formulas in plain text or \`code\`.
 - Headings in sentence case. Students skim: short paragraphs, lists where they help, ==highlight== only the few things to remember.
 
 QUICK-ADD GRAMMAR (each line of :::items)
@@ -75,8 +76,13 @@ QUICK-ADD GRAMMAR (each line of :::items)
 
   // the user's standing instructions: notes tagged #ai (they edit them in the full editor and they sync like any note)
   const rulesNotes = (items) => items.filter((it) => it.kind === "note" && !it.deleted && (it.tags || []).some((t) => String(t).toLowerCase() === "ai"));
+  // Drawings (and pasted pictures) are data addresses tens of kilobytes long: the AI sees ![Drawing|center 40%](drawing:1)
+  // instead, numbered in `media`, and parse(text, media) puts them back in the reply.
+  const DATA_IMG = /\]\((data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+)\)/gi;
+  const pack = (md, media) => String(md || "").replace(DATA_IMG, (m, src) => { let i = media.indexOf(src); if (i < 0) i = media.push(src) - 1; return `](drawing:${i + 1})`; });
+  const unpack = (md, media) => (media && media.length ? md.replace(/\]\(drawing:(\d+)\)/g, (m, n) => (media[n - 1] ? `](${media[n - 1]})` : m)) : md);
   function system(items) {
-    const mine = rulesNotes(items).map((it) => `From "${it.title}":\n${it.notes.trim()}`).filter((x) => x.trim());
+    const mine = rulesNotes(items).map((it) => `From "${it.title}":\n${pack(it.notes.trim(), [])}`).filter((x) => x.trim());
     return RULES + (mine.length ? `\n\nTHE USER'S OWN RULES (follow them unless the request says otherwise; Collegiapp Markdown still limits the formatting)\n${mine.join("\n\n")}` : "");
   }
   const fence = (name, body) => `<<<${name}\n${body}\n${name}>>>`;
@@ -98,20 +104,21 @@ QUICK-ADD GRAMMAR (each line of :::items)
 
   // The reply read into { message, actions, open }: text outside blocks is the message; `open` is a block still
   // streaming in. A block's body loses a code fence the model wrapped it in anyway.
-  function parse(text) {
+  function parse(text, media) {
     const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n"), actions = [], msg = [];
     let cur = null;
     for (const line of lines) {
       const m = !cur && /^:::\s*(replace|insert|note|items)\b[ \t]*(.*)$/i.exec(line);
       if (m) { cur = { type: m[1].toLowerCase(), title: m[2].trim(), body: [] }; continue; }
-      if (cur && /^:::\s*$/.test(line)) { actions.push(done(cur)); cur = null; continue; }
+      if (cur && /^:::\s*$/.test(line)) { actions.push(done(cur, media)); cur = null; continue; }
       if (cur) cur.body.push(line); else msg.push(line);
     }
-    return { message: msg.join("\n").replace(/\n{3,}/g, "\n\n").trim(), actions, open: cur ? done(cur) : null };
+    return { message: unpack(msg.join("\n").replace(/\n{3,}/g, "\n\n").trim(), media), actions, open: cur ? done(cur, media) : null };
   }
-  function done(b) {
+  function done(b, media) {
     let body = b.body.join("\n").replace(/^\n+|\s+$/g, "");
     const f = /^```[\w-]*\n([\s\S]*?)\n```$/.exec(body); if (f) body = f[1];
+    body = unpack(body, media);
     const a = { type: b.type, title: b.title.replace(/^["“]|["”]$/g, ""), body };
     if (b.type === "items") a.lines = body.split("\n").map((l) => l.replace(/^\s*(?:[-*+]\s+)?(?:\[[ xX]?\]\s*)?(?:\d+[.)]\s+)?/, "").trim()).filter(Boolean);
     if (b.type === "note" && !a.title) { const h = /^#{1,3}\s+(.+)\n?/.exec(body); a.title = h ? h[1].trim() : "AI note"; if (h) a.body = body.slice(h[0].length).replace(/^\n+/, ""); }
@@ -123,5 +130,5 @@ QUICK-ADD GRAMMAR (each line of :::items)
     return s[3] && q.length < 7000 ? s[2] + "?q=" + q : s[2];
   }
 
-  CA.ai = { TOOLS, SITES, RULES, NOTE_PRESETS, PRESETS, system, prompt, forChat, parse, siteUrl, rulesNotes };
+  CA.ai = { TOOLS, SITES, RULES, NOTE_PRESETS, PRESETS, system, prompt, forChat, parse, pack, siteUrl, rulesNotes };
 })();

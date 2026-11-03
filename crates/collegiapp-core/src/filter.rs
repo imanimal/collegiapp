@@ -30,7 +30,8 @@
 //! * Bare words / quoted strings: case-insensitive substring of the title, notes, location,
 //!   tags, course code or title, or the kind's words ([`kind_words`]: "assignment", "work",
 //!   "section", plurals), so `assignments` or `section` finds them; a course token (`130a`,
-//!   an alias) also matches the course's items.
+//!   an alias) also matches the course's items. A note's drawings and pictures count by their
+//!   alt text only, never their `data:` address ([`search_notes`]).
 //! * Unknown `key:value` tokens are treated as bare words. Known keys with bad values are
 //!   flagged `valid: false` in [`Filter::terms`] and ignored (match everything).
 //! * Deleted (tombstoned) items never match. Items whose course has `included == false` are
@@ -38,6 +39,8 @@
 //!   items in excluded courses).
 
 use chrono::{DateTime, Duration, FixedOffset, NaiveDate, NaiveTime, TimeZone, Utc, Weekday};
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 use crate::ics::SECTION_TAG;
@@ -469,7 +472,7 @@ fn term_matches(term: &Term, item: &Item, course: Option<&Course>, ctx: &Ctx) ->
         Term::Text(t) => {
             let has = |s: &str| s.to_lowercase().contains(t);
             has(&item.title)
-                || has(&item.notes)
+                || has(&search_notes(&item.notes))
                 || item.location.as_deref().is_some_and(has)
                 || item.tags.iter().any(|g| has(g))
                 || kind_words(item).contains(t.as_str())
@@ -481,6 +484,22 @@ fn term_matches(term: &Term, item: &Item, course: Option<&Course>, ctx: &Ctx) ->
                 })
         }
     })
+}
+
+/// A note's text as bare words search it: a drawing is `![alt](data:image/svg+xml;base64,…)`, tens of kilobytes
+/// of base64 in which short words like `hw` turn up by chance, so every `](data:…)` address is left out and only
+/// its alt text counts.
+pub fn search_notes(notes: &str) -> Cow<'_, str> {
+    if !notes.contains("](data:") {
+        return Cow::Borrowed(notes);
+    }
+    let (mut out, mut rest) = (String::with_capacity(notes.len().min(4096)), notes);
+    while let Some(i) = rest.find("](data:") {
+        out.push_str(&rest[..i + 2]);
+        rest = rest[i + 2..].find(')').map_or("", |j| &rest[i + 2 + j..]);
+    }
+    out.push_str(rest);
+    Cow::Owned(out)
 }
 
 fn due_matches(op: Op, v: DueVal, item: &Item, ctx: &Ctx) -> bool {
@@ -684,6 +703,31 @@ mod tests {
         }
         assert_eq!(pick("is:actionable"), vec!["hw5"], "notes are not to-dos");
         assert!(pick("is:scheduled").is_empty());
+    }
+
+    #[test]
+    fn drawings_are_searched_by_alt_text_only() {
+        let cs = courses();
+        let ctx = Ctx {
+            now: now(),
+            courses: &cs,
+        };
+        let mut n = mk("heap diagram", ItemKind::Note);
+        n.notes =
+            "before ![Drawing|center 40%](data:image/svg+xml;base64,PHN2ZyBzebraaHw=) after".into();
+        let hit = |q: &str| Filter::parse(q).matches(&n, &ctx);
+        assert!(hit("before") && hit("after") && hit("drawing"));
+        assert!(!hit("zebra"), "the base64 address isn't text");
+        assert_eq!(
+            search_notes(&n.notes),
+            "before ![Drawing|center 40%]() after"
+        );
+        assert_eq!(
+            search_notes("a ![x](data:abc"),
+            "a ![x](",
+            "an unclosed address is dropped"
+        );
+        assert!(matches!(search_notes("plain"), Cow::Borrowed("plain")));
     }
 
     #[test]

@@ -287,6 +287,8 @@
     return null;
   }
   const isOverdue = (it, now) => ACTIONABLE(it.kind) && isOpen(it, now) && it.due != null && it.due < now;
+  // a note's drawings count by their alt text, never their base64 address (filter.rs search_notes)
+  const searchNotes = (s) => (s.includes("](data:") ? s.replace(/\]\(data:[^)]*/g, "](") : s);
   function termMatch(it, t, ctx) {
     if (t.valid === false) return null;
     const { now, courses } = ctx, course = it.course && courses.find((c) => c.id === it.course);
@@ -311,7 +313,7 @@
         return t.op === "<" ? it.due < day : t.op === "<=" ? it.due < next : t.op === ">" ? it.due >= next : it.due >= day;
       });
       case "text": {
-        const hay = [it.title, it.notes, it.location || "", it.tags.join(" "), kindWords(it), course ? course.code + " " + course.tag + " " + (course.title || "") : ""].join(" ").toLowerCase();
+        const hay = [it.title, searchNotes(it.notes || ""), it.location || "", it.tags.join(" "), kindWords(it), course ? course.code + " " + course.tag + " " + (course.title || "") : ""].join(" ").toLowerCase();
         return any((v) => hay.includes(v) || (!!course && !!findCourse(v, [course], true)));
       }
     }

@@ -43,6 +43,7 @@ Either way, the reply comes back as changes you look at and apply with a click.
 
 - **How to reply:** a few plain sentences, then blocks the app can apply.
 - **Collegiapp Markdown:** the only formatting a note holds (`docs/NOTES.md`), with sentence-case headings and short paragraphs.
+- **Drawings:** a note's drawings go out as numbered stand-ins, `![Drawing|center 40%](drawing:1)`, instead of their tens of kilobytes of base64 (`CA.ai.pack`). The AI keeps them where they belong and can't make new ones; `CA.ai.parse` puts the real drawings back in what it returns.
 - **The quick-add grammar:** for the tasks it writes, including `whenfree`.
 
 **Your standing instructions** are notes tagged `#ai`. Write them like any note ("Use Cornell headings for lecture notes", "Always end with a summary table"); they're added to every request as the user's own rules and sync with your notes. Collegiapp Markdown still limits what they can ask for.

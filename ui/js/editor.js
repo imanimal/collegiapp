@@ -2,7 +2,10 @@
    only what Collegiapp Markdown can hold, so what you see is what's saved: paste is cleaned through Markdown, and
    every edit goes through execCommand where one exists, so the web view's own Ctrl+Z walks the typing.
    Markdown typed at the start of a line becomes its block (# ## ### - 1. [] > ``` ---), and **b** *i* ~~s~~ ==h== `c`
-   format as their closing mark is typed. app.js owns the sheet around it (the toolbar's look, the title, saving). */
+   format as their closing mark is typed. An image (a drawing, draw.js) is picked when the selection is that image
+   alone: a click, or where dragging it left it. The picked one takes a place and a width (data-place, data-w), and those
+   changes go through insertHTML too, so Ctrl+Z walks them. app.js owns the sheet around it (the toolbar's look, the
+   title, saving, the drawing layer). */
 (function () {
   const CA = (window.CA = window.CA || {});
   const N = () => CA.notes;
@@ -25,14 +28,17 @@
     { id: "indent", label: "Indent", icon: "indent", k: "Tab", g: "list" },
     { id: "quote", label: "Quote", icon: "quote", k: "Mod+Shift+.", g: "insert" }, { id: "callout", label: "Callout (click again for the next kind)", icon: "callout", k: "Mod+Shift+C", g: "insert" },
     { id: "pre", label: "Code block", icon: "codeblock", k: "Mod+Alt+C", g: "insert" }, { id: "table", label: "Table", icon: "table", k: "", g: "insert" },
+    { id: "draw", label: "Drawing", icon: "draw", k: "Mod+Shift+D", g: "insert" },
     { id: "hr", label: "Divider", icon: "hr", k: "---", g: "insert" }, { id: "clear", label: "Clear formatting", icon: "clearf", k: "Mod+\\", g: "insert" },
   ];
   // the tools a caret in a table adds
   const TABLE_TOOLS = [["rowAbove", "Row above"], ["rowBelow", "Row below"], ["colLeft", "Column left"], ["colRight", "Column right"], ["rowDel", "Delete row"], ["colDel", "Delete column"], ["tableDel", "Delete table"]];
+  // where a picked image sits: in the line of text, wrapped by the text on either side, or on a line of its own
+  const IMG_PLACES = [["", "In the text"], ["left", "Wrap left"], ["center", "Own line"], ["right", "Wrap right"]];
 
   function mount(el, opts) {
     opts = opts || {};
-    let timer = 0, last = null, saved = null, lastRange = null;
+    let timer = 0, last = null, saved = null, lastRange = null, picked = null, dragIn = false;
     el.classList.add("ned"); el.contentEditable = "true"; el.spellcheck = true;
     el.setAttribute("role", "textbox"); el.setAttribute("aria-multiline", "true");
     try { exec("defaultParagraphSeparator", "p"); exec("styleWithCSS", false); } catch (e) { /* older engines: divs are read as paragraphs too */ }
@@ -63,6 +69,8 @@
       el.querySelectorAll("li[data-done]").forEach((li) => { if (!li.closest("ul.todo")) li.removeAttribute("data-done"); });
       el.querySelectorAll(":scope > div:not(.callout)").forEach((d) => { if (!d.querySelector("p,ul,ol,table,pre,h1,h2,h3,blockquote")) { const p = document.createElement("p"); p.innerHTML = d.innerHTML; d.replaceWith(p); } });
       el.querySelectorAll("span[style], font").forEach((s) => { if (!/font-weight|font-style|text-decoration/.test(s.getAttribute("style") || "")) s.replaceWith(...s.childNodes); });
+      // an image's width is its data-w (a move or an insert can drop the style); only the picked one is outlined
+      el.querySelectorAll("img").forEach((i) => { const w = +i.dataset.w ? i.dataset.w + "%" : ""; if (i.style.width !== w) i.style.width = w; if (i !== picked && i.classList.contains("picked")) i.classList.remove("picked"); });
       if (!el.firstElementChild) el.innerHTML = "<p><br></p>";
     }
 
@@ -168,6 +176,42 @@
     }
     function hr() { exec("insertHTML", "<hr><p><br></p>"); }
     function clear() { exec("removeFormat"); exec("unlink"); const b = block(); if (b && /^H\d$|^PRE$/.test(b.tagName)) exec("formatBlock", "<p>"); }
+    function restoreLast() { el.focus(); const s = sel(); s.removeAllRanges(); if (lastRange && el.contains(lastRange.commonAncestorContainer)) s.addRange(lastRange); else place(el.lastElementChild || el, true); }
+
+    /* ── images: picking, placing, sizing, drawings in and out ── */
+    function pickSel() {
+      const s = sel(); let img = null;
+      if (s.rangeCount && !s.isCollapsed) {
+        const r = s.getRangeAt(0), c = r.commonAncestorContainer, box = c.nodeType === 1 ? c : c.parentNode;
+        if (box && !r.toString().trim()) { const imgs = [...box.querySelectorAll("img")].filter((i) => r.intersectsNode(i)); if (imgs.length === 1 && el.contains(imgs[0])) img = imgs[0]; }
+      }
+      if (img === picked) return;
+      if (picked) picked.classList.remove("picked");
+      picked = img; if (img) img.classList.add("picked");
+    }
+    const imgOf = (img) => ({ src: img.getAttribute("src"), alt: img.getAttribute("alt") || "", place: img.dataset.place || "", w: +img.dataset.w || 0 });
+    // an image's HTML where the selection is, then picked
+    function putImg(html) {
+      const had = new Set(el.querySelectorAll("img"));
+      exec("insertHTML", html);
+      const img = [...el.querySelectorAll("img")].find((i) => !had.has(i));
+      tidy(); changed();
+      if (img) { selectNode(img); pickSel(); onSel(); }
+      return img || null;
+    }
+    // a new drawing at the caret, on its own line unless the caret is in a list item or a table cell
+    function insertDrawing(d) {
+      restoreLast(); const s = sel(); if (s.rangeCount && !s.isCollapsed) s.collapseToEnd();
+      const html = N().imgHTML({ src: d.src, alt: "Drawing", place: d.place == null ? "center" : d.place, w: d.w || 0 }), b = block();
+      return putImg(!b || /^(LI|TD|TH)$/.test(b.tagName) || (!b.textContent.trim() && !b.querySelector("img")) ? html : `<p>${html}</p>`);
+    }
+    // the same image with some attributes changed (a patch of imgOf), or gone (null)
+    function replaceImg(img, patch) {
+      if (!img || !el.contains(img)) return null;
+      el.focus(); selectNode(img);
+      if (!patch) { exec("delete"); picked = null; tidy(); changed(); return null; }
+      return putImg(N().imgHTML(Object.assign(imgOf(img), patch)));
+    }
 
     const RUN = {
       undo: () => exec("undo"), redo: () => exec("redo"), p: () => setBlock("p"), h1: () => setBlock("h1"), h2: () => setBlock("h2"), h3: () => setBlock("h3"),
@@ -175,8 +219,10 @@
       link: () => opts.onLink && opts.onLink(keep(), (tagUp("A") || {}).href || ""), ul: () => list("ul"), ol: () => list("ol"), todo: () => list("todo"),
       indent: () => exec("indent"), outdent: () => exec("outdent"), quote: () => wrapBlock("quote"), callout: () => wrapBlock("callout"), pre: codeBlock,
       table: () => insertTable(3, 3), hr, clear, check: () => toggleCheck(),
+      draw: () => opts.onDraw && opts.onDraw(null), imgEdit: () => picked && opts.onDraw && opts.onDraw(picked), imgDel: () => replaceImg(picked, null),
     };
     TABLE_TOOLS.forEach(([id]) => (RUN[id] = () => tableOp(id)));
+    IMG_PLACES.forEach(([p]) => (RUN["img_" + (p || "inline")] = () => replaceImg(picked, { place: p })));
 
     /* ── typing ── */
     // Markdown at the start of a line: the marker goes, the block takes its place (in the web view's undo history)
@@ -268,6 +314,7 @@
       if (e.shiftKey && (lk === "x")) return go("s");
       if (e.shiftKey && (lk === "h")) return go("mark");
       if (e.shiftKey && (lk === "c")) return go("callout");
+      if (e.shiftKey && (lk === "d" || e.code === "KeyD")) return go("draw");
       if (e.shiftKey && (k === ">" || e.code === "Period")) return go("quote");
       if (!e.shiftKey && lk === "e") return go("code");
       if (!e.shiftKey && lk === "k") return go("link");
@@ -277,7 +324,7 @@
     // paste: HTML (a web page, Word, Google Docs) and Markdown come in through Markdown, so only what a note can hold stays
     function onPaste(e) {
       const cd = e.clipboardData; if (!cd) return;
-      if ([...cd.files || []].some((f) => /^image\//.test(f.type))) { e.preventDefault(); opts.onRefuse && opts.onRefuse("Images aren't kept in notes yet · paste an image link instead"); return; }
+      if ([...cd.files || []].some((f) => /^image\//.test(f.type))) { e.preventDefault(); opts.onRefuse && opts.onRefuse("Pictures aren't kept in notes yet · paste an image link, or make a drawing"); return; }
       const html = cd.getData("text/html"), text = cd.getData("text/plain");
       if (tagUp("PRE") || tagUp("CODE")) { e.preventDefault(); exec("insertText", text); return; }
       let md = null;
@@ -291,6 +338,7 @@
     }
     // files dropped on the page come in where they land (Markdown, text, HTML, Word)
     function onDrop(e) {
+      if (dragIn) return; // an image dragged within the note: the web view moves it (one undo step)
       const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
       e.preventDefault();
       if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(e.clientX, e.clientY); if (r) { const s = sel(); s.removeAllRanges(); s.addRange(r); } }
@@ -303,10 +351,18 @@
       const pad = parseFloat(getComputedStyle(li).paddingLeft) || 0, x = e.clientX - li.getBoundingClientRect().left;
       if (x >= 0 && x < pad) { e.preventDefault(); toggleCheck(li); }
     }
-    // links open with Ctrl/⌘+click (a plain click puts the caret in them)
+    // links open with Ctrl/⌘+click (a plain click puts the caret in them); a click on an image picks it
     function onClick(e) {
+      const img = e.target.closest && e.target.closest("img");
+      if (img && el.contains(img)) { selectNode(img); pickSel(); onSel(); return; }
       const a = e.target.closest && e.target.closest("a[href]"); if (!a || !(e.ctrlKey || e.metaKey)) return;
       e.preventDefault(); opts.onOpen && opts.onOpen(a.getAttribute("href"));
+    }
+    // a double-click on a drawing opens it to draw on
+    function onDbl(e) {
+      const img = e.target.closest && e.target.closest("img"); if (!img || !el.contains(img)) return;
+      e.preventDefault(); selectNode(img); pickSel();
+      if (CA.draw && CA.draw.isDrawing(img.getAttribute("src"))) opts.onDraw && opts.onDraw(img);
     }
     function state() {
       const n = anchor(); if (!n) return null;
@@ -317,21 +373,27 @@
         link: !!tagUp("A", n), ul: !!l && l.tagName === "UL" && !l.classList.contains("todo"), ol: !!l && l.tagName === "OL", todo: !!l && l.classList.contains("todo"),
         quote: !!tagUp("BLOCKQUOTE", n), callout: (up(n, (x) => x.classList && x.classList.contains("callout")) || { dataset: {} }).dataset.kind || "", pre: !!tagUp("PRE", n),
         table: !!up(n, (x) => x.tagName === "TD" || x.tagName === "TH"),
+        img: picked ? Object.assign(imgOf(picked), { drawing: !!(CA.draw && CA.draw.isDrawing(picked.getAttribute("src"))) }) : null,
       };
     }
     // the last place the caret was in the text, for tools that take focus away (the AI panel inserts there)
-    const onSel = () => { if (!anchor()) return; lastRange = sel().getRangeAt(0).cloneRange(); opts.onState && opts.onState(state()); };
+    const onSel = () => { if (!anchor()) return; pickSel(); lastRange = sel().getRangeAt(0).cloneRange(); opts.onState && opts.onState(state()); };
     el.addEventListener("input", onInput); el.addEventListener("keydown", onKey); el.addEventListener("paste", onPaste);
-    el.addEventListener("drop", onDrop); el.addEventListener("mousedown", onDown); el.addEventListener("click", onClick);
+    el.addEventListener("drop", onDrop); el.addEventListener("mousedown", onDown); el.addEventListener("click", onClick); el.addEventListener("dblclick", onDbl);
+    el.addEventListener("dragstart", () => { dragIn = true; }); el.addEventListener("dragend", () => { dragIn = false; });
     document.addEventListener("selectionchange", onSel);
 
     const api = {
-      el, run(id) { if (!RUN[id]) return; if (!anchor() && id !== "link") { el.focus(); if (!anchor()) place(el.lastElementChild || el, true); } RUN[id](); tidy(); changed(); onSel(); },
+      // the image and drawing tools work on the picked image wherever the caret has gone
+      el, run(id) { if (!RUN[id]) return; if (!anchor() && !/^(link|draw|img)/.test(id)) { el.focus(); if (!anchor()) place(el.lastElementChild || el, true); } RUN[id](); tidy(); changed(); onSel(); },
       md: () => N().fromDOM(el), set(md) { el.innerHTML = N().toHTML(md || ""); last = N().fromDOM(el); tidy(); },
       flush: () => changed(true), focus(atEnd) { el.focus(); if (atEnd !== false) place(el.lastElementChild || el, true); },
       link, keep, restore, state, insertTable,
       selectionMD() { if (!lastRange || lastRange.collapsed || !el.contains(lastRange.commonAncestorContainer)) return ""; const d = document.createElement("div"); d.appendChild(lastRange.cloneContents()); return N().fromDOM(d); },
-      restoreLast() { el.focus(); const s = sel(); s.removeAllRanges(); if (lastRange && el.contains(lastRange.commonAncestorContainer)) s.addRange(lastRange); else place(el.lastElementChild || el, true); }, insertMD(md) { el.focus(); if (!anchor()) place(el.lastElementChild || el, true); exec("insertHTML", N().toHTML(md)); tidy(); changed(); },
+      restoreLast, insertDrawing, replaceImg, picked: () => picked,
+      // the width slider shows its size as you drag; letting go sets it (imgSet), one undo step
+      imgLive(w) { if (picked) picked.style.width = w + "%"; }, imgSet: (patch) => replaceImg(picked, patch),
+      insertMD(md) { el.focus(); if (!anchor()) place(el.lastElementChild || el, true); exec("insertHTML", N().toHTML(md)); tidy(); changed(); },
       // headings as they stand, for the outline
       headings: () => [...el.querySelectorAll("h1, h2, h3")].map((h) => ({ level: +h.tagName[1], text: h.textContent.trim(), el: h })).filter((h) => h.text),
       destroy() { clearTimeout(timer); document.removeEventListener("selectionchange", onSel); },
@@ -340,5 +402,5 @@
     return api;
   }
 
-  CA.editor = { mount, TOOLS, TABLE_TOOLS };
+  CA.editor = { mount, TOOLS, TABLE_TOOLS, IMG_PLACES };
 })();

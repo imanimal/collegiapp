@@ -158,8 +158,8 @@ pub struct Snapshot {
     /// Last fetch of each calendar feed, and the Google series list for the class picker.
     #[serde(default)]
     pub feeds: Feeds,
-    /// When and where each synced setting last changed, here or on another device: `save`
-    /// stamps changes made here, and cloud.rs merges the account's in.
+    /// When and where each synced setting and course last changed, here or on another device:
+    /// `save` stamps changes made here, and cloud.rs merges the account's in.
     #[serde(default)]
     pub synced: SyncedSettings,
 }
@@ -197,6 +197,44 @@ impl Snapshot {
             .filter(|i| !i.deleted && !i.course_id.as_ref().is_some_and(excluded))
             .cloned()
             .collect()
+    }
+
+    /// Everything that syncs key by key (cloud.rs): [`Settings::synced`], plus each course as
+    /// "course.<id>", null once it's gone (deleted or merged into another).
+    pub fn synced_values(&self) -> BTreeMap<String, Value> {
+        let mut out = self.settings.synced();
+        for k in self.synced.keys().filter(|k| k.starts_with("course.")) {
+            out.insert(k.clone(), Value::Null);
+        }
+        for c in &self.courses {
+            out.insert(
+                format!("course.{}", c.id),
+                serde_json::to_value(c).unwrap_or_default(),
+            );
+        }
+        out
+    }
+
+    /// Take another device's value for a synced key: a course (null removes it; its items
+    /// follow as items) or a setting. One this version can't read is skipped.
+    pub fn set_synced(&mut self, key: &str, v: &Value) {
+        let Some(id) = key.strip_prefix("course.") else {
+            return self.settings.set_synced(key, v);
+        };
+        if v.is_null() {
+            self.courses.retain(|c| c.id != id);
+            return;
+        }
+        let Ok(c) = serde_json::from_value::<Course>(v.clone()) else {
+            return;
+        };
+        if c.id != id {
+            return;
+        }
+        match self.courses.iter_mut().find(|x| x.id == id) {
+            Some(slot) => *slot = c,
+            None => self.courses.push(c),
+        }
     }
 }
 
@@ -245,13 +283,14 @@ impl AppState {
         Ok(st)
     }
 
-    /// Stamp the synced settings that changed (cloud.rs sends them), then write atomically:
-    /// temp file + rename.
+    /// Stamp the synced settings and courses that changed (cloud.rs sends them), then write
+    /// atomically: temp file + rename.
     pub fn save(&mut self) -> Result<(), String> {
         let d = &mut self.data;
+        let current = d.synced_values();
         stamp_settings(
             &mut d.synced,
-            &d.settings.synced(),
+            &current,
             &Settings::default().synced(),
             Utc::now(),
             &d.device_id,
@@ -453,6 +492,39 @@ mod tests {
         );
         assert_eq!(s.gcal_series, None);
         assert_eq!(s.trash_limit_mb, Settings::default().trash_limit_mb);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A course syncs as "course.<id>": stamped when it's added or edited here, null once it's
+    /// deleted, and another device's version replaces, adds or removes it here.
+    #[test]
+    fn courses_sync_as_keys() {
+        let dir = std::env::temp_dir().join(format!("ca-store-{}", Uuid::new_v4().simple()));
+        let mut st = AppState::load_or_init(dir.join(FILE_NAME)).unwrap();
+        st.data.courses.push(Course::new("cs16-f26", "CMPSC 16"));
+        st.save().unwrap();
+        let first = st.data.synced["course.cs16-f26"].clone();
+        assert_eq!(first.v["code"], "CMPSC 16");
+
+        st.data.courses[0].included = false;
+        st.save().unwrap();
+        assert_eq!(st.data.synced["course.cs16-f26"].v["included"], false);
+        st.data.courses.clear();
+        st.save().unwrap();
+        assert_eq!(st.data.synced["course.cs16-f26"].v, Value::Null);
+
+        let mut s = Snapshot::fresh();
+        let mut c = Course::new("pstat120a-f26", "PSTAT 120A");
+        c.color = 4;
+        s.set_synced("course.pstat120a-f26", &serde_json::to_value(&c).unwrap());
+        assert_eq!(s.courses, vec![c.clone()]);
+        c.included = false;
+        s.set_synced("course.pstat120a-f26", &serde_json::to_value(&c).unwrap());
+        assert_eq!((s.courses.len(), s.courses[0].included), (1, false));
+        s.set_synced("course.other", &serde_json::to_value(&c).unwrap()); // id doesn't match: skipped
+        assert_eq!(s.courses.len(), 1);
+        s.set_synced("course.pstat120a-f26", &Value::Null);
+        assert!(s.courses.is_empty());
         let _ = fs::remove_dir_all(&dir);
     }
 

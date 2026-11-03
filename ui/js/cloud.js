@@ -52,9 +52,11 @@
   });
 
   // Settings: users/{uid}/meta/settings, `j` the synced settings by key ({ "look.pal": { v, at, by } }, the core's
-  // SyncedSettings) with `d` and `s` as on items. The web app keeps the look (lab.js look(), null for a default); the
-  // desktop's keys (class picks) pass through. It mirrors sync.rs: a key is stamped when it changes here (so a new
-  // browser's defaults never win), and a merge takes the later `at` per key, then the greater device.
+  // SyncedSettings) with `d` and `s` as on items. The web app keeps the look (lab.js look(), null for a default) and the
+  // courses ("course.<id>", the Rust shape, null once deleted); the desktop's keys (feed links, class picks) pass
+  // through. It mirrors sync.rs: a key is stamped when it changes here (so a new browser's defaults never win), and a
+  // merge takes the later `at` per key, then the greater device. A course with a key comes only from here, never from
+  // an item's `c` again (cloud.rs merge_remote).
   const SKEY = "capp.synced";
   let synced = (() => { try { return JSON.parse(localStorage.getItem(SKEY) || "{}") || {}; } catch (e) { return {}; } })();
   const keepSynced = () => { try { localStorage.setItem(SKEY, JSON.stringify(synced)); } catch (e) { /* storage off: stamps start over */ } };
@@ -62,15 +64,15 @@
   const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, n) => ((o[n] = x[n]), o), {}) : x));
   const later = (a, b) => { const ta = Date.parse(a.at), tb = Date.parse(b.at); return ta !== tb ? ta > tb : a.by > b.by; };
   const sameStamp = (a, b) => !!a && !!b && Date.parse(a.at) === Date.parse(b.at) && a.by === b.by;
-  // sync.rs stamp_settings, for the look's keys
-  function stampLook(look) {
+  // sync.rs stamp_settings, for the keys given (the look's, a course's)
+  function stamp(values) {
     const at = new Date().toISOString(); let any = false;
-    Object.entries(look).forEach(([k, v]) => {
-      const key = "look." + k, s = synced[key], val = v == null ? null : v;
+    Object.entries(values).forEach(([key, v]) => {
+      const s = synced[key], val = v == null ? null : v;
       if (s ? canon(s.v) === canon(val) : val === null) return;
       synced[key] = { v: val, at, by: device }; any = true;
     });
-    return any;
+    if (any) { keepSynced(); writeSettings(); }
   }
   // sync.rs merge_settings: the keys whose value changed here, and whether the account's copy needs ours
   function mergeSettings(remote) {
@@ -89,22 +91,47 @@
     F.setDoc(F.doc(db, "users", user.uid, "meta", "settings"), { j: JSON.stringify(synced), d: device, s: F.serverTimestamp() })
       .catch((e) => { status.error = why(e); tell(); });
   }
+  // the courses as the settings have them: each key's course, or none once it's null
+  function coursesOfSynced() {
+    Object.entries(synced).forEach(([k, s]) => {
+      if (!k.startsWith("course.")) return;
+      const id = k.slice(7);
+      if (s.v == null) courses.delete(id); else try { courses.set(id, courseIn(s.v)); } catch (e) { /* unreadable: keep ours */ }
+    });
+  }
   function onSettings(snap) {
     let remote = {};
     try { if (snap.exists()) remote = JSON.parse(snap.data().j) || {}; } catch (e) { return; }
     const r = mergeSettings(remote); keepSynced();
     if (r.pulled.some((k) => k.startsWith("look.")) && CA.lab) CA.lab.adopt(lookOf());
+    if (r.pulled.some((k) => k.startsWith("course."))) { coursesOfSynced(); changed(); }
     if (r.push) writeSettings();
   }
   // a look change made here (lab.js)
-  function saveLook(look) { if (stampLook(look)) { keepSynced(); writeSettings(); } }
+  function saveLook(look) { stamp(Object.fromEntries(Object.entries(look).map(([k, v]) => ["look." + k, v]))); }
+  function saveCourse(c) { courses.set(c.id, c); stamp({ ["course." + c.id]: courseOut(c) }); return Promise.resolve(); }
+  // A course deleted here, merged `into` another or with its items (`drop`): its items change as in the store (model.rs
+  // remove_course) and go up as items. app.js merges the course's links and names into the kept one in this same turn,
+  // so the kept one is stamped after it.
+  function deleteCourse(id, into, drop) {
+    courses.delete(id);
+    items.forEach((it) => {
+      if (it.course !== id || it.deleted) return;
+      if (into) it.course = into; else if (drop) it.deleted = true; else it.course = null;
+      it.updated = Date.now(); save(it);
+    });
+    return Promise.resolve().then(() => {
+      const keep = into && courses.get(into);
+      stamp(Object.assign({ ["course." + id]: null }, keep ? { ["course." + into]: courseOut(keep) } : {}));
+    });
+  }
 
   // one listener on the account's items: Firestore sends what's cached at once, then every change from any device; and
   // one on its settings
   function listen(u) {
     if (unsub) { unsub(); unsub = null; }
     if (unsubSettings) { unsubSettings(); unsubSettings = null; }
-    user = u; items.clear(); courses.clear();
+    user = u; items.clear(); courses.clear(); coursesOfSynced();
     Object.assign(status, { signed_in: !!u, email: u ? u.email : null, signing_in: false, busy: !!u, pending: 0 });
     tell();
     if (!u) { changed(); firstDone(); return; }
@@ -115,7 +142,7 @@
         if (c.type === "removed") { items.delete(c.doc.id); return; }
         const d = c.doc.data();
         try { const it = itemIn(JSON.parse(d.j)); items.set(it.id, it); } catch (e) { return; }
-        if (d.c) try { const k = courseIn(JSON.parse(d.c)); if (!courses.has(k.id)) courses.set(k.id, k); } catch (e) { /* an unreadable course: the item keeps its id */ }
+        if (d.c) try { const k = courseIn(JSON.parse(d.c)); if (!courses.has(k.id) && !synced["course." + k.id]) courses.set(k.id, k); } catch (e) { /* an unreadable course: the item keeps its id */ }
       });
       Object.assign(status, { busy: false, error: null, offline: snap.metadata.fromCache, pending: snap.docs.filter((x) => x.metadata.hasPendingWrites).length });
       if (!status.offline && !status.pending) status.last_sync = new Date().toISOString();
@@ -164,8 +191,7 @@
   Object.assign(st, {
     cloud: true, load, save, isPending: (id) => queue.has(id), saveLook, lookPending: () => false,
     onChange(fn) { changeFns.push(fn); },
-    saveCourse(c) { courses.set(c.id, c); return Promise.resolve(); },
-    deleteCourse(id) { courses.delete(id); return Promise.resolve(); },
+    saveCourse, deleteCourse,
   });
   CA.cloud = { status: () => Object.assign({}, status), onStatus(fn) { statusFns.push(fn); }, signIn, signOut, syncNow };
 

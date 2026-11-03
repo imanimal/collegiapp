@@ -217,6 +217,13 @@
     print: "..#####..|..#...#..|#########|#.......#|#.....#.#|#########|..#...#..|..#...#..|..#####..",
     export: "....#....|....#....|....#....|..#.#.#..|...###...|....#....|#.......#|#.......#|#########",
     import: "....#....|...###...|..#.#.#..|....#....|....#....|....#....|#.......#|#.......#|#########",
+    draw: "#########|#.......#|#.......#|#.#...#.#|##.#.#.##|#...#...#|#.......#|#.......#|#########",
+    pick: "#........|##.......|###......|####.....|#####....|######...|###......|...##....|....##...",
+    erase: ".........|.#######.|.#.....#.|.#.....#.|.#######.|.#######.|.#######.|.........|#########",
+    line: "........#|.......#.|......#..|.....#...|....#....|...#.....|..#......|.#.......|#........",
+    arrow: "....#####|.......##|......#.#|.....#..#|....#...#|...#.....|..#......|.#.......|#........",
+    box: "#########|#.......#|#.......#|#.......#|#.......#|#.......#|#.......#|#.......#|#########",
+    oval: "..#####..|.#.....#.|#.......#|#.......#|#.......#|#.......#|#.......#|.#.....#.|..#####..",
   };
   const ICONS = {};
   for (const n in PIX) ICONS[n] = PIX[n].split("|").map((row, y) => row.replace(/#+/g, (run, x) => `M${x} ${y}h${run.length}v1h-${run.length}z`).replace(/\./g, "")).join("");
@@ -249,6 +256,9 @@
     undo: "M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3", redo: "M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3",
     ai: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z",
     print: "M7 8V3h10v5M7 17H4v-7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7h-3M7 14h10v7H7z", export: "M12 3v12M7 10l5 5 5-5M4 17v3h16v-3", import: "M12 15V3M7 8l5-5 5 5M4 17v3h16v-3",
+    draw: "M3 4h18v16H3zM6 14c1.5-3 3-3 4 0s2.5 3 4 0 2.5-3 4 0", pick: "M5 3l13 7.5-5.5 1.5L10 17.5 5 3zM13 12l5 6",
+    erase: "M7 21l-4.3-4.3a1.7 1.7 0 0 1 0-2.4l9.6-9.6a1.7 1.7 0 0 1 2.4 0l5.6 5.6a1.7 1.7 0 0 1 0 2.4L13 21zM22 21H7M5 11l9 9",
+    line: "M5 19L19 5", arrow: "M5 19L19 5M10 5h9v9", box: "M4 5h16v14H4z", oval: "M12 5c5 0 9 3.1 9 7s-4 7-9 7-9-3.1-9-7 4-7 9-7z",
   };
   const ic = (n, c, as) => ((as || document.documentElement.dataset.look) === "standard"
     ? `<svg class="i ln${c ? " " + c : ""}" viewBox="0 0 24 24" aria-hidden="true"><path d="${LINE[n] || ""}"/></svg>`
@@ -1267,10 +1277,10 @@
       <button class="btn ghost" data-act="ai" data-hint="i" title="Ask your AI (I or ${MOD}+J)">${ic("ai")}Ask AI<kbd>I</kbd></button></div>`;
     if (!list.length) return { h: bar + `<div class="m-empty">${ic("notes", "big")}<b>${S.q === viewById("notes").q ? "No notes yet." : "No notes match."}</b><span>Jot an idea with <kbd>${MAC ? "⇧" : "Shift"} Q</kbd>, or type <code>note: …</code> in quick add.</span></div>`, n: 0 };
     const card = (it, i) => {
-      const c = courseOf(it), ck = NT().checklist(it.notes), pv = NT().preview(it.notes, 220), tags = it.tags.filter((t) => t.toLowerCase() !== "pinned");
+      const c = courseOf(it), ck = NT().checklist(it.notes), pv = NT().preview(it.notes, 220), tags = it.tags.filter((t) => t.toLowerCase() !== "pinned"), dr = NT().firstDrawing(it.notes);
       return `<div class="ncard${S.sel === it.id ? " sel" : ""}${S.flashId === it.id ? " new" : ""}${it.status === "done" ? " done" : ""}" data-act="noteOpen" data-id="${it.id}" data-k="n:${it.id}" style="--i:${i};${kc(c)}" tabindex="-1">
         <div class="nc-top">${c ? cchip(c) : ""}${isPinned(it) ? `<span class="nc-pin" title="Pinned">${ic("pin")}</span>` : ""}<span class="sp"></span><span class="nc-when" title="${esc(new Date(it.updated).toLocaleString())}">${esc(agoText(it.updated))}</span></div>
-        <h4 class="nc-t">${esc(it.title || "Untitled note")}</h4>${pv ? `<p class="nc-p">${esc(pv)}</p>` : ""}
+        <h4 class="nc-t">${esc(it.title || "Untitled note")}</h4>${dr ? `<img class="nc-img" src="${esc(dr)}" alt="" draggable="false">` : ""}${pv ? `<p class="nc-p">${esc(pv)}</p>` : ""}
         ${ck.total ? `<div class="nc-ck"><span class="nc-bar"><i style="width:${Math.round((ck.done / ck.total) * 100)}%"></i></span><span class="num">${ck.done}/${ck.total}</span></div>` : ""}
         ${tags.length ? `<div class="nc-tags">${tags.slice(0, 4).map((t) => `<span>#${esc(t)}</span>`).join("")}</div>` : ""}</div>`;
     };
@@ -1297,7 +1307,7 @@
     S.note.ed = CA.editor.mount($("#nsEd"), {
       md: it.notes, onChange: (md) => noteSave({ notes: md }), onInput: noteSoon, onState: noteTools, onLink: noteLinkAsk, onOpen: openLink,
       onRefuse: (m) => { toast(esc(m)); CA.sound.nope(); }, onCheck: (li, on) => { if (on) MO.ack(li, "stamp"); CA.sound.tick(); },
-      onCallout: (k) => toast("Callout · " + NT().CALLOUT_LABEL[k] + " · click again for the next kind"),
+      onCallout: (k) => toast("Callout · " + NT().CALLOUT_LABEL[k] + " · click again for the next kind"), onDraw: openDraw,
     });
     noteInfo();
     if (how.focus === "title" || (!it.title && how.focus !== "end")) $("#nsTitle").focus(); else S.note.ed.focus(true);
@@ -1357,27 +1367,60 @@
     const on = { p: st.block === "p" && !st.quote && !st.callout && !st.pre, h1: st.block === "h1", h2: st.block === "h2", h3: st.block === "h3", b: st.b, i: st.i, u: st.u, s: st.s,
       mark: st.mark, code: st.code, link: st.link, ul: st.ul, ol: st.ol, todo: st.todo, quote: st.quote, callout: !!st.callout, pre: st.pre };
     $$(".ns-tools .ns-t").forEach((b) => { const v = !!on[b.dataset.t]; if (b.classList.contains("on") !== v) { b.classList.toggle("on", v); b.setAttribute("aria-pressed", v); } });
+    // a picked image or drawing brings its own tools, else a caret in a table the table's
     const bar = $("#nsBar"); if (!bar || bar.dataset.mode === "link") return;
-    if (st.table && bar.dataset.mode !== "table") {
-      bar.dataset.mode = "table"; bar.hidden = false;
-      bar.innerHTML = `<span class="dim">Table</span>${CA.editor.TABLE_TOOLS.map(([id, l]) => `<button class="chip" data-act="edTool" data-t="${id}">${l}</button>`).join("")}`;
-    } else if (!st.table && bar.dataset.mode === "table") { bar.hidden = true; bar.dataset.mode = ""; bar.innerHTML = ""; }
+    const mode = st.img ? "img" : st.table ? "table" : "", key = st.img ? ["img", st.img.place, st.img.w, st.img.drawing].join(":") : mode;
+    if (bar.dataset.key === key) return;
+    bar.dataset.mode = mode; bar.dataset.key = key; bar.hidden = !mode;
+    bar.innerHTML = mode === "table" ? `<span class="dim">Table</span>${CA.editor.TABLE_TOOLS.map(([id, l]) => `<button class="chip" data-act="edTool" data-t="${id}">${l}</button>`).join("")}`
+      : mode === "img" ? imgBar(st.img) : "";
+  }
+  function imgBar(im) {
+    const chip = (id, label, on) => `<button class="chip${on ? " on" : ""}" data-act="edTool" data-t="${id}"${on != null ? ` aria-pressed="${on}"` : ""}>${label}</button>`;
+    return `<span class="dim">${im.drawing ? "Drawing" : "Image"}</span>${im.drawing ? chip("imgEdit", `${ic("draw")}Edit drawing`) : ""}
+      <span class="ns-seg">${CA.editor.IMG_PLACES.map(([p, l]) => chip("img_" + (p || "inline"), l, im.place === p)).join("")}</span>
+      <label class="ns-imgw"><span class="dim">Size</span><input type="range" id="nsImgW" min="5" max="100" step="1" value="${im.w || 100}" aria-label="Width, a share of the page"><span class="num" id="nsImgWv">${im.w ? im.w + "%" : "Natural"}</span></label>
+      ${chip("imgDel", `${ic("trash")}Delete`)}`;
+  }
+  // Drawing (draw.js): the layer covers the sheet. Done puts a new drawing at the caret, on a line of its own at the size
+  // it was drawn, or a changed one back where it was at the scale you gave it there; erasing everything removes it.
+  const drawPct = (w, k) => Math.max(5, Math.min(100, Math.round((w / CA.draw.COL) * 100 * (k || 1))));
+  function openDraw(img) {
+    const n = S.note, sheet = $(".nsheet"); if (!n || !n.ed || n.draw || !sheet) return;
+    const src = img ? img.getAttribute("src") : null, was = src && CA.draw.read(src);
+    if (img && !was) return toast("Only drawings made in Collegiapp can be drawn on");
+    const k = was && +img.dataset.w ? +img.dataset.w / ((was.box.w / CA.draw.COL) * 100) : 1;
+    n.draw = CA.draw.open(sheet, {
+      src, keyLabel, onRefuse: (m) => { toast(esc(m)); CA.sound.nope(); },
+      onCancel: () => { n.draw = null; n.ed.restoreLast(); },
+      onDone: (out) => {
+        n.draw = null;
+        if (img) n.ed.replaceImg(img, out ? { src: out.src, w: drawPct(out.w, k) } : null);
+        else if (out) n.ed.insertDrawing({ src: out.src, w: drawPct(out.w) });
+        else n.ed.restoreLast();
+        if (out) { CA.sound.ok(); if (n.ed.md().length > 900000) toast("This note is over 900 KB now, so it stays on this device and won't sync", { ms: 9000 }); }
+        else if (img) toast(`Drawing removed · ${esc(keyLabel("Mod+Z"))} brings it back`);
+        noteInfo();
+      },
+    });
+    CA.sound.whoosh();
   }
   function noteLinkAsk(range, href) {
     const bar = $("#nsBar"); if (!bar) return;
-    bar.dataset.mode = "link"; bar.hidden = false;
+    bar.dataset.mode = "link"; bar.dataset.key = "link"; bar.hidden = false;
     bar.innerHTML = `<span class="dim">Link</span><input id="nsLink" value="${esc(href)}" placeholder="Paste or type a link · Enter · empty removes it" autocomplete="off" spellcheck="false" aria-label="Link address"><button class="btn sm primary" data-act="noteLinkGo">Apply<kbd>Enter</kbd></button><button class="btn sm ghost" data-act="noteLinkX">Cancel<kbd>Esc</kbd></button>`;
     const inp = $("#nsLink"); inp.focus(); inp.select();
   }
   function noteLinkEnd(apply) {
     const bar = $("#nsBar"), n = S.note; if (!bar || !n) return;
     const v = apply ? ($("#nsLink") || {}).value || "" : null;
-    bar.hidden = true; bar.dataset.mode = ""; bar.innerHTML = "";
+    bar.hidden = true; bar.dataset.mode = ""; bar.dataset.key = ""; bar.innerHTML = "";
     if (apply) n.ed.link(v.trim()); else n.ed.restore();
   }
   // Closing the sheet keeps the note (or drops a new one left empty) and records the session as one undo step.
   function noteCommit() {
     const n = S.note; if (!n) return;
+    if (n.draw) n.draw.done(); // a drawing still open goes into the note first
     S.note = null;
     const it = find(n.id) || (n.ed && null); if (n.ed) n.ed.destroy();
     if (!it) return;
@@ -1412,7 +1455,7 @@
       case "md": return saveFile(F.name(it.title, "md"), F.md(it, c && c.code), "text/markdown");
       case "txt": return saveFile(F.name(it.title, "txt"), F.txt(it), "text/plain");
       case "html": return saveFile(F.name(it.title, "html"), F.html(it, noteMeta(it)), "text/html");
-      case "docx": return saveFile(F.name(it.title, "docx"), F.docx(it), "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      case "docx": return F.docxMedia(it).then((media) => saveFile(F.name(it.title, "docx"), F.docx(it, media), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
       case "pdf": return printNote(it, true);
       case "print": return printNote(it, false);
       case "copyMd": return copyOut(F.md(it, c && c.code), null, "Copied as Markdown");
@@ -1578,7 +1621,7 @@
     if (r.status === "paste") return `<div class="ai-paste"><p>The prompt is on your clipboard and ${esc((CA.ai.SITES.find((x) => x[0] === aiPrefs().site) || CA.ai.SITES[0])[1])} opened in your browser. Paste it there${r.prefilled ? " (it may already be filled in)" : ""}, then paste the whole reply here:</p>
       <textarea id="aiPaste" rows="5" aria-label="The AI's reply" placeholder="Paste the reply…"></textarea><div class="ai-go"><button class="btn primary" data-act="aiPasteGo">Read reply<kbd>${MOD} Enter</kbd></button><button class="btn ghost" data-act="aiCopy">Copy the prompt again</button></div></div>`;
     if (r.status === "error") return `<div class="ai-err">${ic("close")}<span>${esc(r.err)}</span></div>${r.hint ? `<p class="dim">${r.hint}</p>` : ""}`;
-    const pr = CA.ai.parse(r.text), it = a.note && find(a.note), hasSel = !!(S.note && S.note.ed && S.note.ed.selectionMD());
+    const pr = CA.ai.parse(r.text, r.media), it = a.note && find(a.note), hasSel = !!(S.note && S.note.ed && S.note.ed.selectionMD());
     const label = (x) => x.type === "replace" ? (it ? "Replace this note's text" : "New note") : x.type === "insert" ? (it ? (hasSel ? "Replace the selection" : "Insert at the cursor") : "New note")
       : x.type === "items" ? `Add ${x.lines.length} task${x.lines.length === 1 ? "" : "s"}` : "New note · " + (x.title || "AI note");
     const prev = (x) => x.type === "items" ? `<ul>${x.lines.slice(0, 8).map((l) => `<li>${esc(l)}</li>`).join("")}${x.lines.length > 8 ? `<li class="dim">+${x.lines.length - 8} more</li>` : ""}</ul>` : `<div class="ai-doc">${NT().toHTML(x.body)}</div>`;
@@ -1611,8 +1654,12 @@
     if (!a || !ask) return refuse(inp);
     if (a.run && a.run.status === "running") return;
     a.ask = ask;
-    const sys = CA.ai.system(S.items), prompt = CA.ai.prompt(aiContext(ask)), tool = aiTool(), p = aiPrefs();
-    const r = (a.run = { id: CA.store.uuid(), text: "", status: "running", t0: Date.now(), applied: {} });
+    // drawings go as short stand-ins, and the reply's stand-ins turn back into them (CA.ai.pack, parse)
+    const ctx = aiContext(ask), media = [];
+    if (ctx.note) ctx.note.notes = CA.ai.pack(ctx.note.notes, media);
+    ctx.selection = CA.ai.pack(ctx.selection, media);
+    const sys = CA.ai.system(S.items), prompt = CA.ai.prompt(ctx), tool = aiTool(), p = aiPrefs();
+    const r = (a.run = { id: CA.store.uuid(), text: "", status: "running", t0: Date.now(), applied: {}, media });
     if (tool.kind === "cli") {
       CA.store.invoke("ai_run", { id: r.id, tool: tool.id, prompt, system: sys, model: p.model || null, effort: p.effort || null }).then((res) => {
         if (a.run !== r) return;
@@ -1634,7 +1681,7 @@
   // Apply one action (or "all"). A change to the open note lands in the editor, so the sheet's one undo step covers it.
   function aiApply(which) {
     const a = S.ai, r = a && a.run; if (!r) return;
-    const acts = CA.ai.parse(r.text).actions, n = S.note && S.note.id === a.note ? S.note : null, it = a.note && find(a.note);
+    const acts = CA.ai.parse(r.text, r.media).actions, n = S.note && S.note.id === a.note ? S.note : null, it = a.note && find(a.note);
     const made = [];
     (which === "all" ? acts.map((_, i) => i) : [+which]).forEach((i) => {
       const x = acts[i]; if (!x || r.applied[i]) return;
@@ -1929,8 +1976,8 @@
         ? `Your list and notes sync through ${esc(st.project_id)} with ${LIVE ? "your other devices and the web app" : "the desktop app and your other devices"}. When two devices change the same thing, the later edit wins.`
         : LIVE ? `Opens ${esc(st.project_id)}'s sign-in page in your browser. What's here goes up and what's there comes down; when both changed, the later edit wins.` : "Use the Google account you signed in with in the desktop app."}</div>
         <div class="dim feed-st" id="cloudSt">${cloudStHTML(st)}</div>${err}</div>
-      <div class="dim">${LIVE ? `Your look, calendar links and class picks sync too. Gradescope and WeBWorK sign-ins, paired browsers and text size stay on each device, so sign in to them here as well. An item deleted on another device goes to the trash here.`
-        : "Your look syncs too; text size stays on each device."}</div>
+      <div class="dim">${LIVE ? `Your courses, look, calendar links and class picks sync too. Gradescope and WeBWorK sign-ins, paired browsers and text size stay on each device, so sign in to them here as well. An item deleted on another device goes to the trash here.`
+        : "Your courses and look sync too; text size stays on each device."}</div>
       <div class="nb">${st.signed_in ? `<button class="btn primary" data-act="cloudNow">${ic("check")}Sync now<kbd>Enter</kbd></button><button class="btn" data-act="cloudOut">Sign out</button>`
         : LIVE && st.signing_in ? `<button class="btn primary" data-act="cloudIn">${ic("check")}Open the page again<kbd>Enter</kbd></button>`
         : `<button class="btn primary" data-act="cloudIn"${st.signing_in ? " disabled" : ""}>${ic("check")}Sign in with Google<kbd>Enter</kbd></button>`}${LIVE && st.signed_in ? '<button class="btn" data-act="feedsOpen">Connect sources</button>' : ""}${LIVE ? '<button class="btn" data-act="cloudEdit">Change project</button>' : ""}${close}</div>`;
@@ -2492,7 +2539,7 @@
     noteTplGo: (el) => { closeOv(); newNote(NT().TEMPLATES[+el.dataset.i]); }, noteImport, noteBackup: openBackup, noteBackupGo: (el) => noteBackupGo(el.dataset.v),
     quickMode: (el) => openQuick("", el.dataset.v), qaMode: (el) => switchMode(el.dataset.v), qaSave: (el) => saveCapture(el.dataset.v === "open"),
     qaListAs: (el) => { S.qaListAs = el.dataset.v; $$(".qa-as .chip").forEach((c) => { c.classList.toggle("on", c.dataset.v === S.qaListAs); c.setAttribute("aria-pressed", c.dataset.v === S.qaListAs); }); updateQuick(); const t = $("#qaTx"); if (t) t.focus(); },
-    edTool: (el) => S.note && S.note.ed && S.note.ed.run(el.dataset.t), noteMenu, noteOut: (el) => noteOut(el.dataset.v), notePin: () => S.note && notePin(S.note.id),
+    edTool: (el) => S.note && S.note.ed && S.note.ed.run(el.dataset.t), draw: (el) => S.note && S.note.draw && S.note.draw.act(el.dataset.d, el.dataset.v), noteMenu, noteOut: (el) => noteOut(el.dataset.v), notePin: () => S.note && notePin(S.note.id),
     noteSide: (el) => {
       const n = S.note; if (!n) return;
       n.side = S.noteSide = !n.side; n.panel = "outline"; $("#nsBody").classList.toggle("side", n.side); el.classList.toggle("on", n.side); el.setAttribute("aria-pressed", n.side); noteInfo();
@@ -2642,6 +2689,7 @@
       else if (t.id === "nsTitle") { clearTimeout(S.titleT); S.titleT = setTimeout(() => { const v = t.value.trim(); const it = S.note && find(S.note.id); if (it && v && v !== it.title) noteSave({ title: v }); }, 400); }
       else if (t.id === "palIn") { S.palI = 0; updatePalette(); }
       else if (t.id === "foPhrase" && t.value.trim().toLowerCase() === PHRASE) endFocus(false, t.value);
+      else if (t.id === "nsImgW" && S.note && S.note.ed) { S.note.ed.imgLive(+t.value); const v = $("#nsImgWv"); if (v) v.textContent = t.value + "%"; }
     });
     document.addEventListener("change", (e) => {
       const t = e.target;
@@ -2649,6 +2697,7 @@
       if (t.id === "trashLimit") return trashLimit(+t.value);
       if (t.id === "noteFileIn") { if (t.files && t.files.length) noteFiles([...t.files]); return; }
       if (t.id === "nsCourse") return noteSave({ course: t.value || null });
+      if (t.id === "nsImgW") return S.note && S.note.ed && S.note.ed.imgSet({ w: +t.value });
       if (t.id === "nsTags") {
         const it = S.note && find(S.note.id); if (!it) return;
         const tags = t.value.split(/[\s,]+/).map((x) => x.replace(/^#+/, "").trim()).filter(Boolean);
