@@ -382,6 +382,14 @@ html[data-frame="mac"] .content[data-sd="dock"][data-side="left"] .sidebar { pad
 .cchip { display: inline-flex; align-items: center; gap: .4em; padding: .2em .58em; border-radius: 6px; background: color-mix(in srgb, var(--kc, var(--text-3)) 16%, transparent); color: var(--text); font-weight: 600; white-space: nowrap; }
 .cchip::before { content: ""; width: .58em; height: .58em; border-radius: 50%; background: var(--kc, var(--text-3)); flex: none; }
 .cchip.none { background: var(--surface-2); }
+/* a class's name as a key to its folder: the chip, or plain text (.clink) in rows, calendars and headings */
+button.cchip { border: 0; cursor: pointer; }
+.clink { display: inline-flex; align-items: center; max-width: 100%; padding: 0; border: 0; border-radius: 3px; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+:is(button.cchip, .clink):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) {
+  :is(button.cchip, .clink):hover { text-decoration: underline; text-underline-offset: .18em; }
+  button.cchip:hover { background: color-mix(in srgb, var(--kc, var(--text-3)) 28%, transparent); }
+}
 .srcl { color: var(--text-3); }
 .prio { display: inline-flex; align-items: center; gap: .3em; color: var(--warn); font-weight: 600; }
 .prio.p3 { color: var(--bad); }

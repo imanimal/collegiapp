@@ -310,7 +310,10 @@
     if (d < 24 * HR) return { t: "in " + E.fmtDur(d), c: d < 3 * HR ? "hot" : "soon" };
     return { t: mDay(it.due), c: "" };
   }
-  const cchip = (c) => (c ? `<span class="cchip" style="${kc(c)}">${esc(c.code)}</span>` : `<span class="cchip none">Personal</span>`);
+  // a class's name opens its folder (goClass); `notes` opens its notes folder instead
+  const cgo = (c, notes) => `data-act="goClass" data-c="${esc(c.id)}"${notes ? ' data-v="notes"' : ""} title="Open ${esc(c.code)}${notes ? " notes" : ""}"`;
+  const cchip = (c, notes) => (c ? `<button type="button" class="cchip" style="${kc(c)}" ${cgo(c, notes)}>${esc(c.code)}</button>` : `<span class="cchip none">Personal</span>`);
+  const clink = (c, html) => `<button type="button" class="clink" ${cgo(c)}>${html}</button>`;
   function viewTitle() {
     // with the sidebar, a folder's list is titled by its path: "CS 16 · Assignments", "Notes · CS 16", "#lab"
     const loc = S.side && sideLoc(S.side);
@@ -653,6 +656,14 @@
     } else if (file && file.item) select(file.item, true);
     if (file && file.note) openNote(file.note);
   }
+  // a class's name, clicked: its folder (from a note, its notes folder), or with the key row its open items
+  function goClass(id, notes) {
+    const c = cById(id); if (!c) return;
+    const T = S.side, n = T && T.map.get((notes ? "nc:" : "c:") + c.id);
+    // already there: a second click would fold the folder, so it stays put
+    if (n) { const loc = sideLoc(T); if (loc.cur !== n || loc.filtered) sideGo(n.id); return; }
+    setQ((notes ? "is:open kind:note course:" : "is:open course:") + c.tag.toLowerCase());
+  }
   function sideFold(id) {
     const T = S.side || sideTree(), n = T.map.get(id); if (!n || !n.kids) return;
     sideP.open[id] = !sideOpenQ(n); sideSave();
@@ -943,7 +954,7 @@
   function mSched(el, list) {
     const live = list.find((it) => it.due <= S.now && it.end > S.now), next = list.find((it) => it.due > S.now), d = new Date(S.now);
     let h = `<div class="panel" data-win="sched"><div class="ph"><span class="pt">${ic("clock")}Up next</span><span class="sp"></span><span class="cnt">${DNM[d.getDay()]}, ${MNM[d.getMonth()]} ${d.getDate()}</span></div><div class="pb">`;
-    if (live) { const c = courseOf(live); h += `<div class="live" data-act="sel" data-id="${live.id}" data-k="live:${live.id}"><span class="ldot"></span><span class="lt">Now: <b>${c ? esc(c.code) + " " : ""}${esc(live.title)}</b></span><span class="sp"></span><span class="num">ends in <b data-cd data-f="clock" data-t="${live.end}"></b></span></div>`; }
+    if (live) { const c = courseOf(live); h += `<div class="live" data-act="sel" data-id="${live.id}" data-k="live:${live.id}"><span class="ldot"></span><span class="lt">Now: <b>${c ? clink(c, esc(c.code)) + " " : ""}${esc(live.title)}</b></span><span class="sp"></span><span class="num">ends in <b data-cd data-f="clock" data-t="${live.end}"></b></span></div>`; }
     if (next) {
       const c = courseOf(next);
       h += `<div class="next" data-k="next:${next.id}"><div class="nx-head"><div class="nx-id"><div class="meta-row">${cchip(c)}<span>${iLabel(next)}</span></div><div class="nx-t">${esc(next.title)}</div>
@@ -956,7 +967,7 @@
     const today = list.concat(S.items.filter((it) => E.SCHEDULED(it.kind) && it.end && it.end <= S.now && it.due >= t0 && E.matchItem(it, [], ctx()))).filter((it) => it.due < t1 && (it.end || it.due + HR) > t0);
     h += `<div class="timeline" title="Today, 7 AM to midnight">${today.map((it) => `<span class="blk ${it.kind === "class" ? "" : "ev"}" style="left:${pos(it.due)}%;width:${Math.max(0.8, pos(it.end || it.due + HR) - pos(it.due))}%" title="${esc(it.title)}"></span>`).join("")}<span class="nowln" style="left:${pos(S.now)}%"></span></div><div class="tl-scale"><span>7a</span><span>11a</span><span>3p</span><span>7p</span><span>11p</span></div>`;
     const rest = list.filter((it) => it !== next && it !== live).slice(0, 6);
-    if (rest.length) h += `<div class="sub-h">Coming up</div><div class="agenda">${rest.map((it) => { const c = courseOf(it), pl = place(it.location); return `<div class="ag" data-act="sel" data-id="${it.id}" style="${kc(c)}"><span class="ag-when"><b>${esc(mDay(it.due).split(",")[0])}</b>${esc(mTime(it.due))}</span><span class="ag-bar"></span><span class="ag-main"><span class="ag-t">${esc(it.title)}</span><span class="ag-s">${c ? esc(c.code) + (isSection(it) ? " · Section" : "") : iLabel(it)}${pl ? `<span class="ag-loc">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}</span></span></div>`; }).join("")}</div>`;
+    if (rest.length) h += `<div class="sub-h">Coming up</div><div class="agenda">${rest.map((it) => { const c = courseOf(it), pl = place(it.location); return `<div class="ag" data-act="sel" data-id="${it.id}" style="${kc(c)}"><span class="ag-when"><b>${esc(mDay(it.due).split(",")[0])}</b>${esc(mTime(it.due))}</span><span class="ag-bar"></span><span class="ag-main"><span class="ag-t">${esc(it.title)}</span><span class="ag-s">${c ? clink(c, esc(c.code)) + (isSection(it) ? " · Section" : "") : iLabel(it)}${pl ? `<span class="ag-loc">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}</span></span></div>`; }).join("")}</div>`;
     el.innerHTML = h + `</div></div>`;
   }
   function mFbar() {
@@ -976,7 +987,7 @@
     const chk = sched ? `<span class="chk sched" title="Scheduled">${ic(it.kind === "ticket" ? "ticket" : "clock")}</span>`
       : isNote(it) ? `<span class="chk sched" title="Note">${ic("notes")}</span>`
       : `<button class="chk" data-act="toggle" data-id="${it.id}" title="${it.status === "done" ? "Mark as not done" : "Mark done (X)"}" aria-label="Toggle done">${ic("check")}</button>`;
-    const meta = [c ? `<span class="cdot" style="${kc(c)}"></span>${esc(c.code)}` : it.tags[0] ? "#" + esc(it.tags[0]) : "Personal", iLabel(it)];
+    const meta = [c ? clink(c, `<span class="cdot" style="${kc(c)}"></span>${esc(c.code)}`) : it.tags[0] ? "#" + esc(it.tags[0]) : "Personal", iLabel(it)];
     if (it.est && !sched) meta.push("~" + E.fmtDur(it.est * MIN));
     if (isNote(it)) { const ck = NT().checklist(it.notes); if (ck.total) meta.push(ck.done + "/" + ck.total + " done"); }
     if (sched && it.location) meta.push(`<span class="m-loc">${ic("pin")}${esc(placeShort(place(it.location)))}</span>`);
@@ -1124,7 +1135,7 @@
       const its = dayItems(list, day);
       h += `<div class="wcol ${day === today ? "today" : ""}" style="--i:${d}"><div class="wh" data-act="calDay" data-t="${day}" title="Open this day hour by hour"><b>${day === today ? "Today" : DNM[dt.getDay()]}</b><span>${MNM[dt.getMonth()]} ${dt.getDate()}</span></div>${its.map((it) => {
         const c = courseOf(it), pl = E.SCHEDULED(it.kind) && place(it.location);
-        return `<div class="wi ${E.SCHEDULED(it.kind) ? "cls" : ""} ${it.kind === "exam" ? "exam" : ""}" data-act="sel" data-id="${it.id}" data-k="w:${it.id}" style="${kc(c)}" title="${esc(it.title)}"><span class="wt">${esc(mTime(it.due))}${c ? " · " + esc(c.tag) : ""}</span><span class="wn">${esc(it.title)}</span>${pl ? `<span class="wl">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}</div>`;
+        return `<div class="wi ${E.SCHEDULED(it.kind) ? "cls" : ""} ${it.kind === "exam" ? "exam" : ""}" data-act="sel" data-id="${it.id}" data-k="w:${it.id}" style="${kc(c)}" title="${esc(it.title)}"><span class="wt">${esc(mTime(it.due))}${c ? " · " + clink(c, esc(c.tag)) : ""}</span><span class="wn">${esc(it.title)}</span>${pl ? `<span class="wl">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}</div>`;
       }).join("") || '<div class="wnone">Free</div>'}</div>`;
     }
     return { h: h + `</div>`, n: list.length };
@@ -1181,7 +1192,7 @@
       const cls = ["dv-ev", E.SCHEDULED(it.kind) ? "cls" : "plan", it.kind === "exam" ? "exam" : "", past ? "past" : "", live ? "live" : "", S.sel === it.id ? "sel" : ""].filter(Boolean).join(" ");
       // the lines' layout follows the block's height (pocket.css .dv-eb)
       return `<div class="${cls}" data-act="sel" data-id="${it.id}" data-k="dv:${it.id}" style="--t:${hrs(s, day)};--d:${((e - s) / HR).toFixed(3)};--lane:${b.lane};--lanes:${b.lanes};--i:${i};${kc(c)}" title="${esc(mTime(b.s) + "–" + mTime(b.e) + " · " + it.title)}"><div class="dv-eb">
-        <span class="dv-et">${esc(mTime(b.s))}–${esc(mTime(b.e))}${c ? " · " + esc(c.tag) : ""}</span><span class="dv-en">${esc(it.title)}</span>
+        <span class="dv-et">${esc(mTime(b.s))}–${esc(mTime(b.e))}${c ? " · " + clink(c, esc(c.tag)) : ""}</span><span class="dv-en">${esc(it.title)}</span>
         ${pl ? `<span class="dv-el">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}${isToday && !past ? `<span class="dv-rel" data-rel data-t="${b.s}" data-e="${b.e}">${esc(relWhen(b.s, b.e))}</span>` : ""}</div></div>`;
     }).join("");
     // deadlines at the same minute share one flag
@@ -1234,7 +1245,7 @@
       const nx = S.items.filter((it) => it.course === c.id && it.kind === "class" && it.due > S.now).sort(cmpDue)[0];
       const ex = open.filter((it) => it.kind === "exam").sort(cmpDue)[0];
       const meet = c.meet.map((m) => `${m.sec ? "Section " : ""}${m.days} ${m.h}:${String(m.m).padStart(2, "0")} ${m.loc}`).join(" · ") || "no meetings synced";
-      return `<div class="ccard ${c.included ? "" : "excluded"}" data-k="c:${c.id}" style="--i:${i};${kc(c)}"><h4>${esc(c.code)} <span class="dim">${c.tag}</span></h4><div class="meta">${esc(c.title)}</div><div class="meta">${esc(meet)}</div>
+      return `<div class="ccard ${c.included ? "" : "excluded"}" data-k="c:${c.id}" style="--i:${i};${kc(c)}"><h4>${c.included ? clink(c, esc(c.code)) : esc(c.code)} <span class="dim">${c.tag}</span></h4><div class="meta">${esc(c.title)}</div><div class="meta">${esc(meet)}</div>
         ${c.included ? `<div class="meta">Next: ${nx ? mDue(nx.due) + " · " + E.fmtRel(nx.due, S.now) : "—"}</div><div class="meta">${open.length} open · ${dueWk} due this week${ex ? " · " + esc(ex.title) + " " + mDay(ex.due) : ""}</div>` : `<div class="meta">Excluded · items hidden everywhere</div>`}
         <div class="row2">${c.links.map((l) => `<button class="btn" data-act="open" data-url="${esc(l[1])}">${esc(l[0])}</button>`).join("")}</div>
         <div class="row2">${c.included ? `<button class="btn primary" data-act="q" data-q="is:open course:${c.tag.toLowerCase()}">Items${ic("go")}</button>` : ""}<button class="btn" data-act="courseEdit" data-c="${c.id}">Edit</button><button class="btn" data-act="incl" data-c="${c.id}">${c.included ? "Exclude" : "Include"}</button><button class="btn" data-act="courseDel" data-c="${c.id}" title="Delete or merge ${esc(c.code)}">${ic("trash")}Delete</button></div></div>`;
@@ -1299,9 +1310,9 @@
   function linksLens() {
     const btn = (l) => `<button class="btn" data-act="open" data-url="${esc(l[1])}">${esc(l[0])}${ic("ext")}</button>`;
     let h = `<div class="sect" style="margin-top:0">UCSB</div><div class="lgroup"><div class="row2">${GLOBAL_LINKS.map(btn).join("")}</div></div><div class="sect">Classes</div><div class="lgrid">`;
-    h += S.courses.filter((c) => c.included).map((c) => `<div class="lgroup" style="${kc(c)}"><h4>${esc(c.code)}</h4><div class="row2">${c.links.map(btn).join("")}</div></div>`).join("");
+    h += S.courses.filter((c) => c.included).map((c) => `<div class="lgroup" style="${kc(c)}"><h4>${clink(c, esc(c.code))}</h4><div class="row2">${c.links.map(btn).join("")}</div></div>`).join("");
     const withLinks = ranked().map((x) => x.it).filter((it) => it.links.length).slice(0, 8);
-    h += `</div><div class="sect">From your open items</div><div class="lgrid">${withLinks.map((it) => { const c = courseOf(it); return `<div class="lgroup" style="${kc(c)}"><h4>${c ? c.tag + " · " : ""}${esc(it.title)}</h4><div class="row2">${it.links.map(btn).join("")}</div></div>`; }).join("")}</div>`;
+    h += `</div><div class="sect">From your open items</div><div class="lgrid">${withLinks.map((it) => { const c = courseOf(it); return `<div class="lgroup" style="${kc(c)}"><h4>${c ? clink(c, esc(c.tag)) + " · " : ""}${esc(it.title)}</h4><div class="row2">${it.links.map(btn).join("")}</div></div>`; }).join("")}</div>`;
     return { h, n: GLOBAL_LINKS.length };
   }
   function renderList() {
@@ -1826,7 +1837,7 @@
     const card = (it, i) => {
       const c = courseOf(it), ck = NT().checklist(it.notes), pv = NT().preview(it.notes, 220), tags = it.tags.filter((t) => t.toLowerCase() !== "pinned"), dr = NT().firstDrawing(it.notes);
       return `<div class="ncard${S.sel === it.id ? " sel" : ""}${S.flashId === it.id ? " new" : ""}${it.status === "done" ? " done" : ""}" data-act="noteOpen" data-id="${it.id}" data-k="n:${it.id}" style="--i:${i};${kc(c)}" tabindex="-1">
-        <div class="nc-top">${c ? cchip(c) : ""}${isPinned(it) ? `<span class="nc-pin" title="Pinned">${ic("pin")}</span>` : ""}<span class="sp"></span><span class="nc-when" title="${esc(new Date(it.updated).toLocaleString())}">${esc(agoText(it.updated))}</span></div>
+        <div class="nc-top">${c ? cchip(c, true) : ""}${isPinned(it) ? `<span class="nc-pin" title="Pinned">${ic("pin")}</span>` : ""}<span class="sp"></span><span class="nc-when" title="${esc(new Date(it.updated).toLocaleString())}">${esc(agoText(it.updated))}</span></div>
         <h4 class="nc-t">${esc(it.title || "Untitled note")}</h4>${dr ? `<img class="nc-img" src="${esc(dr)}" alt="" draggable="false">` : ""}${pv ? `<p class="nc-p">${esc(pv)}</p>` : ""}
         ${ck.total ? `<div class="nc-ck"><span class="nc-bar"><i style="width:${Math.round((ck.done / ck.total) * 100)}%"></i></span><span class="num">${ck.done}/${ck.total}</span></div>` : ""}
         ${tags.length ? `<div class="nc-tags">${tags.slice(0, 4).map((t) => `<span>#${esc(t)}</span>`).join("")}</div>` : ""}</div>`;
@@ -3001,7 +3012,7 @@
     toggle: (el) => toggleDone(el.dataset.id, el), done: (el) => { if (S.overlay === "focusdone") closeOv(); toggleDone(el.dataset.id, el); },
     focus: (el) => startFocus(el.dataset.id, +el.dataset.min || 25), snooze: (el) => openSnooze(el.dataset.id), skip: () => skip(), back: () => skip(-1),
     del: (el) => del(el.dataset.id), quick: () => openQuick(), palette: () => openPalette(), help: () => openHelp(), lab: openLab,
-    sdGo: (el) => sideGo(el.dataset.node), sdFold: (el) => sideFold(el.dataset.node), sideToggle: () => sideToggle(), sideSwap,
+    sdGo: (el) => sideGo(el.dataset.node), goClass: (el) => goClass(el.dataset.c, el.dataset.v === "notes"), sdFold: (el) => sideFold(el.dataset.node), sideToggle: () => sideToggle(), sideSwap,
     sideEdit: () => sideEdit(), sdHide, sdDelSec, sdNewSec, sdReset,
     clearQ, rmTerm: (el) => { const t = E.parseFilter(S.q); t.splice(+el.dataset.i, 1); setQ(t.map((x) => x.raw).join(" ")); },
     toggleTerm: (el) => toggleTerm(el.dataset.t), closeInsp: () => { S.insp = false; renderAll(); }, closeOv,

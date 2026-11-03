@@ -56,6 +56,8 @@ A folder lists its first 12 files, then an "N more" row that opens the folder.
 - **A file** opens its folder with the item's details showing, or opens the note.
 - **The place you're in** is a graphite key, like a latched program key. When you arrive somewhere, its folders unfold to show it, once, so you can still fold them afterwards.
 
+**A class's name** anywhere on the page opens that class's folder. That covers Do first, Up next, list rows, the week and day calendars, Classes and Links. On a note card it opens the class's notes folder. With the key row instead of the sidebar, it filters to the class's open items (or its notes).
+
 **The path bar** replaces the key row, so the page always says where you are: `Classes › CMPSC 130A › Assignments`. Every step except the last takes you back up that far. When chips or a search narrow the list, the bar says "filtered", and **Clear** puts the whole folder back. The list's title follows the path ("CMPSC 130A · Assignments").
 
 **Size and place.** It docks beside the page when the screen is 900 px or wider; narrower, it's a drawer over the page:

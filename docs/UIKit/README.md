@@ -378,7 +378,8 @@ Rows group under `.grp` headers (Overdue, Today, Tomorrow …) when sorted by du
 | `.chip` / `.chip.on` | toggles: quick filters, calendar series, sources, snooze reasons |
 | `.chip.course` | quick filter for a course, with its colour dot |
 | `.fbox .chip` | an active filter term in mono, removable (`×`); `.bad` (dashed, `--text-2`) is a term the filter couldn't read, which it ignores |
-| `.cchip` | a course code with its dot; `.cchip.none` reads "Personal" |
+| `.cchip` | a course code with its dot, a key (`data-act="goClass"`) that opens the class's folder; `.cchip.none` reads "Personal" and is plain text |
+| `.clink` | a class's name as plain text that opens its folder: list rows, Up next, the week and day calendars, Classes and Links headings. Underlines on hover; app.js `clink(c, html)` |
 | `.why-chip` | a Do first reason ("Due in 3h", "Worth 15% of grade"); one line, extra chips hide |
 | `.pc` | a quick-add parse chip ("Course **CMPSC 130A**"), `.course` adds the colour edge, `<i>` marks an inferred value |
 | `.seg` > `.chip` | a segmented control (estimate, priority, status, alert, focus length) |
