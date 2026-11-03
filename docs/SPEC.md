@@ -85,7 +85,7 @@ Only actionable kinds are ranked; classes, events and tickets feed **Up Next** i
 - **Templates:** HW · Lab · Reading · Exam prep · Email TA · Errand · Apply · Office hours; one click prefills the grammar.
 - **Fill later:** the Inspector edits any field inline; nothing is required except the title.
 - **Notes** (`docs/NOTES.md`): a note is an Item of kind `note` whose `notes` hold Collegiapp Markdown. Quick add has three modes (Tab switches): Item, Jot (a thought saved as a note with Enter) and List (a checklist note); `note:` at the start of quick add makes a note too. The Notes view (−) lists them as cards; the editor is a full sheet with headings, lists, checklists, quotes, callouts, code, tables, links, inline marks and drawings (a drawing layer with pen, highlighter, shapes, arrows and text; the drawing sits in the text, wrapped left or right or on its own line, at any width), and notes go out as .md, .txt, .html, .docx, PDF (saved to Downloads) or print, and come back in from .md, .txt, .html, .docx and a .json backup.
-- **AI** (`docs/AI.md`): your own chatbot plan does the work, never a paid API key. In the app a chat CLI you're signed in to (Claude Code, Codex CLI or Gemini CLI) runs headless with no tools; anywhere else the prompt goes on the clipboard for the chat site. I or Mod+J (or anything typed in search) opens Ask AI; in a note the side panel formats, organizes, fixes the writing, summarizes, makes a study guide or flashcards, pulls out tasks or continues it. The AI is told the app's Markdown and quick-add rules, plus your own standing rules (notes tagged `#ai`), and answers in blocks the app applies when you click Apply: replace or insert note text, new notes, new items.
+- **AI** (`docs/AI.md`): your own chatbot plan does the work, never a paid API key. In the app a chat CLI you're signed in to (Claude Code, Codex CLI or Gemini CLI) runs headless with no tools; anywhere else the prompt goes on the clipboard for the chat site. I or Mod+J (or anything typed in search) opens Ask AI; in a note the side panel formats, organizes, fixes the writing, summarizes, makes a study guide or flashcards, pulls out tasks or continues it. The AI is told the app's Markdown and quick-add rules, plus your own standing rules (notes tagged `#ai`), and answers in blocks the app applies when you click Apply: replace or insert note text, new notes, new items. The other way round, Claude Desktop and Claude Code write your notes from their own chats through an MCP server on the bridge (`integrations/claude-desktop`).
 - **Paste-to-import:** paste an `.ics` URL or file (Canvas feed, Shoreline, Google secret iCal), a GOLD schedule page, or a syllabus table. The parser proposes items you can tick before they're added.
 - **Planned:** Firefox "Send page to Collegiapp" (title, URL, selected text, due date detected from the page); screenshot → OCR → draft item on macOS/Windows (local OCR APIs, no cloud).
 
@@ -189,7 +189,8 @@ src-tauri                Tauri 2 shell: commands, store (JSON in %APPDATA%), tra
                          focus enforcement,
                          signed updates from GitHub Releases
 ui/                      buildless HTML/CSS/JS; runs in Tauri, a browser (tools/serve_ui.py) or as a published demo
-integrations/            (planned) firefox-extension/, zebar/ widget
+integrations/            Pocket for Windows (windhawk-pocket, windows-pocket, wallpaper-engine, zebar, spicetify-pocket)
+                         and claude-desktop/ (the MCP server that lets Claude write your notes)
 .github/workflows        ci.yml (fmt, clippy, test, check on win/mac) · release.yml (tauri-action → GitHub Releases + updater latest.json)
 ```
 

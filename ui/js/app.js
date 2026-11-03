@@ -2514,18 +2514,23 @@
       <div class="feed"><b>WeBWorK</b><div class="dim">For math classes that put homework on WeBWorK. Pick your course and sign in with its WeBWorK username and password in the window that opens; the app then reads its open sets and due dates every 20 minutes. WeBWorK signs you out after 30 idle minutes, so after the app has been closed a while you may need to sign in again. Your sets stay either way.</div>
       <div class="dim feed-st" id="wwSt">${wwOn ? wwCourses + " · " + feedLine(fd.webwork, "webwork") : "Not connected"} · <button class="chip ${wwOn ? "" : "on"}" data-act="wwConnect">${wwOn ? "Sign in again or add a course" : "Sign in to WeBWorK…"}</button>${wwOn ? ' <button class="chip" data-act="wwOff">Disconnect</button>' : ""}</div></div>
       ${LIVE ? `<div class="feed"><b>PocketCanvas</b><div class="dim">The Firefox extension for Canvas. It sends your classes with their priority, ghost and hidden choices, all your work (undated work too), and the due dates it reads from WeBWorK and Gradescope with Firefox's own sign-in, so a Google sign-in works there. Connect it from its settings; the app asks you here first.</div>
-      <div class="dim feed-st" id="pcSt">Checking…</div></div>` : ""}
+      <div class="dim feed-st" id="pcSt">Checking…</div></div>
+      <div class="feed"><b>Assistants</b><div class="dim">Claude Desktop and Claude Code can search and read your notes, write new ones and add to them from a chat, while the app runs in the tray. Add Collegiapp's connector to Claude (integrations/claude-desktop), ask for a note, and the app asks you here first. Text an assistant replaces goes to the trash.</div>
+      <div class="dim feed-st" id="asSt">Checking…</div></div>` : ""}
       <div class="nb"><button class="btn primary" data-act="feedSave">${ic("check")}Save and import<kbd>Enter</kbd></button>${st.canvas_feed_url || st.gcal_feed_url || gsOn || wwOn ? '<button class="btn" data-act="syncNow">Refresh now<kbd>F5</kbd></button>' : ""}<button class="btn" data-act="feedFile">Import a .ics file…</button><button class="btn" data-act="closeOv">Close<kbd>Esc</kbd></button></div>
       <input type="file" id="feedFileIn" accept=".ics,text/calendar" hidden></div>`));
     const inp = $("#fCIn"); if (inp) inp.focus();
     if (LIVE) pcClients();
   }
-  // PocketCanvas and other browser extensions (src-tauri/src/bridge.rs): a pairing request shows its code here, and
-  // allowing it gives that browser a token. Connect sources lists the browsers you allowed.
+  // PocketCanvas, other browser extensions and assistants (src-tauri/src/bridge.rs): a pairing request shows its code
+  // here, and allowing it gives that client a token. Connect sources lists the browsers and assistants you allowed.
   function pcClients() {
     CA.store.invoke("bridge_clients").then((cs) => {
-      const el = $("#pcSt"); if (!el) return;
-      el.innerHTML = cs.length ? cs.map((c) => `${esc(c.name)} · ${c.seen ? "synced " + agoText(Date.parse(c.seen)) : "connected " + agoText(Date.parse(c.created))} · <button class="chip" data-act="pcForget" data-id="${esc(c.id)}">Disconnect</button>`).join("<br>") : "No browser connected";
+      const ai = (c) => c.kind === "assistant";
+      const line = (c) => `${esc(c.name)} · ${c.seen ? (ai(c) ? "used " : "synced ") + agoText(Date.parse(c.seen)) : "connected " + agoText(Date.parse(c.created))} · <button class="chip" data-act="pcForget" data-id="${esc(c.id)}">Disconnect</button>`;
+      const put = (sel, list, none) => { const el = $(sel); if (el) el.innerHTML = list.length ? list.map(line).join("<br>") : none; };
+      put("#pcSt", cs.filter((c) => !ai(c)), "No browser connected");
+      put("#asSt", cs.filter(ai), "No assistant connected");
     }).catch(() => {});
   }
   // Sync across devices: your own Firebase project with Google sign-in (src-tauri/src/cloud.rs in the app, cloud.js in the
@@ -2628,8 +2633,10 @@
   }
   function openPair(req) {
     S.pair = req;
-    openOv("pair", dialog("Connect a browser", "Enter allow · Esc", `<div class="feeds">
-      <div class="feed"><b>${esc(req.name)} wants to connect</b><div class="dim">Allow it only if the browser shows the same code. It can then send your Canvas classes and work here, add items and follow your focus sessions. Disconnect it any time in Connect sources.</div></div>
+    const ai = req.kind === "assistant";
+    openOv("pair", dialog(ai ? "Connect an assistant" : "Connect a browser", "Enter allow · Esc", `<div class="feeds">
+      <div class="feed"><b>${esc(req.name)} wants to connect</b><div class="dim">${ai ? `Allow it only if ${esc(req.name)} shows the same code in your chat. It can then search and read your notes, write new ones and add to them, and add items. Text it replaces goes to the trash. Disconnect it any time in Connect sources.`
+        : "Allow it only if the browser shows the same code. It can then send your Canvas classes and work here, add items and follow your focus sessions. Disconnect it any time in Connect sources."}</div></div>
       <div class="display big"><span class="d-lbl">Code</span><span class="d-num num">${esc(req.code)}</span></div>
       <div class="nb"><button class="btn primary" data-act="pairAnswer" data-v="1">${ic("check")}Allow<kbd>Enter</kbd></button><button class="btn" data-act="pairAnswer" data-v="">Don't allow</button><button class="btn" data-act="closeOv">Later<kbd>Esc</kbd></button></div></div>`));
   }
@@ -3595,6 +3602,7 @@
     CA.store.on("gradescope", onGradescope);
     CA.store.on("webwork", onWebwork);
     CA.store.on("pair-request", openPair);
+    CA.store.on("note-changed", onNoteChanged);
     CA.store.on("ai-chunk", onAIChunk);
     CA.store.on("power-off", onPowerOff);
     CA.store.on("cloud", onCloud); CA.store.invoke("cloud_status").then((st) => { S.cloud = st; paintCloudKey(); }).catch(() => {});
@@ -3650,6 +3658,19 @@
       if (S.loaded) S.fx = { flip: true }; else S.loaded = S.animRows = true;
       renderAll();
     }).catch((e) => toast("Could not read your data · " + esc(String(e))));
+  }
+  // An assistant wrote a note over the bridge (bridge.rs). An editor showing it takes the new text, or closing the sheet
+  // would put the old text back; otherwise a toast says what changed.
+  function onNoteChanged(ev) {
+    reload().then(() => {
+      const n = S.note, it = find(ev.id); if (!it) return;
+      if (S.overlay === "note" && n && n.id === it.id && n.ed) {
+        if (n.ed.md() !== it.notes) n.ed.set(it.notes);
+        const t = $("#nsTitle"); if (t && document.activeElement !== t) t.value = it.title;
+        noteInfo(); return toast(`${esc(ev.by)} changed this note`);
+      }
+      toast(`${esc(ev.by)} ${ev.made ? "added a note" : "changed"} · ${esc(it.title)}`, { actions: [["Open", () => openNote(it.id)]] });
+    });
   }
   // "Task done" during a session: a Soft one ends; a Hard one keeps its time and moves on to the next Do First item.
   function focusDone(it) {

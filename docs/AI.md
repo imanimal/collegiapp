@@ -60,3 +60,11 @@ The reply says what was done. The changes come as blocks, and each shows as a pr
 | `:::items` | new tasks, one per line in the quick-add grammar |
 
 Every apply is one undo step: `Ctrl+Z` puts the note back as it was, and the undone AI version goes to the trash.
+
+## From Claude Desktop
+
+The other way round, Claude can write your notes from its own chats and projects without the app open in front of you: `integrations/claude-desktop` is an MCP server for Claude Desktop and Claude Code (`python integrations/claude-desktop/install.py` adds it to both). It reaches the running app over the bridge (`src-tauri/src/bridge.rs`, `/v1/notes` and `/v1/classes`, with the core's `notes.rs` doing the work) and can search, read, create, append to, retitle, file, tag, pin and archive notes, list classes and add tasks in the quick-add grammar. It never deletes.
+
+- **Allowing it.** The first call asks you in the app (**Connect an assistant**, with a code Claude also shows). **Connect sources** lists it under Assistants, with **Disconnect**.
+- **The same rules.** The server tells Claude Collegiapp Markdown and the quick-add grammar, and to follow your `#ai` notes. Drawings go out as `drawing:N` stand-ins and come back as the real ones, as above.
+- **Nothing lost.** Text Claude replaces goes to the trash ("Replaced by Claude"). A note open in the editor takes Claude's change instead of saving over it, and a toast says what Claude changed.

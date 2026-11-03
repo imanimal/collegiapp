@@ -1,8 +1,10 @@
-//! The browser bridge: a small HTTP server on 127.0.0.1:4747 for the PocketCanvas extension
-//! (`pocketcanvas/src/lib/collegiapp.js` is the client). Desktop only.
+//! The bridge: a small HTTP server on 127.0.0.1:4747 for the PocketCanvas extension
+//! (`pocketcanvas/src/lib/collegiapp.js` is the client) and for assistants like Claude Desktop
+//! (`integrations/claude-desktop/server.js`, an MCP server). Desktop only.
 //!
 //!   GET  /v1/ping              { app, version, paired }
-//!   POST /v1/pair  {name}      { id, code }: Collegiapp shows the code and asks you to allow it
+//!   POST /v1/pair  {name, kind}  { id, code }: Collegiapp shows the code and asks you to allow
+//!                              it; `kind` is "assistant" for an assistant, else a browser
 //!   GET  /v1/pair/<id>         { status: pending | allowed | denied | expired, token? }
 //!   POST /v1/canvas            classes and work (collegiapp_core::pocketcanvas::Push)
 //!                              -> { added, updated, unchanged, items }
@@ -12,6 +14,15 @@
 //!   POST /v1/work/find {refs}  whether that work is here already -> { item } (null when not)
 //!   GET  /v1/dofirst           the top of Do first, or null
 //!   GET  /v1/focus             { active, until, level }
+//!   GET  /v1/notes?q=&archived=1&limit=   notes matching q, pinned first -> { notes }
+//!   GET  /v1/notes/<id>        one note, drawings as `drawing:N` stand-ins -> { note }
+//!   POST /v1/notes             a new note (collegiapp_core::notes::NewNote) -> { note }
+//!   POST /v1/notes/<id>        replace, append to, retitle, file, tag, pin or archive it
+//!                              (collegiapp_core::notes::Edit) -> { note, changed }
+//!   GET  /v1/classes           the classes notes and items can be filed under -> { classes }
+//!
+//! Note writes are the assistant's (`items-changed` from "assistant", and `note-changed` with the
+//! id, so an open editor takes the new text); text a write replaces goes to the trash.
 //!
 //! Everything but ping and pair needs `Authorization: Bearer <token>`. Only this computer can
 //! reach it (it listens on 127.0.0.1), the Host header must name 127.0.0.1 or localhost (no DNS
@@ -45,13 +56,21 @@ struct Client {
     created: DateTime<Utc>,
     #[serde(default)]
     seen: Option<DateTime<Utc>>,
+    /// "browser" (PocketCanvas) or "assistant" (an MCP server such as Claude Desktop's).
+    #[serde(default = "browser")]
+    kind: String,
 }
 
-/// A paired browser as the UI sees it (no token).
+fn browser() -> String {
+    "browser".into()
+}
+
+/// A paired browser or assistant as the UI sees it (no token).
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientInfo {
     pub id: String,
     pub name: String,
+    pub kind: String,
     pub created: DateTime<Utc>,
     pub seen: Option<DateTime<Utc>>,
 }
@@ -59,6 +78,7 @@ pub struct ClientInfo {
 struct Pending {
     id: String,
     name: String,
+    kind: String,
     code: String,
     at: Instant,
     /// Some(token) once allowed, Some("") once refused.
@@ -99,7 +119,7 @@ impl Bridge {
     }
 
     /// The client a bearer token belongs to (and note that it was seen).
-    fn client(&self, token: Option<&str>) -> Option<String> {
+    fn client(&self, token: Option<&str>) -> Option<Client> {
         let token = token.filter(|t| !t.is_empty())?;
         let mut cs = guard(&self.clients);
         let c = cs.iter_mut().find(|c| c.token == token)?;
@@ -108,11 +128,11 @@ impl Bridge {
             .seen
             .is_none_or(|s| now - s > chrono::Duration::minutes(10));
         c.seen = Some(now);
-        let id = c.id.clone();
+        let c = c.clone();
         if stale {
             self.save(&cs);
         }
-        Some(id)
+        Some(c)
     }
 }
 
@@ -123,6 +143,7 @@ pub fn bridge_clients(bridge: State<'_, Bridge>) -> Vec<ClientInfo> {
         .map(|c| ClientInfo {
             id: c.id.clone(),
             name: c.name.clone(),
+            kind: c.kind.clone(),
             created: c.created,
             seen: c.seen,
         })
@@ -135,7 +156,7 @@ pub fn bridge_pending(bridge: State<'_, Bridge>) -> Vec<serde_json::Value> {
     guard(&bridge.pending)
         .iter()
         .filter(|p| p.answer.is_none() && p.at.elapsed() < PAIR_TTL)
-        .map(|p| serde_json::json!({ "id": p.id, "name": p.name, "code": p.code }))
+        .map(|p| serde_json::json!({ "id": p.id, "name": p.name, "kind": p.kind, "code": p.code }))
         .collect()
 }
 
@@ -160,6 +181,7 @@ pub fn bridge_answer(id: String, allow: bool, bridge: State<'_, Bridge>) -> Resu
         token,
         created: Utc::now(),
         seen: None,
+        kind: p.kind.clone(),
     });
     bridge.save(&cs);
     Ok(())
@@ -333,8 +355,9 @@ mod http {
 
     fn route(app: &AppHandle, r: &Request) -> (u16, Value) {
         let bridge = app.state::<Bridge>();
-        let path = r.path.split('?').next().unwrap_or("");
+        let (path, query) = r.path.split_once('?').unwrap_or((&r.path, ""));
         let client = bridge.client(r.token.as_deref());
+        let who = client.as_ref().map_or("An assistant", |c| c.name.as_str());
         match (r.method.as_str(), path) {
             ("GET", "/v1/ping") => (
                 200,
@@ -345,6 +368,13 @@ mod http {
                 pair_status(&bridge, &p["/v1/pair/".len()..])
             }
             _ if client.is_none() => (401, json!({ "error": "not paired" })),
+            ("GET", "/v1/notes") => notes::list(app, query),
+            ("POST", "/v1/notes") => notes::create(app, &r.body, who),
+            ("GET", p) if p.starts_with("/v1/notes/") => notes::read(app, &p["/v1/notes/".len()..]),
+            ("POST", p) if p.starts_with("/v1/notes/") => {
+                notes::edit(app, &p["/v1/notes/".len()..], &r.body, who)
+            }
+            ("GET", "/v1/classes") => notes::classes(app),
             ("POST", "/v1/canvas") => canvas(app, &r.body),
             ("POST", "/v1/capture") => capture(app, &r.body),
             ("POST", "/v1/work") => work(app, &r.body),
@@ -366,15 +396,18 @@ mod http {
         struct Ask {
             #[serde(default)]
             name: String,
+            #[serde(default)]
+            kind: String,
         }
-        let name = serde_json::from_slice::<Ask>(body)
-            .map(|a| a.name)
+        let (name, kind) = serde_json::from_slice::<Ask>(body)
+            .map(|a| (a.name, a.kind))
             .unwrap_or_default();
+        let kind = if kind == "assistant" { kind } else { browser() };
         let name: String = name.trim().chars().take(60).collect();
-        let name = if name.is_empty() {
-            "A browser extension".to_string()
-        } else {
-            name
+        let name = match (name.is_empty(), kind.as_str()) {
+            (false, _) => name,
+            (true, "assistant") => "An assistant".to_string(),
+            (true, _) => "A browser extension".to_string(),
         };
         let mut ps = guard(&bridge.pending);
         ps.retain(|p| p.at.elapsed() < PAIR_TTL);
@@ -391,6 +424,7 @@ mod http {
         ps.push(Pending {
             id: id.clone(),
             name: name.clone(),
+            kind: kind.clone(),
             code: code.clone(),
             at: Instant::now(),
             answer: None,
@@ -399,7 +433,7 @@ mod http {
         crate::tray::show_main(app);
         let _ = app.emit(
             "pair-request",
-            json!({ "id": id, "name": name, "code": code }),
+            json!({ "id": id, "name": name, "kind": kind, "code": code }),
         );
         (200, json!({ "id": id, "code": code }))
     }
@@ -527,6 +561,172 @@ mod http {
             return (500, json!({ "error": e }));
         }
         (200, json!({ "title": title }))
+    }
+
+    /// An assistant's notes: thin handlers over collegiapp_core::notes.
+    mod notes {
+        use chrono::{Local, Utc};
+        use collegiapp_core::notes::{self as core, Edit, NewNote};
+        use serde_json::{json, Value};
+        use tauri::{AppHandle, Emitter, Manager};
+        use uuid::Uuid;
+
+        use crate::store::{lock, SharedState};
+
+        fn missing() -> (u16, Value) {
+            (
+                404,
+                json!({ "error": "no such note (list_notes shows their ids)" }),
+            )
+        }
+
+        /// One `key=value` of a query string, decoded.
+        fn param(query: &str, key: &str) -> Option<String> {
+            query.split('&').find_map(|kv| {
+                let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
+                (k == key).then(|| {
+                    percent_encoding::percent_decode_str(&v.replace('+', " "))
+                        .decode_utf8_lossy()
+                        .into_owned()
+                })
+            })
+        }
+
+        /// Saved: persist, tell the windows, and let an editor showing this note take the new text
+        /// (`note-changed` { id, title, by, made }).
+        fn saved(
+            app: &AppHandle,
+            state: &SharedState,
+            s: &core::Summary,
+            by: &str,
+            made: bool,
+        ) -> (u16, Value) {
+            if let Err(e) = crate::commands::changed_by(app, state, "assistant") {
+                return (500, json!({ "error": e }));
+            }
+            let _ = app.emit(
+                "note-changed",
+                json!({ "id": s.id, "title": s.title, "by": by, "made": made }),
+            );
+            (200, json!({ "note": s, "changed": true }))
+        }
+
+        pub(in super::super) fn list(app: &AppHandle, query: &str) -> (u16, Value) {
+            let q = param(query, "q").unwrap_or_default();
+            let archived = param(query, "archived").is_some_and(|v| v == "1" || v == "true");
+            let limit = param(query, "limit")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(20usize)
+                .clamp(1, 100);
+            let state = app.state::<SharedState>();
+            let g = lock(&state);
+            let d = &g.data;
+            let now = Local::now().fixed_offset();
+            let notes = core::list(&d.items, &d.courses, &q, archived, limit, now);
+            (200, json!({ "notes": notes }))
+        }
+
+        pub(in super::super) fn read(app: &AppHandle, id: &str) -> (u16, Value) {
+            let Ok(id) = Uuid::parse_str(id.trim_matches('/')) else {
+                return missing();
+            };
+            let state = app.state::<SharedState>();
+            let g = lock(&state);
+            match g
+                .data
+                .items
+                .iter()
+                .find(|it| it.id == id && core::is_note(it))
+            {
+                Some(it) => (200, json!({ "note": core::read(it, &g.data.courses) })),
+                None => missing(),
+            }
+        }
+
+        pub(in super::super) fn create(app: &AppHandle, body: &[u8], who: &str) -> (u16, Value) {
+            let n: NewNote = match serde_json::from_slice(body) {
+                Ok(n) => n,
+                Err(e) => return (400, json!({ "error": e.to_string() })),
+            };
+            let state = app.state::<SharedState>();
+            let made = {
+                let mut g = lock(&state);
+                let device = g.device_id();
+                core::create(&n, &g.data.courses, Utc::now(), &device).map(|it| {
+                    let s = core::summary(&it, &g.data.courses);
+                    g.data.items.push(it);
+                    s
+                })
+            };
+            match made {
+                Ok(s) => saved(app, &state, &s, who, true),
+                Err(e) => (400, json!({ "error": e })),
+            }
+        }
+
+        /// `who` names the assistant in the trash ("Replaced by Claude").
+        pub(in super::super) fn edit(
+            app: &AppHandle,
+            id: &str,
+            body: &[u8],
+            who: &str,
+        ) -> (u16, Value) {
+            let Ok(id) = Uuid::parse_str(id.trim_matches('/')) else {
+                return missing();
+            };
+            let e: Edit = match serde_json::from_slice(body) {
+                Ok(e) => e,
+                Err(e) => return (400, json!({ "error": e.to_string() })),
+            };
+            let state = app.state::<SharedState>();
+            let done = {
+                let mut g = lock(&state);
+                let device = g.device_id();
+                let courses = g.data.courses.clone();
+                let Some(it) = g
+                    .data
+                    .items
+                    .iter_mut()
+                    .find(|it| it.id == id && core::is_note(it))
+                else {
+                    return missing();
+                };
+                let was = it.clone();
+                match core::edit(it, &e, &courses) {
+                    Ok(ch) => {
+                        if ch.any {
+                            it.touch(Utc::now(), &device);
+                        }
+                        let s = core::summary(it, &courses);
+                        if ch.text {
+                            g.trash_put(vec![(was, format!("Replaced by {who}"), false)]);
+                        }
+                        Ok((s, ch.any))
+                    }
+                    Err(e) => Err(e),
+                }
+            };
+            match done {
+                Ok((s, true)) => saved(app, &state, &s, who, false),
+                Ok((s, false)) => (200, json!({ "note": s, "changed": false })),
+                Err(e) => (400, json!({ "error": e })),
+            }
+        }
+
+        pub(in super::super) fn classes(app: &AppHandle) -> (u16, Value) {
+            let state = app.state::<SharedState>();
+            let g = lock(&state);
+            let classes: Vec<Value> = g
+                .data
+                .courses
+                .iter()
+                .map(|c| {
+                    json!({ "id": c.id, "code": c.code, "title": c.title, "aliases": c.aliases,
+                        "quarter": c.quarter, "hidden": !c.included })
+                })
+                .collect();
+            (200, json!({ "classes": classes }))
+        }
     }
 }
 
