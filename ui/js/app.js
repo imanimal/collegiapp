@@ -1493,26 +1493,29 @@
   // Capture modes: Item reads the quick-add grammar; Jot keeps what you type as a note (its first line the title); List
   // makes a checklist note, or one task per line. Tab switches mode and keeps the text.
   const QMODES = [["item", "Item", "plus"], ["jot", "Jot", "jot"], ["list", "List", "done"]];
-  function openQuick(prefill, mode) {
-    mode = mode || "item"; S.qaMode = mode; S.qaListAs = S.qaListAs || "note";
+  function openQuick(prefill, mode, keep) {
+    mode = mode || "item"; S.qaMode = mode; S.qaListAs = S.qaListAs || "note"; S.qaEdK = null;
+    if (!keep || !S.qaOver) S.qaOver = {};
     const seg = `<div class="seg qa-mode" role="tablist" aria-label="What to capture">${QMODES.map(([v, l, i]) => `<button class="chip ${v === mode ? "on" : ""}" role="tab" aria-selected="${v === mode}" data-act="qaMode" data-v="${v}">${ic(i)}${l}</button>`).join("")}<span class="dim">Tab switches</span></div>`;
     if (mode !== "item") {
       const jot = mode === "jot";
       openOv("quick", dialog(jot ? "Quick jot" : "Quick list", jot ? `Enter save · Shift+Enter new line · ${MOD}+Enter save + open` : `Enter new line · ${MOD}+Enter save · Shift+${MOD}+Enter save + open`, seg + `<div class="qa-wrap tx"><span class="qa-prompt">${jot ? "✎" : "☐"}</span><textarea id="qaTx" rows="${jot ? 4 : 6}" autocomplete="off" aria-label="${jot ? "Jot" : "List, one item per line"}" placeholder="${jot ? "An idea, a thought, anything. The first line is its title; #tags and a class like 130a are picked up." : "Groceries:&#10;milk&#10;eggs&#10;(one per line · a first line ending in : is the title)"}"></textarea></div>
-        <div class="qa-parse" id="qaParse"></div>${jot ? "" : `<div class="seg qa-as"><span class="dim">Save as</span>${[["note", "Checklist note"], ["tasks", "One task per line"]].map(([v, l]) => `<button class="chip ${S.qaListAs === v ? "on" : ""}" data-act="qaListAs" data-v="${v}" aria-pressed="${S.qaListAs === v}">${l}</button>`).join("")}</div>`}
+        <div class="qa-parse" id="qaParse"></div><div class="qa-ed" id="qaEd" hidden></div>${jot ? "" : `<div class="seg qa-as"><span class="dim">Save as</span>${[["note", "Checklist note"], ["tasks", "One task per line"]].map(([v, l]) => `<button class="chip ${S.qaListAs === v ? "on" : ""}" data-act="qaListAs" data-v="${v}" aria-pressed="${S.qaListAs === v}">${l}</button>`).join("")}</div>`}
         <div class="actions sm qa-go"><button class="btn primary" data-act="qaSave">${ic(jot ? "jot" : "done")}Save<kbd>${jot ? "Enter" : MOD + " Enter"}</kbd></button><button class="btn" data-act="qaSave" data-v="open">${ic("notes")}Save and open<kbd>${jot ? MOD + " Enter" : "Shift " + MOD + " Enter"}</kbd></button></div>`));
       const tx = $("#qaTx"); tx.value = prefill || ""; tx.focus(); tx.setSelectionRange(tx.value.length, tx.value.length); updateQuick(); CA.sound.whoosh();
       return;
     }
     openOv("quick", dialog("Quick add", `Enter add · Shift+Enter add + open · ${MOD}+Enter add + focus`, seg + `<div class="qa-wrap"><span class="qa-prompt">+</span><input id="qaIn" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Quick add" placeholder="pa3 130a fri 11:59p ~4h !!"><button class="btn primary" data-act="qaGo">${ic("plus")}Add<kbd>Enter</kbd></button></div>
-      <div class="qa-parse" id="qaParse"></div><div class="qa-hl" id="qaHl"></div>
+      <div class="qa-parse" id="qaParse"></div><div class="qa-ed" id="qaEd" hidden></div><div class="qa-hl" id="qaHl"></div>
       <div class="tpl"><span class="dim">Templates</span>${TPL.map(([l, t], i) => `<button class="btn" data-act="tpl" data-i="${i}">${l}</button>`).join("")}</div>
       <div class="qa-hl">Start with <span class="tk-note">note:</span> to keep it as a note. Grammar: course <span class="tk-course">130a</span> · date <span class="tk-date">fri / tmr / 11/12 / in 3d</span> · time <span class="tk-time">5pm</span> · estimate <span class="tk-estimate">~2h</span> · priority <span class="tk-priority">!!</span> · <span class="tk-tag">#tag</span> · <span class="tk-location">@place</span> · <span class="tk-whenfree">whenfree</span> moves it to the nearest open slot · words like <span class="tk-kindhint">hw lab quiz midterm read</span> set the kind. Title only is fine; it lands in the Inbox.</div>`));
     const inp = $("#qaIn"); inp.value = prefill || ""; inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); S.qaPrev = null; updateQuick(); CA.sound.whoosh();
   }
-  // whenfree places the draft in the nearest free slot (E.fitFree), so the preview shows where it lands
-  function draftFrom(text) {
-    const now = Date.now(), d = E.fitFree(E.parseQuick(text, now, S.courses), S.items, now), auto = !d.course ? ctxCourse() : null;
+  // whenfree places the draft in the nearest free slot (E.fitFree), so the preview shows where it lands. `over` is what the
+  // chips set that no word says (S.qaOver): a kind, and noAuto when you took off the class it picked for you
+  function draftFrom(text, over) {
+    const o = over || {}, now = Date.now(), d = E.fitFree(E.parseQuick(text, now, S.courses), S.items, now), auto = !d.course && !o.noAuto ? ctxCourse() : null;
+    if (o.kind) d.kind = o.kind;
     return { d, auto };
   }
   const freeWhy = (d) => (d.moved ? `moved ${d.moved < 0 ? "earlier" : "later"}${d.clash && d.clash[0] ? ", clear of " + d.clash[0].title : ""}` : "that time is free");
@@ -1520,7 +1523,7 @@
   // a jot: the first line read as a note's quick add (its class and #tags), the rest kept as written
   function jotParts(text) {
     const lines = text.replace(/\r/g, "").split("\n"), first = lines[0].trim(), rest = lines.slice(1).join("\n").replace(/^\n+|\s+$/g, "");
-    const d = E.parseQuick("note: " + first, Date.now(), S.courses), auto = !d.course ? ctxCourse() : null;
+    const o = S.qaOver || {}, d = E.parseQuick("note: " + first, Date.now(), S.courses), auto = !d.course && !o.noAuto ? ctxCourse() : null;
     let title = d.title.trim(), body = rest;
     if (!rest && title.length > 80) { body = first; title = title.slice(0, 60).replace(/\s+\S*$/, "") + "…"; }
     // a link on the first line leaves the title, so the note's text keeps it (and the note its links)
@@ -1528,7 +1531,7 @@
     if (lost.length) body = lost.join("\n") + (body ? "\n\n" + body : "");
     const tags = [...d.tags, ...[...rest.matchAll(/(^|\s)#([\w-]+)/g)].map((m) => m[2])].filter((t, i, a) => a.findIndex((x) => x.toLowerCase() === t.toLowerCase()) === i);
     return { title: title || (d.links[0] ? E.linkLabel(d.links[0]) : "Jot · " + shortDate(Date.now()) + ", " + mTime(Date.now())), body, tags, links: d.links,
-      course: d.course || (auto && auto.id) || null, auto: !d.course && auto };
+      course: o.course !== undefined ? o.course : d.course || (auto && auto.id) || null, auto: o.course === undefined && !d.course && auto };
   }
   // a list: one item per line (bullets, boxes and numbers you typed are dropped); "Title:" on the first line names it
   function listParts(text) {
@@ -1547,21 +1550,21 @@
     }
     const p = listParts(text); if (!p.lines.length) return;
     if (S.qaListAs === "tasks") {
-      const made = p.lines.map((l) => addFromText(l, null, true)).filter(Boolean);
+      const made = p.lines.map((l) => addFromText(l, null, true, { noAuto: S.qaOver.noAuto })).filter(Boolean);
       remember({ label: "add " + made.length + " tasks", pairs: made.map((x) => [Object.assign(snap(x), { deleted: true }), snap(x)]) });
       toast(`Added ${made.length} task${made.length > 1 ? "s" : ""}`, { undo: true }); CA.sound.ok(); S.fx = { flip: true }; return renderAll();
     }
-    const it = addNote({ title: p.title, notes: p.lines.map((l) => "- [ ] " + l).join("\n"), course: (ctxCourse() || {}).id || null });
+    const it = addNote({ title: p.title, notes: p.lines.map((l) => "- [ ] " + l).join("\n"), course: ((!S.qaOver.noAuto && ctxCourse()) || {}).id || null });
     return open ? openNote(it.id, { focus: "end" }) : renderAll();
   }
-  function switchMode(v) { if (v !== S.qaMode) { openQuick(captureText(), v); CA.sound.click(); } }
+  function switchMode(v) { if (v !== S.qaMode) { openQuick(captureText(), v, true); CA.sound.click(); } }
   function updateQuick() {
     if (S.qaMode && S.qaMode !== "item") {
       const box = $("#qaParse"); if (!box) return;
       const text = captureText();
       if (S.qaMode === "jot") {
         const p = jotParts(text), c = cById(p.course);
-        box.innerHTML = text.trim() ? [`<span class="pc">Title <b>${esc(p.title)}</b></span>`, c ? `<span class="pc course" style="${kc(c)}">Course <b>${esc(c.code)}</b>${p.auto ? ` <i>auto · ${p.auto.why}</i>` : ""}</span>` : "",
+        box.innerHTML = text.trim() ? [`<span class="pc">Title <b>${esc(p.title)}</b></span>`, c ? qaChip("course", `Course <b>${esc(c.code)}</b>${p.auto ? ` <i>auto · ${p.auto.why}</i>` : ""}`, "course", kc(c)) : qaNoCourse(),
           ...p.tags.map((t) => `<span class="pc">Tag <b>#${esc(t)}</b></span>`), `<span class="pc">Note <b>${NT().stats(p.body || p.title).words} words</b></span>`].join("") : `<span class="dim">Saved as a note in Notes (−)</span>`;
       } else {
         const p = listParts(text);
@@ -1571,16 +1574,17 @@
       return;
     }
     const inp = $("#qaIn"); if (!inp) return;
-    const { d, auto } = draftFrom(inp.value), c = cById(d.course || (auto && auto.id));
-    const chips = [`<span class="pc" data-k="title">Title <b>${esc(d.title || (d.links[0] ? E.linkLabel(d.links[0]) : "…"))}</b></span>`, `<span class="pc" data-k="kind">Kind <b>${kLabel(d.kind)}</b></span>`];
-    if (c) chips.push(`<span class="pc course" data-k="course" style="${kc(c)}">Course <b>${esc(c.code)}</b>${!d.course && auto ? ` <i>auto · ${auto.why}</i>` : ""}</span>`);
-    chips.push(`<span class="pc" data-k="due">${d.whenFree ? "Starts" : "Due"} <b>${d.due ? mDue(d.due) + " · " + E.fmtRel(d.due, Date.now()) : "none"}</b>${!d.due && !c ? " <i>→ Inbox</i>" : ""}</span>`);
-    if (d.whenFree) chips.push(`<span class="pc free" data-k="free">When free <b>${mTime(d.due)}–${mTime(d.end)}</b> <i>${esc(freeWhy(d))}</i></span>`);
-    if (d.est) chips.push(`<span class="pc" data-k="est">Estimate <b>${E.fmtDur(d.est * MIN)}</b></span>`);
-    if (d.pri) chips.push(`<span class="pc" data-k="pri">Priority <b>${"!".repeat(d.pri)}</b></span>`);
-    d.tags.forEach((t) => chips.push(`<span class="pc" data-k="tag:${esc(t)}">Tag <b>#${esc(t)}</b></span>`));
-    d.links.forEach((u) => chips.push(`<span class="pc" data-k="link:${esc(u)}" title="${esc(u)}">Link <b>${esc(E.linkLabel(u))}</b></span>`));
-    if (d.location) chips.push(`<span class="pc" data-k="where">Where <b>${esc(d.location)}</b></span>`);
+    if (!inp.value.trim()) S.qaOver.kind = null; // a kind you picked was for what you'd typed; the class you took off stays off
+    const { d, auto } = draftFrom(inp.value, S.qaOver), c = cById(d.course || (auto && auto.id));
+    const chips = [qaChip("title", `Title <b>${esc(d.title || (d.links[0] ? E.linkLabel(d.links[0]) : "…"))}</b>`), qaChip("kind", `Kind <b>${kLabel(d.kind)}</b>`)];
+    chips.push(c ? qaChip("course", `Course <b>${esc(c.code)}</b>${!d.course && auto ? ` <i>auto · ${auto.why}</i>` : ""}`, "course", kc(c)) : qaNoCourse());
+    chips.push(qaChip("due", `${d.whenFree ? "Starts" : "Due"} <b>${d.due ? mDue(d.due) + " · " + E.fmtRel(d.due, Date.now()) : "none"}</b>${!d.due && !c ? " <i>→ Inbox</i>" : ""}`));
+    if (d.whenFree) chips.push(qaChip("free", `When free <b>${mTime(d.due)}–${mTime(d.end)}</b> <i>${esc(freeWhy(d))}</i>`, "free"));
+    if (d.est) chips.push(qaChip("est", `Estimate <b>${E.fmtDur(d.est * MIN)}</b>`));
+    if (d.pri) chips.push(qaChip("pri", `Priority <b>${"!".repeat(d.pri)}</b>`));
+    d.tags.forEach((t) => chips.push(qaChip("tag:" + t, `Tag <b>#${esc(t)}</b>`)));
+    d.links.forEach((u) => chips.push(qaChip("link:" + u, `Link <b>${esc(E.linkLabel(u))}</b>`, "", "", `title="${esc(u)}"`)));
+    if (d.location) chips.push(qaChip("where", `Where <b>${esc(d.location)}</b>`));
     $("#qaParse").innerHTML = chips.join("");
     // what the grammar just recognized pops in; a value that changed flashes (the title changes on every key, so it doesn't)
     const prev = S.qaPrev; S.qaPrev = {};
@@ -1590,10 +1594,97 @@
     });
     $("#qaHl").innerHTML = d.tokens.length ? d.tokens.map((t) => `<span class="tk tk-${t.type}">${esc(t.t)}</span>`).join(" ") : "";
   }
-  // quiet: no undo step, toast or sound (the caller records one step for a batch)
-  function addFromText(text, mode, quiet) {
+  // A parse chip is a button: it opens the strip under the row (#qaEd) that changes what it read or takes it out. Edits
+  // rewrite the words you typed, so the highlights and what gets added stay one thing; only what no word says is kept
+  // beside the text in S.qaOver: a kind you picked, noAuto once you take off the class it picked for you, and a jot's class.
+  function qaChip(k, inner, cls, style, attr) {
+    const on = S.qaEdK === k;
+    return `<button class="pc ${cls || ""} ${on ? "on" : ""}" data-act="qaEd" data-k="${esc(k)}" aria-expanded="${on}"${style ? ` style="${style}"` : ""} ${attr || ""}>${inner}</button>`;
+  }
+  // once you take off the class it picked, the chip stays as "none" so you can pick one again
+  function qaNoCourse() { return (S.qaOver.noAuto || S.qaOver.course === null) && ctxCourse() ? qaChip("course", "Course <b>none</b>") : ""; }
+  const qaMarkOn = () => $$("#qaParse button.pc").forEach((el) => { const on = el.dataset.k === S.qaEdK; el.classList.toggle("on", on); el.setAttribute("aria-expanded", on); });
+  const QA_KINDS = ["task", "assignment", "exam", "quiz", "lab", "reading", "project", "errand", "application", "office_hours", "event"];
+  const QA_TOKS = { title: ["text", "kindhint"], course: ["course"], due: ["date", "time"], free: ["whenfree"], est: ["estimate"], pri: ["priority"], where: ["location"] };
+  // the typed words a chip stands for
+  function qaToks(k) {
+    const ty = QA_TOKS[k];
+    return E.parseQuick(captureText(), Date.now(), S.courses).tokens.filter((t) => (ty ? ty.includes(t.type)
+      : k.startsWith("tag:") ? t.type === "tag" && t.t.slice(1) === k.slice(4) : k.startsWith("link:") && t.type === "url" && E.linkIn(t.t) === k.slice(5)));
+  }
+  // the quick-add text without the words `toks`, and `put` where the first of them stood (else at the end)
+  function qaRewrite(toks, put) {
+    const inp = $("#qaIn"); let v = inp.value, at = v.length;
+    [...toks].sort((a, b) => b.s - a.s).forEach((t) => { v = v.slice(0, t.s) + v.slice(t.e); at = t.s; });
+    if (put) v = v.slice(0, at) + " " + put + " " + v.slice(at);
+    v = v.replace(/\s+/g, " ").trim(); inp.value = v ? v + " " : "";
+  }
+  // a time and a length as quick-add words ("today 5pm", "11/14 9:30am"; "1h30m"), so a chip can write them back
+  function whenWords(t) {
+    const x = new Date(t), h = x.getHours(), m = x.getMinutes(), day = E.startOfDay(t), today = E.startOfDay(Date.now());
+    return (day === today ? "today" : day === E.addDays(today, 1) ? "tmr" : `${x.getMonth() + 1}/${x.getDate()}`) + " " + (h % 12 || 12) + (m ? ":" + String(m).padStart(2, "0") : "") + (h >= 12 ? "pm" : "am");
+  }
+  const estWords = (min) => (min ? (min >= 60 ? Math.floor(min / 60) + "h" : "") + (min % 60 ? (min % 60) + "m" : "") : "");
+  const dtLocal = (t) => { if (t == null) return ""; const d = new Date(t), p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+  function qaEdit(k) {
+    const box = $("#qaEd"); if (!box) return;
+    if (!k || k === S.qaEdK) return qaEdClose(true);
+    const jot = S.qaMode === "jot", text = captureText(), { d, auto } = draftFrom(jot ? "" : text, S.qaOver), has = !jot && qaToks(k).length > 0;
+    const label = k.startsWith("tag:") ? "Tag" : k.startsWith("link:") ? "Link" : { title: "Title", kind: "Kind", course: "Course", due: d.whenFree ? "Starts" : "Due", free: "When free", est: "Estimate", pri: "Priority", where: "Where" }[k];
+    const opt = (v, l, on, c) => `<button class="chip ${c ? "course" : ""} ${on ? "on" : ""}" data-act="qaEdSet" data-v="${esc(String(v))}" aria-pressed="${!!on}"${c ? ` style="${kc(c)}"` : ""}>${l}</button>`;
+    const field = (v, ph, type) => `<input id="qaEdIn" type="${type || "text"}" value="${esc(v || "")}" placeholder="${ph || ""}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${label}"><button class="btn sm primary" data-act="qaEdSave">Save</button>`;
+    const del = has ? `<button class="btn sm ghost" data-act="qaEdSet" data-v="">${ic("trash")}Remove</button>` : "";
+    let body;
+    if (k === "course") {
+      const cur = jot ? jotParts(text).course : d.course || (auto && auto.id) || null;
+      body = opt("", "No course", !cur) + S.courses.filter((c) => c.included).map((c) => opt(c.id, esc(c.code), c.id === cur, c)).join("");
+    } else if (k === "title") body = field(d.title, "What it is");
+    else if (k === "kind") body = QA_KINDS.map((x) => opt(x, kLabel(x), x === d.kind)).join("");
+    else if (k === "due") body = field(dtLocal(d.due), "", "datetime-local") + del;
+    else if (k === "free") body = `<span class="dim">It goes in the nearest open slot</span>` + del;
+    else if (k === "est") body = ["15m", "30m", "1h", "2h", "4h"].map((x) => opt(x, x, x === estWords(d.est))).join("") + field(estWords(d.est), "1h30m") + del;
+    else if (k === "pri") body = [1, 2, 3].map((n) => opt(n, "!".repeat(n), n === d.pri)).join("") + del;
+    else if (k === "where") body = field(d.location, "Place") + del;
+    else body = field(k.slice(k.indexOf(":") + 1), k.startsWith("tag:") ? "tag" : "https://…") + del;
+    S.qaEdK = k;
+    box.innerHTML = `<span class="qa-ed-l">${label}</span>${body}<button class="btn ghost sm qa-ed-x" data-act="qaEd" data-k="" aria-label="Close">${ic("close")}</button>`;
+    box.hidden = false; qaMarkOn(); CA.sound.click();
+    const f = $("#qaEdIn"), o = $("#qaEd .chip.on") || $("#qaEd .chip");
+    if (f) { f.focus(); if (f.type === "text") f.select(); } else if (o) o.focus();
+  }
+  function qaEdClose(refocus) {
+    const box = $("#qaEd"); S.qaEdK = null;
+    if (box) { box.hidden = true; box.innerHTML = ""; }
+    qaMarkOn();
+    const t = refocus && ($("#qaTx") || $("#qaIn")); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+  }
+  // v: the value picked or typed, null to take it out
+  function qaApply(v, el) {
+    const k = S.qaEdK, o = S.qaOver, s = v == null ? "" : String(v).trim(); if (!k) return;
+    if (S.qaMode === "jot") { o.course = s || null; if (!s) o.noAuto = true; }
+    else if (k === "kind") o.kind = s === E.parseQuick(captureText(), Date.now(), S.courses).kind ? null : s;
+    else {
+      let put = null;
+      if (v != null) {
+        const t = new Date(s).getTime(), tag = s.replace(/^#+/, "").replace(/\s+/g, "-"), est = s.toLowerCase().replace(/[\s~]/g, "").replace(/^\d+$/, "$&m");
+        if (k === "title") put = s;
+        else if (k === "course") put = cById(s) && cById(s).code.replace(/\s+/g, "");
+        else if (k === "due") put = s && !isNaN(t) && whenWords(t);
+        else if (k === "est") put = /^\d+(\.\d+)?h(\d+m?)?$|^\d+m(in)?$/.test(est) && "~" + est;
+        else if (k === "pri") put = "!".repeat(+s);
+        else if (k === "where") put = s && "@" + s.replace(/\s+/g, "-");
+        else if (k.startsWith("tag:")) put = /^[\w-]+$/.test(tag) && "#" + tag;
+        else put = E.linkIn(s, true);
+        if (!put) return refuse(el);
+      } else if (k === "course") o.noAuto = true;
+      qaRewrite(qaToks(k), put);
+    }
+    qaEdClose(true); updateQuick(); CA.sound.click();
+  }
+  // quiet: no undo step, toast or sound (the caller records one step for a batch); over: the quick-add chips' S.qaOver
+  function addFromText(text, mode, quiet, over) {
     if (!text.trim()) return null;
-    const { d, auto } = draftFrom(text), now = Date.now(), course = d.course || (auto && auto.id) || null;
+    const { d, auto } = draftFrom(text, over), now = Date.now(), course = d.course || (auto && auto.id) || null;
     const it = { id: CA.store.uuid(), title: d.title || (d.links[0] ? E.linkLabel(d.links[0]) : "(untitled)"), kind: d.kind, status: d.kind === "note" || d.due || course ? "todo" : "inbox", course, due: d.due, end: d.end || null, est: d.est, pri: d.pri, weight: null,
       tags: d.tags, links: d.links.map((u) => [E.linkLabel(u), u]), location: d.location, notes: d.kind === "note" ? d.links.join("\n") : "", interrupt: "none", src: "manual", snoozed: null, created: now, updated: now };
     S.items.push(it); CA.store.save(it); S.flashId = it.id; S.sel = it.id; S.fx = { flip: true };
@@ -3137,7 +3228,7 @@
       cloudApi.now().then((st) => { onCloud(st); toast("Syncing with your other devices"); }, (e) => toast(esc(String(e))));
     }, feedFile: () => { const f = $("#feedFileIn"); if (f) f.click(); }, updGo: installUpdate,
     feedOff: (el) => CA.store.invoke("set_feed", { adapter: el.dataset.s, url: null }).then((st) => { S.settings = st; toast("Disconnected · its items stay"); openFeeds(); renderAll(); }).catch((e) => toast(esc(String(e)))),
-    tpl: (el) => { const inp = $("#qaIn"); inp.value = TPL[+el.dataset.i][1]; inp.focus(); const k = inp.value.indexOf("  "); inp.setSelectionRange(k + 1, k + 1); updateQuick(); },
+    tpl: (el) => { const inp = $("#qaIn"); qaEdClose(); S.qaOver.kind = null; inp.value = TPL[+el.dataset.i][1]; inp.focus(); const k = inp.value.indexOf("  "); inp.setSelectionRange(k + 1, k + 1); updateQuick(); },
     palRun: (el) => runPalette(+el.dataset.i), snoozePick: (el) => snoozePick(+el.dataset.i),
     trashRestore: (el) => trashRestore([el.dataset.id]), trashEmpty, trash: openTrash,
     fsMin: (el) => { S.fsetup.min = +el.dataset.v; $("#fsBody").innerHTML = S.fsetupBody(); }, fsLvl: (el) => { S.fsetup.level = el.dataset.v; $("#fsBody").innerHTML = S.fsetupBody(); },
@@ -3158,7 +3249,7 @@
     skipWhy: (el) => { closeOv(); toast(`Skip logged · “${esc(el.dataset.w)}” · shows in your weekly review`); },
     island: () => { S.islandOpen = !S.islandOpen; renderIsland(); CA.sound.click(); },
     tdone: (el) => { const t = target(); if (t) toggleDone(t.id); else refuse(el); }, tsnooze: (el) => { const t = target(); if (t) openSnooze(t.id); else refuse(el); },
-    qaGo: () => { const v = $("#qaIn").value; if (!v.trim()) return refuse($(".qa-wrap")); closeOv(); addFromText(v); renderAll(); },
+    qaGo: () => { const v = $("#qaIn").value; if (!v.trim()) return refuse($(".qa-wrap")); closeOv(); addFromText(v, null, false, S.qaOver); renderAll(); },
     calMode: (el) => {
       if (S.cal.mode === el.dataset.v) return;
       S.cal.mode = el.dataset.v; if (S.cal.at != null && S.cal.mode === "month") { const d = new Date(S.cal.at); S.cal.at = new Date(d.getFullYear(), d.getMonth(), 1).getTime(); }
@@ -3176,6 +3267,7 @@
     noteNew: (el) => newNote(el.dataset.v === "list" ? NT().TEMPLATES[1] : null), noteOpen: (el) => openNote(el.dataset.id), noteTpl: openNoteTpl,
     noteTplGo: (el) => { closeOv(); newNote(NT().TEMPLATES[+el.dataset.i]); }, noteImport, noteBackup: openBackup, noteBackupGo: (el) => noteBackupGo(el.dataset.v),
     quickMode: (el) => openQuick("", el.dataset.v), qaMode: (el) => switchMode(el.dataset.v), qaSave: (el) => saveCapture(el.dataset.v === "open"),
+    qaEd: (el) => qaEdit(el.dataset.k), qaEdSet: (el) => qaApply(el.dataset.v || null, el), qaEdSave: () => { const f = $("#qaEdIn"); if (f) qaApply(f.value, f); },
     qaListAs: (el) => { S.qaListAs = el.dataset.v; $$(".qa-as .chip").forEach((c) => { c.classList.toggle("on", c.dataset.v === S.qaListAs); c.setAttribute("aria-pressed", c.dataset.v === S.qaListAs); }); updateQuick(); const t = $("#qaTx"); if (t) t.focus(); },
     edTool: (el) => S.note && S.note.ed && S.note.ed.run(el.dataset.t), draw: (el) => S.note && S.note.draw && S.note.draw.act(el.dataset.d, el.dataset.v), noteMenu, noteOut: (el) => noteOut(el.dataset.v), notePin: () => S.note && notePin(S.note.id),
     noteSide: (el) => {
@@ -3393,7 +3485,7 @@
     document.addEventListener("pointerup", release); document.addEventListener("pointercancel", release);
     document.addEventListener("input", (e) => {
       const t = e.target;
-      if (t.id === "qaIn" || t.id === "qaTx") updateQuick();
+      if (t.id === "qaIn" || t.id === "qaTx") { if (S.qaEdK) qaEdClose(); updateQuick(); }
       else if (t.id === "nsTitle") { clearTimeout(S.titleT); S.titleT = setTimeout(() => { const v = t.value.trim(); const it = S.note && find(S.note.id); if (it && v && v !== it.title) noteSave({ title: v }); }, 400); }
       else if (t.id === "palIn") { S.palI = 0; updatePalette(); }
       else if (t.id === "foPhrase" && t.value.trim().toLowerCase() === PHRASE) endFocus(false, t.value);
@@ -3494,7 +3586,8 @@
     if (k === "Escape") return onEsc(e);
 
     // inputs with their own key handling
-    if (t.id === "qaIn" && k === "Enter") { e.preventDefault(); const v = t.value; if (!v.trim()) return refuse($(".qa-wrap")); closeOv(); addFromText(v, e.shiftKey ? "open" : mod ? "focus" : null); if (!(mod && v.trim())) renderAll(); return; }
+    if (t.id === "qaIn" && k === "Enter") { e.preventDefault(); const v = t.value; if (!v.trim()) return refuse($(".qa-wrap")); closeOv(); addFromText(v, e.shiftKey ? "open" : mod ? "focus" : null, false, S.qaOver); if (!(mod && v.trim())) renderAll(); return; }
+    if (t.id === "qaEdIn" && k === "Enter") { e.preventDefault(); return ACTIONS.qaEdSave(); }
     if (t.id === "palIn") {
       if (k === "ArrowDown" || k === "ArrowUp") { e.preventDefault(); S.palI = Math.max(0, Math.min(S.palList.length - 1, S.palI + (k === "ArrowDown" ? 1 : -1))); updatePalette(); }
       else if (k === "Enter") { e.preventDefault(); runPalette(S.palI); }
@@ -3566,6 +3659,7 @@
       const bar = $("#nsBar"); if (bar && bar.dataset.mode === "link") return noteLinkEnd(false);
     }
     if (hideTips()) return;
+    if (S.overlay === "quick" && S.qaEdK) return qaEdClose(true); // the chip's strip first, then the dialog
     if (S.overlay) {
       if (S.overlay === "focus") { if (S.focus && S.focus.level !== "lockdown") { closeOv(); renderAll(); toast("Focus continues · the timer is in the island and the top bar"); } else { refuse($("#ov .display.big")); toast("Lockdown · Esc does nothing here"); } return; }
       if (S.overlay === "brk") return ACTIONS.brkMin();

@@ -381,7 +381,7 @@ Rows group under `.grp` headers (Overdue, Today, Tomorrow …) when sorted by du
 | `.cchip` | a course code with its dot, a key (`data-act="goClass"`) that opens the class's folder; `.cchip.none` reads "Personal" and is plain text |
 | `.clink` | a class's name as plain text that opens its folder: list rows, Up next, the week and day calendars, Classes and Links headings. Underlines on hover; app.js `clink(c, html)` |
 | `.why-chip` | a Do first reason ("Due in 3h", "Worth 15% of grade"); one line, extra chips hide |
-| `.pc` | a quick-add parse chip ("Course **CMPSC 130A**"), `.course` adds the colour edge, `<i>` marks an inferred value |
+| `.pc` | a quick-add parse chip ("Course **CMPSC 130A**"), `.course` adds the colour edge, `<i>` marks an inferred value; a `button.pc` opens `.qa-ed` to change or remove what it read, with an accent outline (`.on`) while open |
 | `.seg` > `.chip` | a segmented control (estimate, priority, status, alert, focus length) |
 | `.prio` | priority with a flag icon in `--warn`, `.p3` in `--bad` |
 
@@ -390,7 +390,7 @@ Rows group under `.grp` headers (Overdue, Today, Tomorrow …) when sorted by du
 - Inputs, selects and textareas inside `.screen` get the field style: `--bg2` fill, 1 px `--line`, 8 px radius, a 2 px accent outline on focus. On touch screens they are at least 16 px so iOS never zooms.
 - `.fbox`: the filter box, a recessed box holding term chips and an input; the terms wrap onto more lines rather than scroll, so every active filter stays in sight. Focus draws a 2 px accent ring.
 - `.qstrip`: the quick filters under it, a horizontal strip (section 9). A `kind:` chip swaps the view's kind instead of narrowing to nothing.
-- `.qa-wrap`: the command line (quick add, palette, feed links): an orange `+` or `>` prompt in mono, a large input, a key at the end. Below it `.qa-parse` holds parse chips and `.qa-hl` the token highlight (`.tk-course`, `.tk-date`, `.tk-estimate`, `.tk-priority`, `.tk-tag` …).
+- `.qa-wrap`: the command line (quick add, palette, feed links): an orange `+` or `>` prompt in mono, a large input, a key at the end. Below it `.qa-parse` holds parse chips and `.qa-hl` the token highlight (`.tk-course`, `.tk-date`, `.tk-estimate`, `.tk-priority`, `.tk-tag` …). Clicking a chip opens `.qa-ed` between them: a `--surface-2` strip with the chip's name (`.qa-ed-l`), choices as `.chip`s or a field with Save, a ghost Remove, and a close key (`.qa-ed-x`) at the end; Esc closes it before the dialog.
 - `.fgrid`: label/field pairs in the inspector (6.4 em labels).
 
 ### Up next parts
