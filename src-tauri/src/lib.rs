@@ -18,7 +18,8 @@
 //! - "update-available" (all)   `UpdateInfo` when a check finds a newer release (updater.rs)
 //! - "update-progress" (all)    `{ done, total }` bytes while an update downloads
 //! - "update-check"  (to main)  tray "Check for updates": run the check and show the result
-//! - "open-item"     (to main)  an item id picked in Pocket Start: select it
+//! - "open-item"     (to main)  an item id picked in Pocket Start or the island's menu: select it
+//! - "note-for"      (to main)  an item id, the island menu's "Take notes": a new note for it
 //! - "start-open" / "start-apps" (to start)  Pocket Start shows / its app list changed (start.rs)
 //! - "gradescope"    (all)      the Gradescope `FeedLog` after you sign in and it imports
 //! - "webwork"       (all)      the WeBWorK `FeedLog` after you sign in to a course and it imports
@@ -133,6 +134,7 @@ pub fn run() {
             commands::set_presence,
             commands::get_presence,
             commands::toggle_island,
+            commands::island_menu,
             commands::backdrop,
             commands::start_apps,
             commands::set_start_pins,

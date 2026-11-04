@@ -53,7 +53,7 @@
   </style>
 </head>
 <body>
-  <div class="pill" id="pill" data-tauri-drag-region title="Drag to move · double-click opens Collegiapp">
+  <div class="pill" id="pill" data-tauri-drag-region title="Drag to move · double-click opens Collegiapp · right-click for more">
     <svg viewBox="0 0 30 30" aria-hidden="true"><circle class="tr" cx="15" cy="15" r="12"/><circle class="pr" id="ring" cx="15" cy="15" r="12" stroke-dasharray="75.4" stroke-dashoffset="75.4"/></svg>
     <div class="txt" data-tauri-drag-region><span class="lbl" id="lbl" data-tauri-drag-region>Collegiapp</span><span class="det" id="det" data-tauri-drag-region>Nothing scheduled in the next 12 hours</span></div>
     <span class="cd" id="cd" data-tauri-drag-region></span>
@@ -87,6 +87,9 @@
         if (soon && !was.soon) ack($("cd"), "boot");
         $("pill").classList.toggle("soon", (was.soon = soon));
       }
+      // right-click (or the menu key): the island's own menu, a native one since it's bigger than the window
+      // (tray.rs `island_menu`); never the browser's
+      document.addEventListener("contextmenu", (e) => { e.preventDefault(); if (T) T.core.invoke("island_menu").catch(() => {}); });
       if (T) {
         T.event.listen("presence", (e) => { p = e.payload; draw(); });
         T.core.invoke("get_presence").then((v) => { p = v; draw(); }, () => {});

@@ -88,7 +88,11 @@ body.lab-open .desk[data-mode="desk"] { padding-right: 424px; }
 /* keys sit on an ellipse around the hub (--x, --y: the spoke's direction) and grow outward from it,
    so a label of any length never reaches the hub or a neighbour; the ring is the dial they hang from */
 .radial .ring { position: absolute; left: -4.6em; top: -4.6em; width: 9.2em; height: 9.2em; border-radius: 50%; }
-.radial .rb { position: absolute; left: calc(var(--x) * 3em); top: calc(var(--y) * 4em); transform: translate(calc(-50% + var(--x) * 50%), calc(-50% + var(--y) * 50%)); }
+.radial .rb { position: absolute; left: calc(var(--x) * var(--rx, 3em)); top: calc(var(--y) * var(--ry, 4em)); transform: translate(calc(-50% + var(--x) * 50%), calc(-50% + var(--y) * 50%)); }
+/* seven or eight keys: eight places on a taller ellipse, so the keys at 45° clear the ones straight above and below
+   them (a key is about 2.4em tall: the ellipse needs ry ≥ 2.9 key heights) */
+.radial.r8 { --rx: 3.4em; --ry: 7.2em; }
+.radial.r8 .ring { left: -6em; top: -6em; width: 12em; height: 12em; }
 #radial.sizing * { animation: none; }
 .tips { position: absolute; inset: 0; pointer-events: none; z-index: 28; }
 .tip { position: absolute; transform: translate(-30%, -60%); }

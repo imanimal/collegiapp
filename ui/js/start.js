@@ -449,6 +449,16 @@
     openMenu(`${menuBand(kindIcon(it), it.title)}<div class="its">${mi("openitem", "ext", "Open in Collegiapp", { kb: "Enter" })}
       ${it.status !== "done" ? mi("done", "check", "Mark done") : ""}${mi("copytitle", "copy", "Copy title")}</div>`, place);
   }
+  // Start's own menu, from a right-click anywhere that isn't an app or a task
+  function startMenu(place) {
+    closeMenu();
+    const all = S.view === "all", nHidden = S.apps.all.filter(hiddenHas).length;
+    openMenu(`${menuBand("now", "Pocket Start")}<div class="its">${mi("main", "ext", "Open Collegiapp")}
+      ${mi(all ? "pinned" : "allapps", all ? "chevl" : "all", all ? "Pinned" : "All apps")}${all && nHidden ? mi("showhidden", "eye", S.showHidden ? "Leave hidden apps out" : "Show hidden apps") : ""}
+      ${S.apps.custom ? mi("winpins", "update", "Use Windows pins") : ""}<div class="msep"></div>
+      ${mi("settings", "gear", "Settings")}${mi("files", "folder", "File Explorer")}
+      ${S.winKey != null ? `<div class="msep"></div>${mi("winkey", "gear", "Win key opens Pocket Start", { on: S.winKey })}` : ""}</div>`, place);
+  }
   function onMenu(m) {
     const app = menuApp, info = menuInfo || {}, it = menuItem;
     if (app && m === "uninstall") { menuAsk = true; return drawAppMenu(); }
@@ -461,7 +471,14 @@
       return;
     }
     if (m === "winkey") return setWinKey(!S.winKey);
-    if (!app) { if (["sleep", "restart", "shutdown", "signout"].includes(m)) act(m); return; }
+    if (!app) {
+      if (m === "main") return openItem(null);
+      if (m === "allapps" || m === "pinned") { ahead.length = 0; S.view = m === "allapps" ? "all" : "home"; S.cur = 0; return render(); }
+      if (m === "showhidden") { S.showHidden = !S.showHidden; S.cur = 0; return render(); }
+      if (m === "winpins") return setPins(null);
+      if (["sleep", "restart", "shutdown", "signout", "settings", "files"].includes(m)) act(m);
+      return;
+    }
     if (m === "open") return launch(app.id);
     if (m === "pin") return togglePin(app);
     if (m === "left" || m === "right") return movePin(app, m === "left" ? -1 : 1);
@@ -545,7 +562,8 @@
       const el = e.target.closest("[data-app]"), a = el && findApp(el.dataset.app);
       if (a) return appMenu(a, place);
       const row = e.target.closest("[data-item]"), it = row && S.open.find((x) => x.id === row.dataset.item);
-      if (it) itemMenu(it, place);
+      if (it) return itemMenu(it, place);
+      if (e.target.closest("#fly") && !e.target.closest("#menu")) startMenu(place);
     });
     $("esc").addEventListener("click", () => (S.q ? setQ("") : hide()));
     $("fly").addEventListener("click", (e) => {

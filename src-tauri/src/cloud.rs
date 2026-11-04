@@ -1054,7 +1054,7 @@ fn begin_sign_in(app: &AppHandle) -> Result<(), String> {
         let mut c = cloud.lock();
         if let (true, Some(link)) = (c.signing_in, c.link.clone()) {
             drop(c);
-            return crate::commands::open_link(link, app.clone(), app.state());
+            return crate::commands::open_url(app, link);
         }
         if !c.config().ready() {
             return Err("Fill in your Firebase project first.".into());
@@ -1077,7 +1077,7 @@ fn begin_sign_in(app: &AppHandle) -> Result<(), String> {
     let origins = cfg.origins();
     let link = format!("{}/link.html#port={port}&state={state}", origins[0]);
     cloud.lock().link = Some(link.clone());
-    crate::commands::open_link(link, app.clone(), app.state()).map_err(fail)?;
+    crate::commands::open_url(app, link).map_err(fail)?;
     let app = app.clone();
     std::thread::spawn(move || {
         let r = wait_for_token(listener, &state, &origins).and_then(|t| finish(&cfg, &t));

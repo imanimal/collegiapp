@@ -942,7 +942,7 @@
     const urg = Math.round(Math.min(1, sc.urgency) * 100), pulse = ui().guide === "g4" ? " pulse" : "";
     const disp = it.due == null ? `<div class="display"><span class="d-lbl">Due</span><span class="d-num">--:--</span><span class="d-sub">No due date</span></div>`
       : `<div class="display${overdue ? " bad" : sc.urgency > 0.7 ? " hot" : ""}"><span class="d-lbl">${overdue ? "Overdue by" : "Due in"}</span><span class="d-num num" data-cd data-f="${overdue ? "since" : "clock"}" data-t="${it.due}"></span><span class="d-sub">${esc(mDue(it.due))}${it.est ? ` · ~${E.fmtDur(it.est * MIN)} of work` : ""}</span><span class="d-bar" title="Urgency ${urg}%"><i style="width:${urg}%"></i></span></div>`;
-    el.innerHTML = head(`${idx + 1} of ${r.length}`, r.length > 1) + `<div class="hero-grid" data-k="hero:${it.id}"><div class="hero-main">
+    el.innerHTML = head(`${idx + 1} of ${r.length}`, r.length > 1) + `<div class="hero-grid" data-k="hero:${it.id}" data-id="${it.id}"><div class="hero-main">
         <div class="meta-row">${cchip(c)}<span>${iLabel(it)}</span>${it.src !== "manual" ? `<span class="srcl">from ${esc(srcName(it.src))}</span>` : ""}${it.pri ? `<span class="prio p${it.pri}">${ic("flag")}${PRI[it.pri]}</span>` : ""}</div>
         <h2 class="hero-t" data-act="sel" data-id="${it.id}" title="Details"><span class="tt">${esc(it.title)}</span></h2>
         <div class="why"><span class="why-l">Why first:</span>${sc.reasons.map((x) => `<span class="why-chip">${esc(cap(x))}</span>`).join("")}</div>
@@ -959,7 +959,7 @@
     if (live) { const c = courseOf(live); h += `<div class="live" data-act="sel" data-id="${live.id}" data-k="live:${live.id}"><span class="ldot"></span><span class="lt">Now: <b>${c ? clink(c, esc(c.code)) + " " : ""}${esc(live.title)}</b></span><span class="sp"></span><span class="num">ends in <b data-cd data-f="clock" data-t="${live.end}"></b></span></div>`; }
     if (next) {
       const c = courseOf(next);
-      h += `<div class="next" data-k="next:${next.id}"><div class="nx-head"><div class="nx-id"><div class="meta-row">${cchip(c)}<span>${iLabel(next)}</span></div><div class="nx-t">${esc(next.title)}</div>
+      h += `<div class="next" data-k="next:${next.id}" data-id="${next.id}"><div class="nx-head"><div class="nx-id"><div class="meta-row">${cchip(c)}<span>${iLabel(next)}</span></div><div class="nx-t">${esc(next.title)}</div>
         <div class="facts"><span>${ic("clock")}${esc(mDue(next.due))}${next.end ? " – " + esc(mTime(next.end)) : ""}</span></div></div>
         <div class="display"><span class="d-lbl">Starts in</span><span class="d-num num" data-cd data-f="clock" data-t="${next.due}"></span></div></div>
         ${locBanner(next, tripTo(next))}
@@ -1135,7 +1135,7 @@
     for (let d = 0; d < 7; d++) {
       const day = E.addDays(start, d), dt = new Date(day);
       const its = dayItems(list, day);
-      h += `<div class="wcol ${day === today ? "today" : ""}" style="--i:${d}"><div class="wh" data-act="calDay" data-t="${day}" title="Open this day hour by hour"><b>${day === today ? "Today" : DNM[dt.getDay()]}</b><span>${MNM[dt.getMonth()]} ${dt.getDate()}</span></div>${its.map((it) => {
+      h += `<div class="wcol ${day === today ? "today" : ""}" style="--i:${d}" data-t="${day}"><div class="wh" data-act="calDay" data-t="${day}" title="Open this day hour by hour"><b>${day === today ? "Today" : DNM[dt.getDay()]}</b><span>${MNM[dt.getMonth()]} ${dt.getDate()}</span></div>${its.map((it) => {
         const c = courseOf(it), pl = E.SCHEDULED(it.kind) && place(it.location);
         return `<div class="wi ${E.SCHEDULED(it.kind) ? "cls" : ""} ${it.kind === "exam" ? "exam" : ""}" data-act="sel" data-id="${it.id}" data-k="w:${it.id}" style="${kc(c)}" title="${esc(it.title)}"><span class="wt">${esc(mTime(it.due))}${c ? " · " + clink(c, esc(c.tag)) : ""}</span><span class="wn">${esc(it.title)}</span>${pl ? `<span class="wl">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}</div>`;
       }).join("") || '<div class="wnone">Free</div>'}</div>`;
@@ -1233,7 +1233,7 @@
     for (let i = 0; i < weeks * 7; i++) {
       const day = E.addDays(start, i), dt = new Date(day), its = dayItems(list, day).sort((a, b) => rank(a) - rank(b) || a.due - b.due), fit = its.length > 3 ? 2 : 3;
       const cls = ["mday"]; if (dt.getMonth() !== mo) cls.push("out"); if (day === today) cls.push("today"); else if (day < today) cls.push("past");
-      h += `<div class="${cls.join(" ")}" style="--i:${i}"><button class="md-n" data-act="calDay" data-t="${day}" title="Open ${MNM[dt.getMonth()]} ${dt.getDate()} hour by hour">${dt.getDate()}</button>${its.slice(0, fit).map((it) => {
+      h += `<div class="${cls.join(" ")}" style="--i:${i}" data-t="${day}"><button class="md-n" data-act="calDay" data-t="${day}" title="Open ${MNM[dt.getMonth()]} ${dt.getDate()} hour by hour">${dt.getDate()}</button>${its.slice(0, fit).map((it) => {
         const c = courseOf(it);
         return `<div class="mi ${E.SCHEDULED(it.kind) ? "cls" : ""} ${it.kind === "exam" ? "exam" : ""}" data-act="sel" data-id="${it.id}" data-k="m:${it.id}" style="${kc(c)}" title="${esc(mTime(it.due) + " · " + it.title)}"><span class="mt">${hm(it.due)}</span><span class="mn">${esc(it.title)}</span></div>`;
       }).join("")}${its.length > fit ? `<button class="mmore" data-act="calDay" data-t="${day}">+${its.length - fit} more</button>` : ""}${its.length ? `<span class="mdots" aria-hidden="true">${its.slice(0, 4).map((it) => `<i style="${kc(courseOf(it))}"></i>`).join("")}</span>` : ""}</div>`;
@@ -1247,7 +1247,7 @@
       const nx = S.items.filter((it) => it.course === c.id && it.kind === "class" && it.due > S.now).sort(cmpDue)[0];
       const ex = open.filter((it) => it.kind === "exam").sort(cmpDue)[0];
       const meet = c.meet.map((m) => `${m.sec ? "Section " : ""}${m.days} ${m.h}:${String(m.m).padStart(2, "0")} ${m.loc}`).join(" · ") || "no meetings synced";
-      return `<div class="ccard ${c.included ? "" : "excluded"}" data-k="c:${c.id}" style="--i:${i};${kc(c)}"><h4>${c.included ? clink(c, esc(c.code)) : esc(c.code)} <span class="dim">${c.tag}</span></h4><div class="meta">${esc(c.title)}</div><div class="meta">${esc(meet)}</div>
+      return `<div class="ccard ${c.included ? "" : "excluded"}" data-k="c:${c.id}" data-c="${c.id}" style="--i:${i};${kc(c)}"><h4>${c.included ? clink(c, esc(c.code)) : esc(c.code)} <span class="dim">${c.tag}</span></h4><div class="meta">${esc(c.title)}</div><div class="meta">${esc(meet)}</div>
         ${c.included ? `<div class="meta">Next: ${nx ? mDue(nx.due) + " · " + E.fmtRel(nx.due, S.now) : "—"}</div><div class="meta">${open.length} open · ${dueWk} due this week${ex ? " · " + esc(ex.title) + " " + mDay(ex.due) : ""}</div>` : `<div class="meta">Excluded · items hidden everywhere</div>`}
         <div class="row2">${c.links.map((l) => `<button class="btn" data-act="open" data-url="${esc(l[1])}">${esc(l[0])}</button>`).join("")}</div>
         <div class="row2">${c.included ? `<button class="btn primary" data-act="q" data-q="is:open course:${c.tag.toLowerCase()}">Items${ic("go")}</button>` : ""}<button class="btn" data-act="courseEdit" data-c="${c.id}">Edit</button><button class="btn" data-act="incl" data-c="${c.id}">${c.included ? "Exclude" : "Include"}</button><button class="btn" data-act="courseDel" data-c="${c.id}" title="Delete or merge ${esc(c.code)}">${ic("trash")}Delete</button></div></div>`;
@@ -1911,9 +1911,10 @@
     }
     return it;
   }
-  // A new empty note opens in the editor; it's kept once it has something in it.
-  function newNote(tpl) {
-    const c = ctxCourse(), t = tpl || NT().TEMPLATES[0], d = new Date();
+  // A new empty note opens in the editor; it's kept once it has something in it. It goes under `course` when given
+  // (null for none), else the class you're in or just left.
+  function newNote(tpl, course) {
+    const c = course !== undefined ? course : ctxCourse(), t = tpl || NT().TEMPLATES[0], d = new Date();
     const mon = new Date(E.addDays(E.startOfDay(Date.now()), -((d.getDay() + 6) % 7)));
     const title = !t.title ? "" : t.title + (/ $/.test(t.title) ? (t.id === "week" ? shortDate(mon.getTime()) : (c && t.id === "lecture" ? cById(c.id).code + " · " : "") + shortDate(Date.now())) : "");
     const it = blankNote({ title, notes: t.body, course: c ? c.id : null, tags: t.id === "ideas" ? ["ideas"] : [] });
@@ -3136,19 +3137,133 @@
   }
 
   /* ─────────── radial menu + key tips ─────────── */
-  function openRadial(x, y, it, ser) {
-    const el = $("#radial"), s = ser && S.calendarSeries.find((z) => z.id === ser);
+  // Right-click (a long press on touch) opens a ring of what you can do with what's under the pointer. menuFor() reads
+  // the target, the most specific first: a Google series, a sidebar folder or file, the path bar, a view key, a class,
+  // an item, the details pane, a calendar hour or day, the top bar; else the app's own menu. A menu is { hub, opts },
+  // each opt [icon, label, run], and falsy opts drop out, so a menu offers only what applies.
+  function menuFor(t) {
+    const tree = () => S.side || sideTree();
+    const ser = t.closest("[data-ser]");
+    if (ser) return seriesMenu(ser.dataset.ser);
+    const sd = t.closest("#side .sd-it[data-node]"), sn = sd && tree().map.get(sd.dataset.node), sm = sn && sideMenu(sn);
+    if (sm) return sm;
+    if (t.closest("#side")) return sideBarMenu();
+    const pb = t.closest("#nav .pb-b[data-node], #nav .pb-cur"), pn = pb && (pb.dataset.node ? tree().map.get(pb.dataset.node) : sideLoc(tree()).cur), pm = pn && sideMenu(pn);
+    if (pm) return pm;
+    const tab = t.closest("#nav .nv[data-v]");
+    if (tab) return tabMenu(tab.dataset.v);
+    const cl = t.closest('[data-act="goClass"][data-c], .ccard[data-c]'), c = cl && cById(cl.dataset.c);
+    if (c) return classMenu(c);
+    const own = t.closest("[data-id]"), it = (own && find(own.dataset.id)) || (t.closest("#insp") && S.sel && find(S.sel));
+    if (it) return itemMenu(it);
+    if (S.lens === "week" && t.closest("#list")) {
+      const hr = t.closest(".dv-hr[data-v]"), day = t.closest(".mday[data-t], .wcol[data-t]");
+      return calMenu(day ? +day.dataset.t : null, hr && hr.dataset.v);
+    }
+    if (t.closest("#top")) return appMenu();
+    return homeMenu();
+  }
+  function itemMenu(it) {
+    const c = courseOf(it), l = (it.links || [])[0], link = l && ["ext", l[0] || "Link", () => openLink(l[1])];
+    if (isNote(it)) return { hub: "Note", opts: [["notes", "Open", () => openNote(it.id)], ["pin", isPinned(it) ? "Unpin" : "Pin", () => notePin(it.id)], ["ai", "Ask AI", () => openAI({ note: it.id })],
+      ["export", "Word", () => noteOut("docx", it.id)], ["print", "PDF", () => noteOut("pdf", it.id)], ["file", "Duplicate", () => noteOut("dup", it.id)],
+      ["done", it.status === "done" ? "Restore" : "Archive", () => toggleDone(it.id)], ["trash", "Delete", () => del(it.id)]] };
+    if (E.SCHEDULED(it.kind)) {
+      const tk = it.interrupt === "takeover";
+      return { hub: "Item", opts: [["all", "Details", () => select(it.id, true)], link, ["notes", "Take notes", () => noteFor(it)],
+        ["bell", tk ? "Plain alert" : "Takeover alert", () => { editStep(it, { interrupt: tk ? "alert" : "takeover" }); toast(`${tk ? "Alert" : "Takeover alert"} set · ${esc(it.title)}`, { undo: true }); renderAll(); }],
+        c && ["classes", c.code, () => goClass(c.id)], ["trash", "Delete", () => del(it.id)]] };
+    }
+    // a link (Canvas's page, say) takes the class key's place: what's imported has its class already
+    const done = it.status === "done";
+    return { hub: "Item", opts: [["check", done ? "Not done" : "Done", () => toggleDone(it.id)], !done && ["play", "Focus", () => startFocus(it.id, 25)], ["clock", "Snooze", () => openSnooze(it.id)],
+      ["all", "Details", () => select(it.id, true)], ["flag", "Priority +", () => bumpPri(it.id)], link || ["classes", "Class…", () => moveCourse(it.id)],
+      ["file", "Duplicate", () => dupItem(it.id)], ["trash", "Delete", () => del(it.id)]] };
+  }
+  function classMenu(c) {
+    const l = c.links[0], cal = "c:" + c.id + ":cal";
+    return { hub: "Class", opts: [["go", "Open", () => goClass(c.id)], c.included && ["plus", "Add work", () => quickWith("  " + c.tag)], ["notes", "New note", () => newNote(null, c)],
+      (S.side || sideTree()).map.has(cal) && ["week", "Calendar", () => sideGo(cal)], l && ["ext", l[0], () => openLink(l[1])],
+      ["edit", "Edit class", () => openCourse(c.id)], ["trash", "Delete", () => openCourseDel(c.id)]] };
+  }
+  function seriesMenu(id) {
+    const s = S.calendarSeries.find((z) => z.id === id); if (!s) return homeMenu();
     const role = (v) => () => ACTIONS.calmap({ dataset: { s: s.id, v } });
-    const opts = s ? (s.hidden ? [["all", "Unhide", () => serHide(s.id)]] : [["classes", "Lecture", role("lecture")], ["all", "Section", role("section")], ["close", "Not a class", role("skip")],
-      ...(s.isClass ? [["go", "Course…", () => ACTIONS.serCourse({ dataset: { s: s.id } })]] : []), ["trash", "Hide", () => serHide(s.id)]])
-      : isNote(it) ? [["notes", "Open", () => openNote(it.id)], ["pin", isPinned(it) ? "Unpin" : "Pin", () => notePin(it.id)], ["ai", "Ask AI", () => openAI({ note: it.id })],
-        ["export", "Word", () => noteOut("docx", it.id)], ["done", it.status === "done" ? "Restore" : "Archive", () => toggleDone(it.id)], ["trash", "Delete", () => del(it.id)]]
-      : !it ? [["plus", "Add", () => openQuick()], ["focus", "Focus", focusTop], ["today", "Today", () => go("today")], ["work", "Work", () => go("work")], ["search", "Search", () => openPalette()], ["classes", "Classes", () => go("classes")]]
-      : E.SCHEDULED(it.kind) ? [["all", "Details", () => select(it.id, true)], ["bell", "Takeover alert", () => { editStep(it, { interrupt: "takeover" }); toast("Takeover alert set · " + esc(it.title)); }], ["ext", "Links", () => it.links[0] && openLink(it.links[0][1])], ["trash", "Delete", () => del(it.id)]]
-      : [["check", "Done", () => toggleDone(it.id)], ["play", "Focus", () => startFocus(it.id, 25)], ["clock", "Snooze", () => openSnooze(it.id)], ["all", "Details", () => select(it.id, true)], ["flag", "Priority +", () => bumpPri(it.id)], ["trash", "Delete", () => del(it.id)]];
+    return { hub: "Class", opts: s.hidden ? [["all", "Unhide", () => serHide(s.id)]] : [["classes", "Lecture", role("lecture")], ["all", "Section", role("section")], ["close", "Not a class", role("skip")],
+      s.isClass && ["go", "Course…", () => ACTIONS.serCourse({ dataset: { s: s.id } })], ["trash", "Hide", () => serHide(s.id)]] };
+  }
+  // a folder in the sidebar (or a step of the path bar): its class's menu, a file's own, else what the folder can do
+  function sideMenu(n) {
+    if (n.item || n.note) { const it = find(n.item || n.note); return it && itemMenu(it); }
+    const c = n.course || (n.up && n.up.course);
+    if (c) { const m = classMenu(c); if (!n.course && n.to) m.opts[0] = ["go", "Open", () => sideGo(n.id)]; return m; }
+    const open = n.to &&["go", "Open", () => sideGo(n.id)], fold = n.kids && n.kids.length > 0 && ["tw", sideOpenQ(n) ? "Fold" : "Unfold", () => sideFold(n.id)];
+    if (n.sec) return { hub: "Group", opts: [open, fold, n.add && ["plus", "New note", () => newNote()], ["edit", "Rename", () => sideRename(n.sec)],
+      ["eyeoff", "Hide", () => sideHide({ sec: n.sec }, n.label)], ["prev", "Move up", () => sideMove("sec", n.sec, -1)], ["next", "Move down", () => sideMove("sec", n.sec, 1)],
+      n.views && ["trash", "Delete group", () => sdDelSec({ dataset: { sec: n.sec } })]] };
+    if (n.view) return { hub: "View", opts: [open, ["eyeoff", "Hide", () => sideHide({ v: n.view }, n.label)], n.drag === "view" && ["prev", "Move up", () => sideMove("view", n.view, -1)],
+      n.drag === "view" && ["next", "Move down", () => sideMove("view", n.view, 1)], ["edit", "Edit sidebar", () => sideEdit(true)]] };
+    if (n.id.startsWith("t:")) {
+      const g = n.id.slice(2), its = S.items.filter((it) => !it.deleted && (it.tags || []).some((x) => String(x).toLowerCase() === g));
+      return { hub: "Tag", opts: [open, ["plus", "Add", () => quickWith("  #" + g)],
+        its.length > 0 && ["close", "Remove tag", () => bulkEdit(its, (it) => ({ tags: it.tags.filter((x) => String(x).toLowerCase() !== g) }), "untag", `Removed #${esc(g)} from ${its.length} items`)]] };
+    }
+    const add = n.id === "c:none" ? ["plus", "Add", () => openQuick()] : n.id === "nc:none" ? ["plus", "New note", () => newNote(null, null)] : null;
+    return (open || fold || add) && { hub: "Menu", opts: [open, fold, add] };
+  }
+  // the sidebar's own keys, from anywhere in it that isn't a folder
+  function sideBarMenu() {
+    const left = sideAt() === "left";
+    return { hub: "Side", opts: [["edit", "Edit sidebar", () => sideEdit(true)], ["plus", "New group", () => { sideEdit(true); sdNewSec(); }], [left ? "next" : "prev", left ? "Move right" : "Move left", sideSwap],
+      ["side", sideState() === "over" ? "Close" : "Hide", () => sideToggle()], ["week", "Calendars", () => openFeeds()], ["trash", "Trash", () => openTrash()], ["lab", "Appearance", openLab]] };
+  }
+  function sideRename(sec) {
+    sideEdit(true);
+    const f = $(`#side .sd-name[data-sec="${CSS.escape(sec)}"]`); if (f) { f.focus(); f.select(); }
+  }
+  // hidden from a menu (not the edit mode's eye): say how to get it back, and offer to put it back now
+  function sideHide(data, what) {
+    const was = CA.ui.sideLayout; sdHide({ dataset: data });
+    toast(`Hid ${esc(what)} · edit the sidebar to show it again`, { actions: [["Undo", () => { sideSaveLayout(was); CA.sound.tick(); }]] });
+  }
+  // a view's key in the key row (the sidebar off)
+  function tabMenu(id) {
+    return { hub: "View", opts: [["go", "Open", () => go(id)], ["prev", "Move left", () => moveTab(id, -1)], ["next", "Move right", () => moveTab(id, 1)], ["side", "Use the sidebar", () => setNavMode("side")]] };
+  }
+  // the calendar: add at the hour or on the day you pointed at, open that day, page, or switch Day / Week / Month
+  function calMenu(day, at) {
+    const m = S.cal.mode, d = day != null ? day : m === "day" ? E.startOfDay(S.cal.at != null ? S.cal.at : S.now) : null;
+    const mode = (v, icon, label) => m !== v && [icon, label, () => ACTIONS.calMode({ dataset: { v } })];
+    const add = at ? ["plus", "Add at " + at.split(" ").pop(), () => quickWith("  " + at)] : d != null ? ["plus", "Add on " + shortDate(d), () => quickWith("  " + dayWord(d))] : ["plus", "Add", () => openQuick()];
+    return { hub: at ? "Hour" : cap(m), opts: [add, d != null && m !== "day" && ["go", "Open day", () => ACTIONS.calDay({ dataset: { t: d } })], ["today", "Today", () => ACTIONS.calToday()],
+      ["prev", "Previous", () => calStep(-1)], ["next", "Next", () => calStep(1)], mode("day", "clock", "Day"), mode("week", "week", "Week"), mode("month", "all", "Month")] };
+  }
+  // how quick add reads a day: today, tmr, else 11/4 (as the Day view's hours write it)
+  function dayWord(t) { const a = Math.round((E.startOfDay(t) - E.startOfDay(S.now)) / DAY), d = new Date(t); return a === 0 ? "today" : a === 1 ? "tmr" : `${d.getMonth() + 1}/${d.getDate()}`; }
+  // the top bar: the app's keys, and the window's while the app draws its own frame
+  function appMenu() {
+    return { hub: "App", opts: [["search", "Search", () => openPalette()], ["plus", "Add", () => openQuick()], ["focus", "Focus", focusTop], ["lab", "Appearance", openLab],
+      TAURI && !MOBILE && ["now", "Island", () => TAURI.core.invoke("toggle_island").catch(() => {})], WIN && ["wmin", "Minimize", () => ACTIONS.winMin()],
+      WIN && [S.winMax ? "wrest" : "wmax", S.winMax ? "Restore" : "Maximize", () => ACTIONS.winMax()], WIN && ["close", "Close", () => ACTIONS.winClose()]] };
+  }
+  function homeMenu() {
+    return { hub: "Menu", opts: [["plus", "Add", () => openQuick()], ["notes", "New note", () => newNote()], ["focus", "Focus", focusTop], ["search", "Search", () => openPalette()],
+      ["today", "Today", () => go("today")], ["classes", "Classes", () => go("classes")], S.hist.length > 0 && ["undo", "Undo", () => doUndo()], LIVE && ["import", "Refresh", () => syncNow()]] };
+  }
+  // a note for a class or an event (also the island's "Take notes"): titled with it and its day, filed under its
+  // class and open in the editor; like any new note, it's kept once it has something in it
+  function noteFor(it) {
+    const c = courseOf(it), n = blankNote({ title: `${it.title} · ${shortDate(it.due || S.now)}`, course: c ? c.id : null });
+    S.items.push(n); openNote(n.id, { isNew: true, focus: "end" });
+  }
+  // Up to eight keys hang on the ring: six on the usual ellipse, past that the tall one's eight places (.r8)
+  function openRadial(x, y, menu) {
+    const el = $("#radial"), opts = menu ? menu.opts.filter(Boolean).slice(0, 8) : [], n = opts.length > 6 ? 8 : opts.length;
+    if (!opts.length) return;
     S.radialOpts = opts;
+    el.classList.toggle("r8", n === 8);
     el.style.left = x + "px"; el.style.top = y + "px";
-    el.innerHTML = `<div class="ring"></div><div class="hub">${s ? "Class" : isNote(it) ? "Note" : it ? "Item" : "Menu"}</div>${opts.map((o, i) => { const a = (i / opts.length) * Math.PI * 2 - Math.PI / 2; return `<button class="btn rb" data-act="radial" data-i="${i}" style="--x:${Math.cos(a).toFixed(3)};--y:${Math.sin(a).toFixed(3)};animation-delay:${i * 25}ms">${ic(o[0])}${o[1]}</button>`; }).join("")}`;
+    el.innerHTML = `<div class="ring"></div><div class="hub">${esc(menu.hub)}</div>${opts.map((o, i) => { const a = (i / n) * Math.PI * 2 - Math.PI / 2; return `<button class="btn rb" data-act="radial" data-i="${i}" style="--x:${Math.cos(a).toFixed(3)};--y:${Math.sin(a).toFixed(3)};animation-delay:${i * 25}ms">${ic(o[0])}${esc(o[1])}</button>`; }).join("")}`;
     el.hidden = false;
     // measure the laid-out menu (entrances held back) and slide it inside the content, however long its labels
     el.classList.add("sizing");
@@ -3442,11 +3557,17 @@
       if (!a.classList.contains("nope")) ackKey(a);
     });
     document.addEventListener("dblclick", (e) => { const r = e.target.closest(".row"), it = r && find(r.dataset.id); if (it && !E.SCHEDULED(it.kind) && !isNote(it)) startFocus(it.id, 25); });
+    // Right-click: the radial menu for what's under the pointer (menuFor). What you type in (fields, the note editor)
+    // and text you've selected keep the system menu, for cut, copy, paste and spelling; nowhere else in the app shows
+    // the browser's own (Back, Refresh, Save as).
+    const picked = (t) => { const s = window.getSelection(); return !!s && !s.isCollapsed && !!String(s).trim() && s.rangeCount > 0 && s.getRangeAt(0).intersectsNode(t); };
     document.addEventListener("contextmenu", (e) => {
       if (S.sorting) return e.preventDefault();
-      const content = $("#content"); if (!content.contains(e.target) || e.target.closest("input, textarea, select")) return;
-      e.preventDefault(); const cr = $("#layer").getBoundingClientRect(), row = e.target.closest(".row, .un-row, .wi, .ag, .ncard, .sd-row[data-id]"), ser = e.target.closest("[data-ser]");
-      openRadial(e.clientX - cr.left, e.clientY - cr.top, row ? find(row.dataset.id) : null, ser && ser.dataset.ser);
+      const t = e.target; if (!t || !t.closest) return;
+      if (t.closest("input, textarea, select") || t.isContentEditable || picked(t)) return;
+      if (!$("#content").contains(t)) { if (TAURI) e.preventDefault(); return; }
+      e.preventDefault(); const cr = $("#layer").getBoundingClientRect();
+      openRadial(e.clientX - cr.left, e.clientY - cr.top, menuFor(t));
     });
     // touch: long-press opens the radial menu (iOS fires no contextmenu); swiping a row right marks it done, left snoozes it
     let press = null, lp = null;
@@ -3455,9 +3576,8 @@
     document.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" || !e.isPrimary || !$("#content").contains(e.target) || e.target.closest("input, textarea, select, [contenteditable], .nkeys, .sd-sort")) return;
       const row = e.target.closest("#list .row.mrow"), it = row && find(row.dataset.id);
-      const ser = e.target.closest("[data-ser]");
-      press = { x: e.clientX, y: e.clientY, it, ser: ser && ser.dataset.ser, row: it && !E.SCHEDULED(it.kind) ? row : null, dx: 0 };
-      press.t = setTimeout(() => { lpOff(); if (!press || press.dx) return; const cr = $("#layer").getBoundingClientRect(); swallow(); openRadial(press.x - cr.left, press.y - cr.top, press.it, press.ser); press = null; }, 520);
+      press = { x: e.clientX, y: e.clientY, el: e.target, row: it && !E.SCHEDULED(it.kind) ? row : null, dx: 0 };
+      press.t = setTimeout(() => { lpOff(); if (!press || press.dx) return; const cr = $("#layer").getBoundingClientRect(); swallow(); openRadial(press.x - cr.left, press.y - cr.top, menuFor(press.el)); press = null; }, 520);
       // the ring fills toward the radial menu (pocket.css .lpress)
       lpOff(); const layer = $("#layer");
       if (motion() && layer) { const lr = layer.getBoundingClientRect(); lp = document.createElement("i"); lp.className = "lpress"; lp.style.left = e.clientX - lr.left + "px"; lp.style.top = e.clientY - lr.top + "px"; layer.appendChild(lp); }
@@ -3723,6 +3843,8 @@
     CA.store.invoke("bridge_pending").then((ps) => { if (ps && ps[0] && !S.overlay) openPair(ps[0]); }).catch(() => {});
     // a Do first row picked in Pocket Start (start.html): show it, after a reload in case Start just added it
     CA.store.on("open-item", (id) => reload().then(() => { if (find(id)) { S.sel = id; S.insp = true; renderAll(); } }));
+    // the island menu's "Take notes": a note for the class or event it shows
+    CA.store.on("note-for", (id) => { const it = find(id); if (it) noteFor(it); });
     CA.store.invoke("focus_blocklist").then((l) => { S.blocklist = l || []; }).catch(() => {});
     reload();
   }

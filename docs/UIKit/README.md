@@ -493,7 +493,7 @@ The Theme section of the Appearance drawer (`themeSec()` in `lab.js`, styles in 
 | Palette and pick lists | `.pal-res` > `.pal-sec`, `.pal-it` (`.on`) | used by search, snooze and help |
 | Toast | `.toast` | message, then Undo or one action; at most four, bottom right (above the deck on phones). An undo toast offers Redo, and Trash when the undo threw a version away |
 | Trash | `.trash` > `.display`, `.pal-res` of `.pal-it` (`.tr-t`: title over why · when · course), `.row2` (limit) | an LCD of its size against the limit, rows restore on click or 1–9, Empty takes a second press |
-| Radial menu | `.radial` > `.ring`, `.hub`, `.rb` (`--x`, `--y`: the spoke's direction) | right-click or long-press; item actions on a row. Keys sit on an ellipse (3 × 4 em) and grow outward from the hub, so long labels never cover it; `openRadial` measures the menu and slides it inside the content |
+| Radial menu | `.radial` > `.ring`, `.hub`, `.rb` (`--x`, `--y`: the spoke's direction); `.radial.r8` for seven or eight keys | right-click or long-press; `menuFor` picks the menu for what's under the pointer (an item, a note, a class, a sidebar folder, a view key, a calendar hour or day, the top bar, else the app's), and the hub names it in five letters or fewer. Keys sit on an ellipse (3 × 4 em; `.r8` puts eight places on 3.4 × 7.2 em) and grow outward from the hub, so long labels never cover it; `openRadial` measures the menu and slides it inside the content. Fields, the note editor and selected text keep the system menu |
 | Key tips | `.tips` > `.tip` | graphite mono labels with an orange ring, shown while Alt is held |
 | Empty state | `.m-empty` | big faded icon, a bold line, one sentence, then actions |
 

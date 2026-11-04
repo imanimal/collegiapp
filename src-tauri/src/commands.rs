@@ -508,12 +508,21 @@ pub fn set_settings(settings: Settings, state: State<'_, SharedState>) -> CmdRes
 /// Open a URL in the preferred browser (settings.browser, e.g. "firefox"), falling back to
 /// the system default.
 #[tauri::command]
-pub fn open_link(url: String, app: AppHandle, state: State<'_, SharedState>) -> CmdResult<()> {
+pub fn open_link(url: String, app: AppHandle) -> CmdResult<()> {
+    open_url(&app, url)
+}
+
+/// [`open_link`] for Rust callers (the island's menu).
+pub fn open_url(app: &AppHandle, url: String) -> CmdResult<()> {
     use tauri_plugin_opener::OpenerExt;
     if !(url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mailto:")) {
         return Err("only http(s) and mailto links can be opened".into());
     }
-    let browser = lock(&state).data.settings.browser.clone();
+    let browser = lock(&app.state::<SharedState>())
+        .data
+        .settings
+        .browser
+        .clone();
     if let Some(b) = browser.filter(|b| !b.trim().is_empty()) {
         if app.opener().open_url(url.clone(), Some(b)).is_ok() {
             return Ok(());
@@ -555,6 +564,19 @@ pub fn toggle_island(app: AppHandle) -> CmdResult<bool> {
     {
         let _ = app; // phones have no floating window; the UI shows presence in-app
         Ok(false)
+    }
+}
+
+/// The island's right-click menu, at the pointer (tray.rs `island_menu`). Runs on the main
+/// thread, where a native menu has to open.
+#[tauri::command]
+pub fn island_menu(app: AppHandle) -> CmdResult<()> {
+    #[cfg(desktop)]
+    return crate::tray::island_menu(&app).map_err(|e| e.to_string());
+    #[cfg(mobile)]
+    {
+        let _ = app;
+        Ok(())
     }
 }
 
