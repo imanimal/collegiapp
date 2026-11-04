@@ -4,6 +4,7 @@ Collegiapp keeps your list and notes the same on your computers, your phone and 
 
 - **Desktop app:** `src-tauri/src/cloud.rs`. It signs in on the web app's sign-in page in your browser (`ui/link.html`), which hands Google's answer back to the app on this computer, then it uses Firestore over REST with the system `curl`.
 - **Web app** (and the phone, from the home screen): `ui/js/cloud.js` on Firebase Hosting at `https://PROJECT_ID.firebaseapp.com`. Firebase Auth and Firestore with an offline cache, so it opens and takes edits without a connection.
+- **PocketCanvas** (the Firefox extension, `../pocketcanvas/src/lib/cloud.js`) syncs its own settings into the same account on its own, with or without the app; see [PocketCanvas](#pocketcanvas).
 
 ## What syncs
 
@@ -29,6 +30,12 @@ The sample "Welcome" item never syncs.
 Each device reads the feeds itself. An imported item has the same id on every device (`stable_id` in the core), so two computers reading the same Canvas feed meet on one document, and checking it off on one checks it off everywhere.
 
 **A new computer.** Install the app and sign in: your list, notes, look, calendar links and class picks come down, and the new computer starts reading your calendars. Gradescope and WeBWorK keep their sign-ins on each device, so when your list has work from them the app points you at **Connect sources** to sign in there too. A paired browser (PocketCanvas) pairs with each computer's app on its own.
+
+## PocketCanvas
+
+PocketCanvas signs in to the same account without Collegiapp: its settings page opens Firefox's sign-in window (`identity.launchWebAuthFlow`) on `ui/link.html` with the extension's redirect address (`ext`) and a state. The page signs in with Google and hands the Google ID token back by going to that address, which Firefox catches in the window, so it never loads anywhere; `link.js` takes only the addresses in its `EXT` list (Firefox's is `https://<SHA-1 of the add-on id>.extensions.allizom.org/`). The extension trades the token for a Firebase session of its own, like the desktop app.
+
+It writes one document, `users/{uid}/meta/pocketcanvas` (`j`, `d`, `s` like the settings document), with its settings, class choices (modes, nicknames, colours, units, notes, links), item marks, tasks, imported themes and dashboard note, merged key by key with later-stamp-wins. Collegiapp never reads it; the classes and work PocketCanvas sends to the app still go over the bridge on 127.0.0.1. Changing `link.js` or `firestore.rules` for it needs a hosting or rules deploy.
 
 ## Set up your project (once)
 

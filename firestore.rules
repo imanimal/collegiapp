@@ -3,7 +3,8 @@ rules_version = '2';
 // Collegiapp sync (src-tauri/src/cloud.rs, ui/js/cloud.js, docs/SYNC.md): each Google account reads and writes only
 // its own documents. A write is a whole document with `d` the device and `s` the server's time of the write, which
 // pulls ask for, so it must be the server's time and not a device's clock. An item is `j` the item's JSON and `c` its
-// course's; the settings document (meta/settings) is `j` the synced settings' JSON.
+// course's; the settings document (meta/settings) is `j` the synced settings' JSON, and PocketCanvas's (meta/pocketcanvas,
+// written by the Firefox extension on its own: ../pocketcanvas src/lib/cloud.js) is `j` its synced map's.
 service cloud.firestore {
   match /databases/{database}/documents {
     function mine(uid) {
@@ -20,6 +21,10 @@ service cloud.firestore {
       allow create, update: if mine(uid) && stamped(["j", "c", "d", "s"]);
     }
     match /users/{uid}/meta/settings {
+      allow read, delete: if mine(uid);
+      allow create, update: if mine(uid) && stamped(["j", "d", "s"]);
+    }
+    match /users/{uid}/meta/pocketcanvas {
       allow read, delete: if mine(uid);
       allow create, update: if mine(uid) && stamped(["j", "d", "s"]);
     }
