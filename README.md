@@ -1,8 +1,8 @@
 # Collegiapp
 
-Everything you have to do for school, in one list that tells you what to do next.
+Everything for college, everywhere, all in one app.
 
-Collegiapp pulls in your classes from Google Calendar and your work from Canvas, Gradescope, WeBWorK, Ed and Piazza, then ranks it so the most urgent thing is always on top. You don't have to type anything in or keep it organized yourself.
+Pulls in your classes from Google Calendar and your work from Canvas, Gradescope, WeBWorK, Ed and Piazza. You don't have to type anything in or keep it organized yourself.
 
 It also works with AI. Connect Claude and you can say "add my CS midterm on Friday" or "write up today's lecture notes", and it lands in the app.
 
