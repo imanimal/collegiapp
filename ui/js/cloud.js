@@ -43,7 +43,8 @@
     const authDomain = cfg.authDomain || home;
     const app = A.initializeApp({ apiKey: cfg.apiKey, authDomain, projectId: cfg.projectId, appId: cfg.appId || undefined });
     auth = U.getAuth(app);
-    try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); } catch (e) { db = F.getFirestore(app); }
+    // no size limit, so the cache never drops part of the list (the listener below asks only for what's newer than it)
+    try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager(), cacheSizeBytes: F.CACHE_SIZE_UNLIMITED }) }); } catch (e) { db = F.getFirestore(app); }
     U.getRedirectResult(auth).catch((e) => { status.error = why(e); tell(); });
     U.onAuthStateChanged(auth, listen);
   }).catch((e) => {
@@ -126,9 +127,25 @@
     });
   }
 
-  // one listener on the account's items: Firestore sends what's cached at once, then every change from any device; and
-  // one on its settings
+  // an item document into the list, and its course while the settings have none
+  function take(d) {
+    try { const it = itemIn(JSON.parse(d.j)); items.set(it.id, it); } catch (e) { return; }
+    if (d.c) try { const k = courseIn(JSON.parse(d.c)); if (!courses.has(k.id) && !synced["course." + k.id]) courses.set(k.id, k); } catch (e) { /* an unreadable course: the item keeps its id */ }
+  }
+  // The last time this browser read the whole list, per account; a week on, it reads it all again, which mends anything
+  // the cache lost.
+  const FULL = "capp.full.", WEEK = 7 * 864e5;
+  const lastFull = (uid) => { try { return Date.parse(localStorage.getItem(FULL + uid)) || 0; } catch (e) { return 0; } };
+  const markFull = (uid) => { try { localStorage.setItem(FULL + uid, new Date().toISOString()); } catch (e) { /* storage off: a full read each time */ } };
+  const newer = (a, b) => (!a || b.valueOf() > a.valueOf() ? b : a);
+  // One listener on the account's items and one on its settings. Firestore bills a listener that reopens for every
+  // document it sends, so the list comes from this browser's cache and the listener asks only for what was written
+  // after the newest cached document from another device. Those reach the cache only in the listener's consistent
+  // snapshots, so nothing older is missing; this browser's own writes land on acknowledgment, before the listener has
+  // caught up, so they count only when no other device has written.
+  let listening = 0;
   function listen(u) {
+    const run = ++listening;
     if (unsub) { unsub(); unsub = null; }
     if (unsubSettings) { unsubSettings(); unsubSettings = null; }
     user = u; items.clear(); courses.clear(); coursesOfSynced();
@@ -136,18 +153,25 @@
     tell();
     if (!u) { changed(); firstDone(); return; }
     unsubSettings = F.onSnapshot(F.doc(db, "users", u.uid, "meta", "settings"), onSettings, (e) => { status.error = why(e); tell(); });
-    unsub = F.onSnapshot(F.collection(db, "users", u.uid, "items"), { includeMetadataChanges: true }, (snap) => {
-      const ch = snap.docChanges();
-      ch.forEach((c) => {
-        if (c.type === "removed") { items.delete(c.doc.id); return; }
-        const d = c.doc.data();
-        try { const it = itemIn(JSON.parse(d.j)); items.set(it.id, it); } catch (e) { return; }
-        if (d.c) try { const k = courseIn(JSON.parse(d.c)); if (!courses.has(k.id) && !synced["course." + k.id]) courses.set(k.id, k); } catch (e) { /* an unreadable course: the item keeps its id */ }
+    const col = F.collection(db, "users", u.uid, "items");
+    const cached = Date.now() - lastFull(u.uid) < WEEK ? F.getDocsFromCache(col).catch(() => null) : Promise.resolve(null);
+    cached.then((cache) => {
+      if (run !== listening) return;
+      let mine = null, theirs = null, filled = !!(cache && !cache.empty);
+      if (cache) cache.forEach((doc) => {
+        const d = doc.data(); take(d);
+        if (d.s) { if (d.d === device) mine = newer(mine, d.s); else theirs = newer(theirs, d.s); }
       });
-      Object.assign(status, { busy: false, error: null, offline: snap.metadata.fromCache, pending: snap.docs.filter((x) => x.metadata.hasPendingWrites).length });
-      if (!status.offline && !status.pending) status.last_sync = new Date().toISOString();
-      tell(); if (ch.length) changed(); firstDone();
-    }, (e) => { status.busy = false; status.error = why(e); tell(); firstDone(); });
+      const since = theirs || mine;
+      unsub = F.onSnapshot(since ? F.query(col, F.where("s", ">", since)) : col, { includeMetadataChanges: true }, (snap) => {
+        const ch = snap.docChanges();
+        ch.forEach((c) => { if (c.type === "removed") items.delete(c.doc.id); else take(c.doc.data()); });
+        if (!since && !snap.metadata.fromCache) markFull(u.uid);
+        Object.assign(status, { busy: false, error: null, offline: snap.metadata.fromCache });
+        if (!status.offline && !status.pending) status.last_sync = new Date().toISOString();
+        tell(); if (ch.length || filled) { filled = false; changed(); } firstDone();
+      }, (e) => { status.busy = false; status.error = why(e); tell(); firstDone(); });
+    });
   }
 
   function load() {
@@ -164,9 +188,13 @@
       r.updated_by = device;
       const doc = { j: JSON.stringify(r), d: device, s: F.serverTimestamp() };
       if (c) doc.c = JSON.stringify(courseOut(c));
-      F.setDoc(F.doc(db, "users", uid, "items", it.id), doc).catch((e) => { status.error = why(e); tell(); });
+      // pending until the server has it (a write made offline waits in the cache); the listener's query can't count
+      // them, since a write waiting for the server's time doesn't match it yet
+      status.pending++;
+      F.setDoc(F.doc(db, "users", uid, "items", it.id), doc).catch((e) => { status.error = why(e); })
+        .then(() => { status.pending = Math.max(0, status.pending - 1); if (!status.pending && !status.offline) status.last_sync = new Date().toISOString(); tell(); });
     });
-    queue.clear();
+    queue.clear(); tell();
   }
 
   // a popup in a browser tab; a redirect from the home-screen app, where popups don't come back

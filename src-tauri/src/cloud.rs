@@ -1,5 +1,5 @@
-//! Sync across devices through your own Firebase project (the free Spark plan, no server of
-//! ours): Google sign-in on the web app's link page, handed back to a loopback address, then
+//! Sync across devices through Firebase (the built-in project or your own, on the free Spark plan,
+//! no server of ours): Google sign-in on the web app's link page, handed back to a loopback address, then
 //! Firestore over REST with the system curl. Setup is in docs/SYNC.md.
 //!
 //! One document per Item at `users/{uid}/items/{id}`: `j` is the Item's JSON, `c` its course's
@@ -10,7 +10,9 @@
 //! (`stable_id`), so two devices reading the same feed meet on one document.
 //!
 //! Every 5 s the loop looks for local changes (an item whose `updated_at` isn't the version this
-//! device last pushed or pulled) and every 60 s it pulls. A cycle pulls first, then pushes what's
+//! device last pushed or pulled) and it pulls every 60 s while the window is in front, every 10
+//! min otherwise (an empty pull is still a read, and the free plan's reads are the whole
+//! project's), so coming back to the window pulls within 5 s. A cycle pulls first, then pushes what's
 //! newer here, so an offline edit never overwrites a newer one from another device. A deletion
 //! pulled from another device puts the local version in the trash. The sample item never syncs.
 //!
@@ -51,6 +53,8 @@ const PUSH_BATCH: usize = 200;
 /// Bigger than a push batch, so a full page always holds more than one write time (see `trim_page`).
 const PULL_PAGE: usize = 300;
 const PULL_EVERY: Duration = Duration::from_secs(60);
+/// While the main window isn't focused (in the tray, minimized or behind another app).
+const PULL_AWAY: Duration = Duration::from_secs(600);
 const RETRY_AFTER: Duration = Duration::from_secs(60);
 /// A local change waits this long, so typing in a note pushes once it settles.
 const SETTLE: i64 = 3;
@@ -180,7 +184,8 @@ struct Inner {
     busy: bool,
     last_sync: Option<DateTime<Utc>>,
     error: Option<String>,
-    next_pull: Instant,
+    /// The last good cycle's time; none pulls at the next tick.
+    last_pull: Option<Instant>,
     next_try: Instant,
 }
 
@@ -250,7 +255,7 @@ impl Cloud {
             busy: false,
             last_sync: None,
             error: None,
-            next_pull: now,
+            last_pull: None,
             next_try: now,
         }))
     }
@@ -314,14 +319,22 @@ pub fn start(app: AppHandle) {
     });
 }
 
+/// The main window has the focus. Asked before taking the cloud lock: a window's state comes from
+/// the main thread, which may be waiting on that lock in a command.
+fn in_front(app: &AppHandle) -> bool {
+    app.get_webview_window("main")
+        .is_some_and(|w| w.is_focused().unwrap_or(false))
+}
+
 fn due(app: &AppHandle) -> bool {
+    let every = if in_front(app) { PULL_EVERY } else { PULL_AWAY };
     let cloud = app.state::<Cloud>();
     let c = cloud.lock();
     let now = Instant::now();
     if c.session.is_none() || !c.config().ready() || c.busy || c.signing_in || now < c.next_try {
         return false;
     }
-    if now >= c.next_pull {
+    if c.last_pull.is_none_or(|t| now >= t + every) {
         return true;
     }
     let st = app.state::<SharedState>();
@@ -349,7 +362,7 @@ fn cycle(app: &AppHandle) {
             Ok(()) => {
                 c.error = None;
                 c.last_sync = Some(Utc::now());
-                c.next_pull = now + PULL_EVERY;
+                c.last_pull = Some(now);
             }
             Err(e) => {
                 c.error = Some(e);
@@ -1092,8 +1105,7 @@ fn begin_sign_in(app: &AppHandle) -> Result<(), String> {
                     c.session = Some(session);
                     c.token = Some((token, Instant::now() + Duration::from_secs(secs)));
                     c.error = None;
-                    let now = Instant::now();
-                    (c.next_pull, c.next_try) = (now, now);
+                    (c.last_pull, c.next_try) = (None, Instant::now());
                     c.write_session();
                     c.write_saved();
                 }
@@ -1182,8 +1194,7 @@ pub fn cloud_sync_now(app: AppHandle) -> CloudStatus {
     {
         let cloud = app.state::<Cloud>();
         let mut c = cloud.lock();
-        let now = Instant::now();
-        (c.next_pull, c.next_try) = (now, now);
+        (c.last_pull, c.next_try) = (None, Instant::now());
     }
     status(&app)
 }

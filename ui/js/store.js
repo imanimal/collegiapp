@@ -35,7 +35,7 @@
     return {
       id: r.id, title: r.title, kind: r.kind || "task", status: r.status || "inbox", course: r.course_id || null,
       due: ms(r.due), end: ms(r.end), est: num(r.est_minutes), pri: r.priority || 0, weight: num(r.weight_pct),
-      tags: r.tags || [], links: (r.links || []).map((l) => [l.label, l.url]), location: r.location || null, notes: r.notes || "",
+      tags: r.tags || [], links: (r.links || []).map((l) => [l.label, l.url]), quick: r.quick_link || null, location: r.location || null, notes: r.notes || "",
       interrupt: r.interrupt || "none", src: (r.source && r.source.adapter) || "manual", snoozed: ms(r.snoozed_until),
       created: ms(r.created_at), updated: ms(r.updated_at), deleted: !!r.deleted, _source: r.source || null,
     };
@@ -46,7 +46,7 @@
       id: it.id, title: String(it.title || "(untitled)"), kind: it.kind || "task", status: it.status || "inbox", course_id: it.course || null,
       due: iso(it.due), end: iso(it.end), est_minutes: est == null ? null : Math.max(0, Math.round(est)),
       priority: Math.max(0, Math.min(3, it.pri | 0)), weight_pct: w, tags: it.tags || [],
-      links: (it.links || []).map(([l, u]) => ({ label: String(l), url: String(u) })), location: it.location || null, notes: it.notes || "",
+      links: (it.links || []).map(([l, u]) => ({ label: String(l), url: String(u) })), quick_link: it.quick || null, location: it.location || null, notes: it.notes || "",
       interrupt: it.interrupt || "none", source: Object.assign({ external_id: null, url: null }, it._source, { adapter: it.src || "manual" }),
       snoozed_until: iso(it.snoozed), created_at: iso(it.created || Date.now()), updated_at: iso(it.updated || Date.now()), updated_by: "",
       deleted: !!it.deleted,

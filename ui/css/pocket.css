@@ -630,11 +630,15 @@ html[data-motion="0"] .ldot { animation: none; box-shadow: 0 0 0 .2em color-mix(
   .week { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr); overflow-x: visible; }
   .wi { font-size: .88em; }
 }
-/* calendar: Day / Week / Month segments, paging keys around an LCD of the range, then the month grid */
+/* calendar: Day / Week / Month segments, paging keys around an LCD of the range, then the month grid. The bar (and Day's
+   head) sits in .cal-top above the scrolling body, so it stays in sight; the body's top rule marks where scrolling starts. */
+.cal-top { flex: none; }
+.fset-f3 #list .cal-top { padding: .4em 1em .75em; border-top: 1px solid var(--line); }
+.fset-f3 .content[data-wide="1"] #list .cal-top + .pb { padding-top: 0; }
 .calbar { display: flex; align-items: center; flex-wrap: wrap; gap: .5em .8em; padding-top: .5em; }
 .cal-pg { display: inline-flex; align-items: center; gap: .4em; }
 .cal-t { min-width: 9.5em; text-align: center; font: 700 .82em/1.3 var(--font-mono); letter-spacing: .04em; padding: .3em .6em; border-radius: 4px; background: var(--disp-bg); color: var(--disp-fg); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .25); white-space: nowrap; }
-.month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: auto; grid-auto-rows: minmax(6.4em, 1fr); gap: .35em; min-height: calc(100% - 3em); padding-top: .5em; }
+.month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: auto; grid-auto-rows: minmax(6.4em, 1fr); gap: .35em; min-height: 100%; padding-top: .5em; }
 .mhd { font-size: .8em; color: var(--text-3); padding: 0 .45em; }
 .mday { display: flex; flex-direction: column; gap: .2em; min-width: 0; overflow: hidden; border-radius: 8px; background: var(--surface-2); padding: .3em .3em .35em; }
 .mday.out { opacity: .45; }
@@ -820,6 +824,9 @@ button.pc:focus-visible, button.pc.on { outline: 2px solid var(--accent); outlin
 .pal-it .dim { font-size: .86em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .pal-it .sp { min-width: 1em; }
 .pal-it.on { background: var(--accent-soft); }
+/* a class's quick link (openQLink): for all its work or just one item, then the class's links */
+.ql-add { margin-top: .7em; }
+.ql-note { margin-top: .7em; font-size: .86em; }
 :is(.pal-it, .helpgrid) kbd { font-size: .78em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: .12em .42em; color: var(--text-2); background: var(--surface); white-space: nowrap; }
 .helpgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(18em, 1fr)); gap: .5em 1.6em; }
 .helpgrid div { display: flex; gap: .7em; align-items: center; }
@@ -1276,7 +1283,8 @@ html[data-motion="0"] .screen *, html[data-motion="0"] .screen *::before, html[d
 :is(.ned, .ai-doc, .ai-msg) pre { position: relative; margin: .8em 0; padding: .75em 1em; border-radius: 8px; background: var(--bg2); box-shadow: inset 0 0 0 1px var(--line); font: .86em/1.5 var(--font-mono); white-space: pre-wrap; tab-size: 2; }
 :is(.ned, .ai-doc, .ai-msg) pre[data-lang]::before { content: attr(data-lang); position: absolute; top: .35em; right: .6em; font-size: .78em; color: var(--text-3); pointer-events: none; -webkit-user-select: none; user-select: none; }
 :is(.ned, .ai-doc, .ai-msg) pre code { font-size: 1em; padding: 0; background: none; }
-:is(.ned, .ai-doc, .ai-msg) mark { color: inherit; padding: 0 .12em; border-radius: 2px; background: color-mix(in srgb, var(--warn) 34%, transparent); }
+/* no side padding: at a line's end it wrapped to the next line as a sliver of highlight */
+:is(.ned, .ai-doc, .ai-msg) mark { color: inherit; padding: 0; border-radius: 2px; background: color-mix(in srgb, var(--warn) 34%, transparent); }
 :is(.ned, .ai-doc, .ai-msg) a { color: var(--text); text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: .15em; }
 :is(.ned, .ai-doc, .ai-msg) hr { margin: 1.4em 0; border: 0; height: 0; border-top: 2px dashed var(--line); }
 :is(.ned, .ai-doc, .ai-msg) table { width: 100%; margin: .8em 0; border-collapse: collapse; font-size: .94em; }
@@ -1290,7 +1298,9 @@ html[data-motion="0"] .screen *, html[data-motion="0"] .screen *::before, html[d
 :is(.ned, .ai-doc, .ai-msg) img[data-place="center"] { display: block; margin: .6em auto; }
 :is(.ned, .ai-doc, .ai-msg) img[data-place="left"] { float: left; margin: .3em 1.2em .5em 0; }
 :is(.ned, .ai-doc, .ai-msg) img[data-place="right"] { float: right; margin: .3em 0 .5em 1.2em; }
-.ned img { cursor: default; border-radius: 3px; }
+.ned img { cursor: grab; border-radius: 3px; -webkit-user-drag: none; }
+.ned img.moving { opacity: .55; pointer-events: none; }
+.ned.moving-img, .ned.moving-img * { cursor: grabbing; }
 .ned img.picked { outline: 2px solid var(--accent); outline-offset: 3px; }
 :root[data-scheme="dark"] :is(.ned, .ai-doc, .ai-msg, .ncard) img[src^="data:image/svg+xml"] { filter: invert(1) hue-rotate(180deg); }
 @media (hover: hover) { .ned img:not(.picked):hover { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 3px; } }

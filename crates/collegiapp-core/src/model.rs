@@ -288,6 +288,11 @@ pub struct Item {
     pub tags: Vec<String>,
     #[serde(default)]
     pub links: Vec<Link>,
+    /// The course link this item's course key opens, when you picked one for it alone (a URL
+    /// from its course's `links`). None follows the course's quick link, its first link. Yours:
+    /// re-imports keep it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quick_link: Option<String>,
     #[serde(default)]
     pub location: Option<String>,
     #[serde(default)]
@@ -324,6 +329,7 @@ impl Item {
             weight_pct: None,
             tags: Vec::new(),
             links: Vec::new(),
+            quick_link: None,
             location: None,
             notes: String::new(),
             interrupt: InterruptLevel::None,
@@ -542,6 +548,8 @@ pub struct Course {
     /// False = user excluded this Canvas course as clutter; its items are hidden by filters.
     #[serde(default = "default_true")]
     pub included: bool,
+    /// The first is the quick link its items show (swapping it moves another to the front);
+    /// readers only append theirs, so the order you pick survives refreshes.
     #[serde(default)]
     pub links: Vec<Link>,
     #[serde(default)]
@@ -841,6 +849,7 @@ mod tests {
         assert_eq!((n.added, n.updated, n.unchanged), (2, 0, 0));
         items[0].status = Status::Done;
         items[0].priority = 2;
+        items[0].quick_link = Some("https://webwork.math.ucsb.edu/webwork2/MATH4B/".into());
         items[1].deleted = true;
         let later = now + chrono::Duration::hours(1);
         let n = merge_imported(
@@ -852,6 +861,7 @@ mod tests {
         assert_eq!((n.added, n.updated, n.unchanged), (0, 1, 1));
         assert_eq!(items[0].title, "HW 4 (revised)");
         assert_eq!((items[0].status, items[0].priority), (Status::Done, 2));
+        assert!(items[0].quick_link.is_some(), "the link you picked stays");
         assert!(
             items[1].deleted,
             "a re-import must not bring back what you deleted"

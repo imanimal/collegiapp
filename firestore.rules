@@ -18,7 +18,8 @@ service cloud.firestore {
     }
     match /users/{uid}/items/{id} {
       allow read, delete: if mine(uid);
-      allow create, update: if mine(uid) && stamped(["j", "c", "d", "s"]);
+      allow create, update: if mine(uid) && stamped(["j", "c", "d", "s"])
+        && (!("c" in request.resource.data) || request.resource.data.c is string);
     }
     match /users/{uid}/meta/settings {
       allow read, delete: if mine(uid);

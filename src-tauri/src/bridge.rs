@@ -375,6 +375,12 @@ mod http {
                 notes::edit(app, &p["/v1/notes/".len()..], &r.body, who)
             }
             ("GET", "/v1/classes") => notes::classes(app),
+            ("GET", "/v1/items") => items::list(app, query),
+            ("POST", "/v1/items") => items::create(app, &r.body, who),
+            ("GET", p) if p.starts_with("/v1/items/") => items::read(app, &p["/v1/items/".len()..]),
+            ("POST", p) if p.starts_with("/v1/items/") => {
+                items::edit(app, &p["/v1/items/".len()..], &r.body, who)
+            }
             ("POST", "/v1/canvas") => canvas(app, &r.body),
             ("POST", "/v1/capture") => capture(app, &r.body),
             ("POST", "/v1/work") => work(app, &r.body),
@@ -563,6 +569,140 @@ mod http {
         (200, json!({ "title": title }))
     }
 
+    /// An assistant's tasks, assignments, classes and events: thin handlers over
+    /// collegiapp_core::items.
+    mod items {
+        use chrono::{Local, Utc};
+        use collegiapp_core::items::{self as core, Change, NewItem};
+        use serde_json::{json, Value};
+        use tauri::{AppHandle, Manager};
+        use uuid::Uuid;
+
+        use super::notes::param;
+        use crate::store::{lock, SharedState};
+
+        fn missing() -> (u16, Value) {
+            (
+                404,
+                json!({ "error": "no such item (search_items shows their ids)" }),
+            )
+        }
+
+        pub(in super::super) fn list(app: &AppHandle, query: &str) -> (u16, Value) {
+            let q = param(query, "q").unwrap_or_default();
+            let all = param(query, "all").is_some_and(|v| v == "1" || v == "true");
+            let limit = param(query, "limit")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(30usize)
+                .clamp(1, 100);
+            let state = app.state::<SharedState>();
+            let g = lock(&state);
+            let d = &g.data;
+            let now = Local::now().fixed_offset();
+            let rows: Vec<_> = core::list(&d.items, &d.courses, &q, all, limit, now)
+                .into_iter()
+                .map(core::brief)
+                .collect();
+            (200, json!({ "items": rows }))
+        }
+
+        pub(in super::super) fn read(app: &AppHandle, id: &str) -> (u16, Value) {
+            let Ok(id) = Uuid::parse_str(id.trim_matches('/')) else {
+                return missing();
+            };
+            let state = app.state::<SharedState>();
+            let g = lock(&state);
+            match g.data.items.iter().find(|it| it.id == id && core::is_item(it)) {
+                Some(it) => (200, json!({ "item": core::row(it, &g.data.courses) })),
+                None => missing(),
+            }
+        }
+
+        pub(in super::super) fn create(app: &AppHandle, body: &[u8], who: &str) -> (u16, Value) {
+            let n: NewItem = match serde_json::from_slice(body) {
+                Ok(n) => n,
+                Err(e) => return (400, json!({ "error": e.to_string() })),
+            };
+            let state = app.state::<SharedState>();
+            let made = {
+                let mut g = lock(&state);
+                let device = g.device_id();
+                core::create(&n, &g.data.courses, &Local, Utc::now(), &device).map(|it| {
+                    let r = core::row(&it, &g.data.courses);
+                    g.data.items.push(it);
+                    r
+                })
+            };
+            match made {
+                Ok(r) => match crate::commands::changed_by(app, &state, "assistant") {
+                    Ok(()) => (200, json!({ "item": r, "changed": true, "by": who })),
+                    Err(e) => (500, json!({ "error": e })),
+                },
+                Err(e) => (400, json!({ "error": e })),
+            }
+        }
+
+        /// `who` names the assistant in the trash ("Changed by Claude").
+        pub(in super::super) fn edit(
+            app: &AppHandle,
+            id: &str,
+            body: &[u8],
+            who: &str,
+        ) -> (u16, Value) {
+            let Ok(id) = Uuid::parse_str(id.trim_matches('/')) else {
+                return missing();
+            };
+            let c: Change = match serde_json::from_slice(body) {
+                Ok(c) => c,
+                Err(e) => return (400, json!({ "error": e.to_string() })),
+            };
+            let state = app.state::<SharedState>();
+            let done = {
+                let mut g = lock(&state);
+                let (device, courses) = (g.device_id(), g.data.courses.clone());
+                let Some(it) = g
+                    .data
+                    .items
+                    .iter_mut()
+                    .find(|it| it.id == id && core::is_item(it))
+                else {
+                    return missing();
+                };
+                let was = it.clone();
+                if c.delete {
+                    it.deleted = true;
+                    it.touch(Utc::now(), &device);
+                    let r = core::row(&was, &courses);
+                    g.trash_put(vec![(was, format!("Deleted by {who}"), true)]);
+                    Ok((r, true, true))
+                } else {
+                    match core::edit(it, &c, &courses, &Local) {
+                        Ok(any) => {
+                            if any {
+                                it.touch(Utc::now(), &device);
+                            }
+                            let r = core::row(it, &courses);
+                            if any {
+                                g.trash_put(vec![(was, format!("Changed by {who}"), false)]);
+                            }
+                            Ok((r, any, false))
+                        }
+                        Err(e) => Err(e),
+                    }
+                }
+            };
+            match done {
+                Ok((r, true, deleted)) => match crate::commands::changed_by(app, &state, "assistant")
+                {
+                    Ok(()) => (200, json!({ "item": r, "changed": true, "deleted": deleted })),
+                    Err(e) => (500, json!({ "error": e })),
+                },
+                Ok((r, false, _)) => (200, json!({ "item": r, "changed": false })),
+                Err(e) => (400, json!({ "error": e })),
+            }
+        }
+    }
+
     /// An assistant's notes: thin handlers over collegiapp_core::notes.
     mod notes {
         use chrono::{Local, Utc};
@@ -581,7 +721,7 @@ mod http {
         }
 
         /// One `key=value` of a query string, decoded.
-        fn param(query: &str, key: &str) -> Option<String> {
+        pub(in super::super) fn param(query: &str, key: &str) -> Option<String> {
             query.split('&').find_map(|kv| {
                 let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
                 (k == key).then(|| {

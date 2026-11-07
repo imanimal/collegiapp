@@ -11,6 +11,7 @@
 pub mod filter;
 pub mod gradescope;
 pub mod ics;
+pub mod items;
 pub mod model;
 pub mod notes;
 pub mod pocketcanvas;

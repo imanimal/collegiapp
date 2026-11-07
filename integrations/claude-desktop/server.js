@@ -34,6 +34,8 @@ const INSTRUCTIONS = `Collegiapp is the user's planner and notes app (they're a 
 - When the user asks to save, jot, write up or keep something in their notes, write it with create_note. To add to a note they already have, find it with search_notes and use append_to_note. Say what you saved; don't repeat the whole note in the chat unless asked.
 - Notes tagged #ai hold the user's standing rules for notes an AI writes: search "#ai" before writing and follow them.
 - update_note with text replaces the whole note (the old text goes to the app's trash). Read it first and keep every fact, link, number, date and checkbox the user wrote unless they asked you to drop it. Prefer append_to_note for additions.
+- Everything else on the user's list (tasks, assignments, exams, classes, events, appointments) is an item. Look before you act: search_items finds them (its query takes words plus kind:event, due:today, due<=week, course:130a, status:todo), read_item shows one in full, update_item changes, finishes (status done) or deletes one, and add_item puts a new event or task on the list with real times. The user's Google Calendar events arrive as items too, and an item you add here shows in the app on every device they sync.
+- Write times as the user's local time like 2026-11-04T14:00, or with an offset. Check today's date before you resolve "tomorrow" or "Friday".
 - File a note under a class when it's for one (list_classes shows them; a code like "CMPSC 130A" or an alias works).
 - The first call asks the user to click Allow in Collegiapp. If a tool says it's waiting for that, tell the user the code and to click Allow, then try again.
 
@@ -153,7 +155,15 @@ function about(n) {
 const line = (n) => `- "${n.title}" (id ${n.id}) · ${about(n)}${n.preview ? "\n  " + n.preview : ""}`;
 const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
 const list = (v) => (Array.isArray(v) ? v.map(str) : typeof v === "string" && v.trim() ? [v] : []);
-const needId = (a) => { const id = str(a.id).trim(); if (!id) throw new Fail("Which note? Pass its id from search_notes."); return encodeURIComponent(id); };
+const needId = (a, what = "note") => { const id = str(a.id).trim(); if (!id) throw new Fail(`Which ${what}? Pass its id from search_${what}s.`); return encodeURIComponent(id); };
+const SCHEDULED = ["class", "event", "ticket", "office_hours"];
+const clock = (t) => new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+const when = (t) => new Date(t).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function itemLine(it) {
+  const span = it.due ? (it.end && it.end !== it.due ? `${when(it.due)} to ${clock(it.end)}` : when(it.due)) : "";
+  return `- "${it.title}" (id ${it.id}) · ${[it.kind, it.status, it.class, span && (SCHEDULED.includes(it.kind) ? "" : "due ") + span, it.location && "at " + it.location,
+    (it.tags || []).map((t) => "#" + t).join(" "), it.priority && "!".repeat(it.priority), it.source && it.source !== "manual" && "from " + it.source].filter(Boolean).join(" · ")}${it.notes ? "\n  " + it.notes.replace(/\s+/g, " ").slice(0, 160) : ""}`;
+}
 
 const TOOLS = [
   {
@@ -242,6 +252,94 @@ const TOOLS = [
     },
   },
   {
+    name: "search_items",
+    title: "Search the list",
+    description: "Search everything on the user's Collegiapp list except notes: tasks, assignments, exams, quizzes, classes, office hours, events and appointments. The query takes words from the title, notes or location plus filters: kind:event, kind:exam, course:130a, status:todo, tag:x, due:today, due:tomorrow, due<=week (everything through the coming Sunday), due>=3d, is:overdue, src:gcalev (their Google Calendar events), src:canvas. Open items only unless all is true; the soonest first. Each result has its id, kind, status, class, due (the start for a class or event), end, location and a preview of its notes.",
+    inputSchema: { type: "object", properties: {
+      query: { type: "string", description: "Words and filters; empty for everything open" },
+      all: { type: "boolean", description: "Also done and dropped items (default false)" },
+      limit: { type: "integer", minimum: 1, maximum: 100, description: "At most this many (default 30)" },
+    } },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    async run(a) {
+      const q = new URLSearchParams({ q: str(a.query), limit: String(Math.min(100, Math.max(1, parseInt(a.limit, 10) || 30))) });
+      if (a.all) q.set("all", "1");
+      const items = (await api("GET", "/v1/items?" + q)).items || [];
+      if (!items.length) return a.query ? `Nothing on the list matches "${str(a.query)}".` : "Nothing open on the list.";
+      return `${items.length} item${items.length > 1 ? "s" : ""}:\n` + items.map(itemLine).join("\n");
+    },
+  },
+  {
+    name: "read_item",
+    title: "Read an item",
+    description: "One item from the list in full, with its whole notes text and links.",
+    inputSchema: { type: "object", properties: { id: { type: "string", description: "The item's id from search_items" } }, required: ["id"] },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    async run(a) {
+      const it = (await api("GET", "/v1/items/" + needId(a, "item"))).item;
+      return `${itemLine(it).split("\n")[0]}${it.links && it.links.length ? "\n  links: " + it.links.join(", ") : ""}\n---\n${it.notes || "(no notes)"}`;
+    },
+  },
+  {
+    name: "add_item",
+    title: "Add an event or task",
+    description: "Put one item on the user's list with exact times. For something that happens at a time (a meeting, appointment, dinner, office hours) give due as the start and end as the finish, which makes it an event on their calendar; for something to do, give kind (task, assignment, exam, quiz, lab, reading, project, errand, application) and due as the deadline. Use add_tasks instead when a quick-add line says it better.",
+    inputSchema: { type: "object", properties: {
+      title: { type: "string" },
+      kind: { type: "string", description: "event (the default when due and end are both given), task, assignment, exam, quiz, lab, reading, project, class, office_hours, ticket, errand, application" },
+      due: { type: "string", description: "Local time like 2026-11-04T14:00, or with an offset; for an event, its start" },
+      end: { type: "string", description: "Local time the event ends (an event with a start and no end runs an hour)" },
+      class: { type: "string", description: "A class code, alias or number like 130a" },
+      location: { type: "string" },
+      notes: { type: "string" },
+      tags: { type: "array", items: { type: "string" } },
+      priority: { type: "integer", minimum: 0, maximum: 3 },
+      est_minutes: { type: "integer", minimum: 1, description: "How long the work takes" },
+    }, required: ["title"] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    async run(a) {
+      const b = {};
+      for (const k of ["title", "kind", "due", "end", "class", "location", "notes"]) if (typeof a[k] === "string") b[k] = a[k];
+      b.tags = list(a.tags);
+      for (const k of ["priority", "est_minutes"]) if (Number.isInteger(a[k])) b[k] = a[k];
+      const it = (await api("POST", "/v1/items", b)).item;
+      return `Added to Collegiapp:\n${itemLine(it)}`;
+    },
+  },
+  {
+    name: "update_item",
+    title: "Change or delete an item",
+    description: "Change an item from the list: only what you pass changes. Reschedule it (due, end), rename it, mark it done (status \"done\") or back to todo, file it under a class, add notes, or delete it. An empty string clears due, end, class or location. Items that come from Canvas or Google Calendar keep your status, notes and tags across their next refresh, but a time or title you change there is put back from the source, so change those at the source. A deleted item goes to the app's trash.",
+    inputSchema: { type: "object", properties: {
+      id: { type: "string", description: "The item's id from search_items" },
+      title: { type: "string" },
+      kind: { type: "string" },
+      status: { type: "string", enum: ["inbox", "todo", "doing", "done", "dropped"] },
+      due: { type: "string", description: "Local time like 2026-11-04T14:00; the start for a class or event; empty clears it" },
+      end: { type: "string" },
+      class: { type: "string", description: "A class code, alias or number; empty takes it out of its class" },
+      location: { type: "string" },
+      notes: { type: "string", description: "Replaces its notes (read_item first and keep what's there)" },
+      append_notes: { type: "string", description: "Added after its notes" },
+      add_tags: { type: "array", items: { type: "string" } },
+      remove_tags: { type: "array", items: { type: "string" } },
+      priority: { type: "integer", minimum: 0, maximum: 3 },
+      est_minutes: { type: "integer", minimum: 0, description: "0 clears it" },
+      delete: { type: "boolean", description: "Delete the item" },
+    }, required: ["id"] },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    async run(a) {
+      const e = {};
+      for (const k of ["title", "kind", "status", "due", "end", "class", "location", "notes", "append_notes"]) if (typeof a[k] === "string") e[k] = a[k];
+      for (const k of ["priority", "est_minutes"]) if (Number.isInteger(a[k])) e[k] = a[k];
+      e.add_tags = list(a.add_tags); e.remove_tags = list(a.remove_tags);
+      if (a.delete === true) e.delete = true;
+      const r = await api("POST", "/v1/items/" + needId(a, "item"), e);
+      if (r.deleted) return `Deleted "${r.item.title}" from Collegiapp (it's in the trash).`;
+      return r.changed ? `Changed in Collegiapp:\n${itemLine(r.item)}` : `"${r.item.title}" already looked like that; nothing changed.`;
+    },
+  },
+  {
     name: "list_classes",
     title: "List classes",
     description: "The user's classes in Collegiapp, with the codes and aliases create_note and update_note take for class.",
@@ -307,7 +405,18 @@ async function dispatch(m) {
   }
 }
 
-if (require.main === module) {
+// Serve when started as the server: `node server.js`, or imported by a host that puts this file in argv[1]. Claude
+// Desktop's built-in Node does that (its mcp-runtime nodeHost runs the entry point with import() inside a utility
+// process, with stdin and stdout routed through a message port), so require.main there is the host, not this module.
+// A test that only requires it for dispatch() gets no stdio loop.
+function startedAsServer() {
+  if (require.main === module) return true;
+  const real = (p) => { try { return fs.realpathSync(p); } catch (e) { return path.resolve(p); } };
+  const a = process.argv[1] ? real(process.argv[1]) : "", b = real(__filename);
+  return !!a && (process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b);
+}
+
+if (startedAsServer()) {
   let buf = "";
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", (d) => {

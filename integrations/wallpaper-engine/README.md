@@ -32,7 +32,7 @@ Collegiapp rewrites `presence.js` beside its store every 15 seconds and after ev
 
 ## The quarter
 
-UCSB weeks are counted from **First day of classes**. A quarter that starts mid-week, like Fall on a Thursday, begins in week 0. Weeks 1–10 are classes, and finals run from the Saturday before week 11. Set the next quarter's name and first day when it starts.
+Weeks are counted from **First day of classes**. A quarter that starts mid-week, like Fall on a Thursday, begins in week 0. Weeks 1–10 are classes, and finals run from the Saturday before week 11. Set the next quarter's name and first day when it starts.
 
 ## Trying it in a browser
 

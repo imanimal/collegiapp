@@ -3,7 +3,7 @@
 "use strict";
 const http = require("http"), fs = require("fs"), os = require("os"), path = require("path"), assert = require("assert"), { spawn } = require("child_process");
 
-const notes = [], tokens = new Set(), asks = [];
+const notes = [], things = [], tokens = new Set(), asks = [];
 let polls = 0;
 const bridge = http.createServer((req, res) => {
   let body = "";
@@ -32,11 +32,40 @@ const bridge = http.createServer((req, res) => {
       if (json.title) n.title = json.title;
       return out(200, { note: sum(n), changed: !!(json.append || json.text || json.title) });
     }
+    const row = (t) => Object.assign({ kind: "task", status: "todo", class: null, due: null, end: null, location: null, tags: [], priority: 0, source: "manual", notes: "", links: [] }, t);
+    if (req.method === "GET" && p === "/v1/items") return out(200, { items: things.filter((t) => (t.title + t.notes).toLowerCase().includes(url.searchParams.get("q").toLowerCase())).map(row) });
+    if (req.method === "POST" && p === "/v1/items") { const t = Object.assign({ id: "i" + (things.length + 1), kind: json.due && json.end ? "event" : "task" }, json); things.push(t); return out(200, { item: row(t), changed: true }); }
+    const thing = things.find((x) => p === "/v1/items/" + x.id);
+    if (p.startsWith("/v1/items/") && !thing) return out(404, { error: "no such item (search_items shows their ids)" });
+    if (req.method === "GET" && thing) return out(200, { item: row(thing) });
+    if (req.method === "POST" && thing) {
+      if (json.delete) { things.splice(things.indexOf(thing), 1); return out(200, { item: row(thing), changed: true, deleted: true }); }
+      if (json.status) thing.status = json.status;
+      if (json.due) thing.due = json.due;
+      return out(200, { item: row(thing), changed: !!(json.status || json.due) });
+    }
     if (p === "/v1/classes") return out(200, { classes: [{ id: "c", code: "CMPSC 130A", title: "Algorithms", aliases: ["algo"], quarter: "F26", hidden: false }] });
     if (p === "/v1/capture") return out(200, { title: json.text.split(" ")[0] });
     out(404, { error: "not found" });
   });
 });
+
+// Claude Desktop's built-in Node imports the entry point (import(), argv[1] = server.js), so require.main isn't the
+// server's module there; it still has to answer initialize.
+function hostStyle() {
+  return new Promise((resolve, reject) => {
+    const host = 'import(require("url").pathToFileURL(process.argv[1]).href);';
+    const p = spawn(process.execPath, ["-e", host, path.join(__dirname, "server.js")], { stdio: ["pipe", "pipe", "inherit"] });
+    const t = setTimeout(() => { p.kill(); reject(new Error("no answer to initialize when imported by a host")); }, 5000);
+    let out = "";
+    p.stdout.on("data", (d) => {
+      out += d; const i = out.indexOf("\n"); if (i < 0) return;
+      clearTimeout(t); p.kill();
+      try { assert.strictEqual(JSON.parse(out.slice(0, i)).result.serverInfo.name, "collegiapp"); resolve(); } catch (e) { reject(e); }
+    });
+    p.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "claude-ai", version: "1" } } }) + "\n");
+  });
+}
 
 bridge.listen(0, "127.0.0.1", async () => {
   const tokenFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "collegiapp-mcp-")), "assistant.json");
@@ -59,7 +88,7 @@ bridge.listen(0, "127.0.0.1", async () => {
     assert.match(init.result.instructions, /COLLEGIAPP MARKDOWN/);
     srv.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
     const tools = (await rpc("tools/list")).result.tools.map((t) => t.name);
-    assert.deepStrictEqual(tools, ["search_notes", "read_note", "create_note", "append_to_note", "update_note", "list_classes", "add_tasks"]);
+    assert.deepStrictEqual(tools, ["search_notes", "read_note", "create_note", "append_to_note", "update_note", "search_items", "read_item", "add_item", "update_item", "list_classes", "add_tasks"]);
 
     // the first call pairs (two at once share the request), then goes through
     const [made, found] = await Promise.all([call("create_note", { title: "Heaps", text: "- [ ] read 6.1", class: "algo", tags: ["exam"], pinned: true }), call("search_notes", { query: "zzz" })]);
@@ -75,6 +104,17 @@ bridge.listen(0, "127.0.0.1", async () => {
     assert.match((await call("list_classes", {})).text, /CMPSC 130A · Algorithms \(also algo\) · F26/);
     assert.strictEqual((await call("add_tasks", { tasks: ["pa3 130a fri", "read ch6 tmr"] })).text, 'Added to Collegiapp: "pa3", "read".');
 
+    const added = await call("add_item", { title: "OBSD appointment", due: "2026-11-04T14:00:00Z", end: "2026-11-04T14:30:00Z", location: "SRB", tags: ["advising"] });
+    assert.match(added.text, /^Added to Collegiapp:\n- "OBSD appointment" \(id i1\) · event · todo · .*Nov 4.* · at SRB/);
+    assert.match((await call("search_items", { query: "obsd" })).text, /^1 item:\n- "OBSD appointment"/);
+    assert.strictEqual((await call("search_items", { query: "zzz" })).text, 'Nothing on the list matches "zzz".');
+    assert.match((await call("update_item", { id: "i1", status: "done" })).text, /^Changed in Collegiapp:/);
+    assert.match((await call("update_item", { id: "i1", status: "done" })).text, /Changed in Collegiapp/);
+    assert.match((await call("read_item", { id: "i1" })).text, /OBSD appointment/);
+    assert.match((await call("update_item", { id: "i1", delete: true })).text, /Deleted "OBSD appointment"/);
+    assert.ok((await call("read_item", { id: "i1" })).error);
+    assert.ok((await call("update_item", { id: " " })).error);
+
     const missing = await call("read_note", { id: "nope" });
     assert.ok(missing.error && /no such note/.test(missing.text));
     assert.ok((await call("append_to_note", { id: "n1", text: " " })).error);
@@ -85,7 +125,8 @@ bridge.listen(0, "127.0.0.1", async () => {
     tokens.clear();
     assert.match((await call("search_notes", { query: "Heaps" })).text, /1 note/);
     assert.strictEqual(asks.length, 2);
-    console.log("ok: the MCP server pairs, then searches, reads, creates, appends to and changes notes, lists classes and adds tasks");
+    await hostStyle();
+    console.log("ok: the MCP server pairs, then searches, reads, creates, appends to and changes notes, searches, adds, changes and deletes list items and calendar events, lists classes and adds tasks, and answers when a host imports it");
   } catch (e) {
     console.error(e);
     process.exitCode = 1;

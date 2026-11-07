@@ -1,6 +1,6 @@
 # Sync across devices
 
-Collegiapp keeps your list and notes the same on your computers, your phone and the web app through **your own Firebase project** on the free Spark plan, signed in with your Google account. There's no Collegiapp server, nothing to pay, and your data goes only to your project.
+Collegiapp keeps your list and notes the same on your computers, your phone and the web app through **Firebase** on the free Spark plan, signed in with your Google account. The app and the web app come set up with this repo's project (`collegiapp`), which everyone who installs them shares; the Sync dialog can point the app at your own instead. There's no Collegiapp server and nothing to pay. Each Google account can read only its own documents, but whoever owns a project can see everything in it from the Firebase console: on the built-in one that's its developer, so if you'd rather nobody could, set up your own (below).
 
 - **Desktop app:** `src-tauri/src/cloud.rs`. It signs in on the web app's sign-in page in your browser (`ui/link.html`), which hands Google's answer back to the app on this computer, then it uses Firestore over REST with the system `curl`.
 - **Web app** (and the phone, from the home screen): `ui/js/cloud.js` on Firebase Hosting at `https://PROJECT_ID.firebaseapp.com`. Firebase Auth and Firestore with an offline cache, so it opens and takes edits without a connection.
@@ -41,7 +41,7 @@ It writes one document, `users/{uid}/meta/pocketcanvas` (`j`, `d`, `s` like the 
 
 Everything runs through the Firebase CLI with npx, from the repo root. It isn't a build step: the web app is the same buildless `ui/`. This repo's project is `collegiapp` (set up 2026-11-02; its config is in `cloud-config.js`), so a fresh setup is only for a fork or a new project.
 
-1. **Sign in to the CLI** with your Google account. Use a personal account: UCSB's Google Workspace may not allow new Cloud projects.
+1. **Sign in to the CLI** with your Google account. Use a personal account: a school's Google Workspace may not allow new Cloud projects.
 
    ```bash
    npx firebase-tools login
@@ -123,10 +123,10 @@ Each Item is one document at `users/{uid}/items/{item id}`:
 
 - **Desktop timing:**
   - Every 5 s it looks for items whose `updated_at` isn't the version it last pushed or pulled. A change waits 3 s to settle, so typing in a note goes up once.
-  - Every 60 s it pulls what was written after the newest `s` it has seen. Because `s` is the server's time, a device with a wrong clock can't hide a change.
+  - Every 60 s while its window has the focus, and every 10 min otherwise, it pulls what was written after the newest `s` it has seen; coming back to the window pulls within 5 s. Because `s` is the server's time, a device with a wrong clock can't hide a change.
 - **Order of a cycle:** pull first, merge with the core's last-write-wins (`collegiapp_core::sync::merge`: later `updated_at`, then a deletion, then the device id), then push what's newer here. So an edit made offline never overwrites a newer one made elsewhere.
 - **Deletions:** a deletion that comes from another device puts the local version in the trash ("Deleted on another device"), so you can restore it.
-- **Web:** it listens to the collection live and writes whole documents with the server's time. Firestore's cache holds the list, and writes made offline wait in it until there's a connection.
+- **Web:** it fills the list from Firestore's cache, listens live to what was written after the newest cached document from another device (see [Spark limits](#spark-limits)) and writes whole documents with the server's time. Firestore's cache holds the list, and writes made offline wait in it until there's a connection.
 - **Size:** an item over 900 KB (Firestore's limit is 1 MiB a document) stays on its device.
 
 The settings and the courses are one more document, `users/{uid}/meta/settings`, with the same `d` and `s`. Its `j` is a map from a key (`look.pal`, `gcal_hidden`, `course.cmpsc130a-f26`) to that value and the time and device of its last change (`SyncedSettings` in the core's `sync.rs`; `ui/js/cloud.js` mirrors it). A course's value is its JSON, and null once it's deleted or merged into another:
@@ -139,11 +139,13 @@ The settings and the courses are one more document, `users/{uid}/meta/settings`,
 
 ### Spark limits
 
-The free plan allows 50,000 reads, 20,000 writes and 1 GiB stored. One student's list uses a small fraction:
+The free plan allows 50,000 reads and 20,000 writes a day and 1 GiB stored, for the whole project, so on the built-in one every account shares them. Past a limit, sync stops for everyone until the quota resets at midnight Pacific time; nothing is billed, and each device keeps working on its own copy. So both sides read as little as they can:
 
-- **Reads:** a desktop that's open all day pulls 1,440 times, and an empty pull counts as one read; reading the settings document is one more read a pull, 2,880 a day in all.
-- **Writes:** each change is one write.
-- **First sync:** the first sign-in writes every item once, typically a few hundred.
+- **Desktop:** a pull is one read when nothing changed, plus one for the settings document. Pulling every 60 s only while the window has the focus, a computer that's on all day with the app in front for 2 hours spends about 500 reads, not 2,880.
+- **Web:** Firestore bills a listener that reopens after 30 min away for every document it sends. The page fills the list from its cache, which has no size limit, and listens only for what was written after the newest cached document from another device: those reach the cache only in the listener's consistent snapshots, so nothing older is missing. Its own writes land in the cache when the server acknowledges them, before the listener has caught up, so they count only when no other device has written. Opening the phone app costs what changed since, not the whole list; once a week the page reads the whole list again, which mends anything the cache lost.
+- **Writes:** each change is one write; the first sign-in writes every item once, typically a few hundred.
+
+That leaves room for about a hundred students who use it every day. The rules can't limit how much one account writes, so a runaway client or a bad actor could still use up a day's quota for everyone; on Spark that costs a day's sync, never money.
 
 ## Signing out
 

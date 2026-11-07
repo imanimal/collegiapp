@@ -129,6 +129,9 @@
   }
   const cById = (id) => S.courses.find((c) => c.id === id);
   const courseOf = (it) => (it && it.course ? cById(it.course) : null);
+  // The class link an item's course key opens: the one picked for it alone (it.quick, Item.quick_link), else the class's
+  // quick link, its first. Swapping for the class moves a link to the front; readers only append theirs, so it stays.
+  const qLink = (it, c) => (c && c.links.length ? (it && it.quick && c.links.find((l) => l[1] === it.quick)) || c.links[0] : null);
   const kc = (c) => (c ? `--kc: var(--k${c.color});` : "");
   const cmpDue = (a, b) => (a.due == null) - (b.due == null) || (a.due || 0) - (b.due || 0);
   const busy = () => { const a = document.activeElement; return !!a && !!a.closest && !!a.closest("#screen, #island") && (/INPUT|TEXTAREA|SELECT/.test(a.tagName) || a.isContentEditable); };
@@ -241,6 +244,7 @@
     eyeoff: "........#|.......#.|..#####..|.#...#.#.|#...#...#|.#.#...#.|..#####..|.#.......|#........",
     grip: ".........|...#.#...|.........|...#.#...|.........|...#.#...|.........|...#.#...|.........",
     edit: "......##.|.....#..#|....#..#.|...#..#..|..#..#...|.#..#....|.#.#.....|.##......|.........",
+    swap: "......#..|.......#.|#########|.......#.|..#...#..|.#.......|#########|.#.......|..#......",
   };
   const ICONS = {};
   for (const n in PIX) ICONS[n] = PIX[n].split("|").map((row, y) => row.replace(/#+/g, (run, x) => `M${x} ${y}h${run.length}v1h-${run.length}z`).replace(/\./g, "")).join("");
@@ -280,6 +284,7 @@
     eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z",
     eyeoff: "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2",
     grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01", edit: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
+    swap: "M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4",
   };
   const ic = (n, c, as) => ((as || document.documentElement.dataset.look) === "standard"
     ? `<svg class="i ln${c ? " " + c : ""}" viewBox="0 0 24 24" aria-hidden="true"><path d="${LINE[n] || ""}"/></svg>`
@@ -603,6 +608,7 @@
     // a section shows while it has something to show (Notes always, for its + key); every one shows while you edit
     const secs = T.tree.filter((n) => ed || (!n.off && (n.add || under(n, 1).length)));
     const key = (act, icon, label, k) => `<button class="btn ghost sm" data-act="${act}" title="${esc(label)}${k ? " (" + esc(k) + ")" : ""}" aria-label="${esc(label)}">${ic(icon)}</button>`;
+    const oldTree = $(".sd-tree", el), kept = oldTree ? oldTree.scrollTop : 0;
     el.innerHTML = `<div class="panel sd">` + (ed
       ? `<div class="ph"><span class="pt">${ic("edit")}Edit the sidebar</span><span class="sp"></span><button class="btn sm" data-act="sideEdit" title="Done (Esc)">Done</button></div>`
         + `<div class="sd-tip">Drag ${ic("grip")} to move views, sections and classes, from one group to another too. Type over a section's name to rename it; the eye hides.</div>`
@@ -614,6 +620,8 @@
         ? `<div class="sd-edfoot"><button class="btn sm" data-act="sdNewSec">${ic("plus")}New group</button><span class="sp"></span><button class="btn ghost sm" data-act="sdReset" title="Put back the usual sections, order and names">Reset</button></div></div>`
         : `<div class="sd-foot">${key("feedsOpen", "week", "Calendars and sources")}${key("trash", "trash", "Trash")}<span class="sp"></span>${key("lab", "lab", "Appearance", MOD + "+.")}${key("help", "help", "Keyboard shortcuts", "?")}</div></div>`)
       + `<div class="sd-grip" role="separator" aria-orientation="vertical" aria-label="Sidebar width" tabindex="0" aria-valuemin="${SIDE_MIN}" aria-valuemax="${SIDE_MAX}" aria-valuenow="${sideW()}" title="Drag to resize · double-click for the usual width"></div>`;
+    // the rebuilt tree starts at the top; a click shouldn't throw you back there
+    if (kept) { const t = $(".sd-tree", el); if (t) t.scrollTop = kept; }
     // one row takes Tab (the place you're in); the arrows move between the rest
     const rows = $$(".sd-tree .sd-row", el), on = $(".sd-tree .sd-row.on", el);
     const name = S.sideFocus && S.sideFocus.startsWith("name:") && $(`.sd-name[data-sec="${CSS.escape(S.sideFocus.slice(5))}"]`, el);
@@ -1007,9 +1015,12 @@
   }
 
   /* ─────────── list computation ─────────── */
-  function listItems() {
-    const terms = E.parseFilter(S.q);
-    const list = S.items.filter((it) => E.matchItem(it, terms, ctx()));
+  // The calendar is a record of the days, so it keeps events and classes that have already ended
+  // (is:open drops them); done and dropped items stay out.
+  function listItems(cal) {
+    const open = cal && /(^|\s)is:open(?=\s|$)/.test(S.q);
+    const terms = E.parseFilter(open ? S.q.replace(/(^|\s)is:open(?=\s|$)/g, "$1") : S.q);
+    const list = S.items.filter((it) => E.matchItem(it, terms, ctx()) && (!open || (it.status !== "done" && it.status !== "dropped")));
     if (S.sort === "score") {
       const sc = new Map(list.map((it) => [it.id, E.score(it, S.now)]));
       return list.sort((a, b) => ((sc.get(b.id) || { total: -1 }).total - (sc.get(a.id) || { total: -1 }).total) || cmpDue(a, b));
@@ -1111,7 +1122,8 @@
   }
   // Calendar: Day is one day hour by hour (dayLens), Week seven days from today (or the day you paged to), Month the whole
   // month on a Sunday-first grid. All show the list's items, so the filter bar narrows them; [ and ] page, and a day's
-  // number in Month or its header in Week opens that day.
+  // number in Month or its header in Week opens that day. The bar (and Day's head) is the lens's `top`: renderList pins it
+  // above the scrolling body.
   function calBar() {
     const at = S.cal.at != null ? S.cal.at : E.startOfDay(S.now), d = new Date(at), month = S.cal.mode === "month", dayM = S.cal.mode === "day";
     const e = new Date(E.addDays(at, 6));
@@ -1127,11 +1139,11 @@
   }
   const dayItems = (list, day) => list.filter((it) => it.due != null && it.due >= day && it.due < E.addDays(day, 1));
   function weekLens() {
-    const list = listItems(); S.listIds = list.map((x) => x.id);
+    const list = listItems(true); S.listIds = list.map((x) => x.id);
     if (S.cal.mode === "month") return monthLens(list);
     if (S.cal.mode === "day") return dayLens(list);
     const start = S.cal.at != null ? S.cal.at : E.startOfDay(S.now), today = E.startOfDay(S.now);
-    let h = calBar() + `<div class="week">`;
+    let h = `<div class="week">`;
     for (let d = 0; d < 7; d++) {
       const day = E.addDays(start, d), dt = new Date(day);
       const its = dayItems(list, day);
@@ -1140,7 +1152,7 @@
         return `<div class="wi ${E.SCHEDULED(it.kind) ? "cls" : ""} ${it.kind === "exam" ? "exam" : ""}" data-act="sel" data-id="${it.id}" data-k="w:${it.id}" style="${kc(c)}" title="${esc(it.title)}"><span class="wt">${esc(mTime(it.due))}${c ? " · " + clink(c, esc(c.tag)) : ""}</span><span class="wn">${esc(it.title)}</span>${pl ? `<span class="wl">${ic("pin")}${esc(placeShort(pl))}</span>` : ""}</div>`;
       }).join("") || '<div class="wnone">Free</div>'}</div>`;
     }
-    return { h: h + `</div>`, n: list.length };
+    return { top: calBar(), h: h + `</div>`, n: list.length };
   }
   // Day: one day hour by hour, like a phone's calendar. Classes, events, exams and when-free plans are blocks at their
   // times (side by side where they overlap); deadlines are flags at theirs, with the work left and when to start; the now
@@ -1211,7 +1223,7 @@
       if (gapTo) nowL += `<div class="dv-gap" data-d="${day}" data-e="${gapTo.s}" style="--t:${hrs(now, day)};--d:${((gapTo.s - now) / HR).toFixed(3)}"><span><b data-dur data-t="${gapTo.s}">${esc(E.fmtDur(gapTo.s - now))}</b> free until ${esc(gapTo.it.title)}</span></div>`;
     }
     const empty = !blocks.length && !flags.length ? `<div class="dv-empty dim">A clear day. Click an hour to add something, or type <code>whenfree</code> in quick add to drop a task into the first open slot.</div>` : "";
-    return { h: calBar() + head + empty + `<div class="dayv" style="--hrs:24"><div class="dv-grid">${g}<div class="dv-col">${ev}${fl}</div>${nowL}</div></div>`, n: list.length };
+    return { top: calBar() + head, h: empty + `<div class="dayv" style="--hrs:24"><div class="dv-grid">${g}<div class="dv-col">${ev}${fl}</div>${nowL}</div></div>`, n: list.length };
   }
   // the day opens scrolled to now (today), or its first thing, or 8 AM; once per day shown, so a re-render keeps your place
   function dayScroll() {
@@ -1229,7 +1241,7 @@
     const first = new Date(y, mo, 1).getTime(), lead = new Date(first).getDay(), start = E.addDays(first, -lead), today = E.startOfDay(S.now);
     const weeks = Math.ceil((lead + new Date(y, mo + 1, 0).getDate()) / 7), rank = (it) => (it.kind === "exam" ? 0 : E.SCHEDULED(it.kind) ? 2 : 1);
     const hm = (t) => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + (m ? ":" + String(m).padStart(2, "0") : "") + (h >= 12 ? "p" : "a"); };
-    let h = calBar() + `<div class="month">${DNM.map((n) => `<div class="mhd">${n}</div>`).join("")}`;
+    let h = `<div class="month">${DNM.map((n) => `<div class="mhd">${n}</div>`).join("")}`;
     for (let i = 0; i < weeks * 7; i++) {
       const day = E.addDays(start, i), dt = new Date(day), its = dayItems(list, day).sort((a, b) => rank(a) - rank(b) || a.due - b.due), fit = its.length > 3 ? 2 : 3;
       const cls = ["mday"]; if (dt.getMonth() !== mo) cls.push("out"); if (day === today) cls.push("today"); else if (day < today) cls.push("past");
@@ -1238,7 +1250,7 @@
         return `<div class="mi ${E.SCHEDULED(it.kind) ? "cls" : ""} ${it.kind === "exam" ? "exam" : ""}" data-act="sel" data-id="${it.id}" data-k="m:${it.id}" style="${kc(c)}" title="${esc(mTime(it.due) + " · " + it.title)}"><span class="mt">${hm(it.due)}</span><span class="mn">${esc(it.title)}</span></div>`;
       }).join("")}${its.length > fit ? `<button class="mmore" data-act="calDay" data-t="${day}">+${its.length - fit} more</button>` : ""}${its.length ? `<span class="mdots" aria-hidden="true">${its.slice(0, 4).map((it) => `<i style="${kc(courseOf(it))}"></i>`).join("")}</span>` : ""}</div>`;
     }
-    return { h: h + `</div>`, n: list.length };
+    return { top: calBar(), h: h + `</div>`, n: list.length };
   }
   function coursesLens() {
     const card = (c, i) => {
@@ -1322,7 +1334,7 @@
     const out = ({ list: listLens, week: weekLens, courses: coursesLens, links: linksLens, notes: notesLens }[S.lens] || listLens)();
     const showBar = S.lens === "list" || S.lens === "week" || S.lens === "notes", by = { score: "ranked by do-first score", due: "by due date", updated: "recently changed" }[S.sort];
     el.innerHTML = `<div class="panel" data-win="list"><div class="ph"><span class="pt" data-n="list:t" data-fx="print">${ic(v.id)}${esc(viewTitle())}</span><span class="sp"></span><span class="cnt" data-n="list:n">${S.lens === "list" ? `${out.n} items<span class="cnt-x"> · ${by}</span>` : S.lens === "notes" ? `${out.n} notes<span class="cnt-x"> · pinned, then recently edited</span>` : ""}</span></div>
-      ${showBar ? mFbar() : ""}<div class="pb rows ${S.animRows ? "anim" : ""}">${out.h}</div></div>`;
+      ${showBar ? mFbar() : ""}${out.top ? `<div class="cal-top">${out.top}</div>` : ""}<div class="pb rows ${S.animRows ? "anim" : ""}">${out.h}</div></div>`;
   }
 
   /* ─────────── render: inspector ─────────── */
@@ -1333,7 +1345,8 @@
     const swap = !el.hidden && el.dataset.for && el.dataset.for !== it.id;
     el.hidden = false;
     const head = (t) => `<div class="panel" data-win="insp" role="dialog" aria-label="${t}"><div class="ph"><span class="pt">${t}</span><span class="sp"></span><button class="btn ghost sm" data-act="closeInsp" aria-label="Close details">${ic("close")}<span class="bl">Close</span><kbd>Esc</kbd></button></div><div class="pb">`;
-    const c = courseOf(it), sched = E.SCHEDULED(it.kind);
+    const c = courseOf(it), sched = E.SCHEDULED(it.kind), qk = qLink(it, c), more = c && c.links.length > 1;
+    const swapT = more ? "Swap for another " + c.tag + " link, or add one" : "Add another " + (c ? c.tag : "") + " link to swap to";
     const pad = (n) => String(n).padStart(2, "0");
     const dl = (t) => { if (t == null) return ""; const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
     const seg = (field, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button class="chip ${String(cur) === String(v) ? "on" : ""}" data-act="setf" data-f="${field}" data-v="${v}">${l}</button>`).join("")}</div>`;
@@ -1351,7 +1364,7 @@
         <label>Alert</label>${seg("interrupt", [["none", "none"], ["nudge", "nudge"], ["alert", "alert"], ["takeover", "takeover"]], it.interrupt)}
       </div>
       ${it.location ? locBanner(it, sched && it.due > S.now ? tripTo(it) : null) : ""}
-      <div class="links">${it.links.map((l, i) => `<span class="lk"><button class="btn" data-act="open" data-url="${esc(l[1])}" title="${esc(l[1])}">${esc(l[0])}${ic("ext")}</button><button class="btn ghost lk-x" data-act="linkDel" data-i="${i}" aria-label="Remove the ${esc(l[0])} link" title="Remove this link">${ic("close")}</button></span>`).join("")}${c && c.links[0] ? `<button class="btn ghost" data-act="open" data-url="${esc(c.links[0][1])}">${esc(c.tag)} ${esc(c.links[0][0])}${ic("ext")}</button>` : ""}</div>
+      <div class="links">${it.links.map((l, i) => `<span class="lk"><button class="btn" data-act="open" data-url="${esc(l[1])}" title="${esc(l[1])}">${esc(l[0])}${ic("ext")}</button><button class="btn ghost lk-x" data-act="linkDel" data-i="${i}" aria-label="Remove the ${esc(l[0])} link" title="Remove this link">${ic("close")}</button></span>`).join("")}${qk ? `<span class="lk ql"><button class="btn ghost" data-act="open" data-url="${esc(qk[1])}" data-qlink="${it.id}" title="${esc(qk[1])}${it.quick === qk[1] ? " · picked for this one alone" : ""} · right-click to swap">${esc(c.tag)} ${esc(qk[0])}${ic("ext")}</button><button class="btn ghost lk-x" data-act="qlSwap" data-id="${it.id}" aria-label="${esc(swapT)}" title="${esc(swapT)}">${ic("swap")}</button></span>` : ""}</div>
       <label class="fbox lnk">${ic("links")}<input id="lnkIn" class="finput" placeholder="Paste a link · Enter adds it" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Add a link"></label>
       <textarea class="notes" data-field="notes" placeholder="Notes… (saved on blur)">${esc(it.notes)}</textarea>
       <div class="srcinfo">${it.src === "manual" ? "Added by you" : `Source: ${esc(srcName(it.src))} · ${LIVE ? "checked" : "synced"} ${syncedAgo}m ago · your edits are kept as overrides on re-sync`}</div>
@@ -1820,6 +1833,7 @@
       if (c.included) out.push({ sec: "Classes", label: c.code + " " + c.title, hint: "", sub: c.tag, run: () => (S.side ? sideGo("c:" + c.id) : setQ("is:open course:" + c.tag.toLowerCase())), kw: "show items folder" });
       if (c.included) cc("New item in " + c.code + "…", () => openQuick(c.tag.toLowerCase() + " "), "add create homework task");
       cc("Edit " + c.code + "…", () => openCourse(c.id), "rename change name link website gradescope page");
+      if (c.links.length) cc("Swap " + c.code + "'s quick link…", () => openQLink(null, c.id), "link switch change add webwork gradescope canvas");
       cc("Delete " + c.code + "…", () => openCourseDel(c.id), "remove trash erase duplicate");
       if (S.courses.length > 1) cc("Merge " + c.code + " into another course…", () => openCourseDel(c.id), "duplicate combine same");
       cc((c.included ? "Exclude " : "Include ") + c.code, () => ACTIONS.incl({ dataset: { c: c.id } }), c.included ? "hide clutter canvas" : "show unhide canvas");
@@ -1962,7 +1976,7 @@
     S.note = { id, before: how.isNew ? Object.assign(snap(it), { deleted: true }) : snap(it), isNew: !!how.isNew, kept: !how.isNew, side: S.noteSide != null ? S.noteSide : !narrow(), panel: "outline" };
     openOv("note", noteSheet(it), "sheet");
     S.note.ed = CA.editor.mount($("#nsEd"), {
-      md: it.notes, onChange: (md) => noteSave({ notes: md }), onInput: noteSoon, onState: noteTools, onLink: noteLinkAsk, onOpen: openLink,
+      key: id, md: it.notes, onChange: (md) => noteSave({ notes: md }), onInput: noteSoon, onState: noteTools, onLink: noteLinkAsk, onOpen: openLink,
       onRefuse: (m) => { toast(esc(m)); CA.sound.nope(); }, onCheck: (li, on) => { if (on) MO.ack(li, "stamp"); CA.sound.tick(); },
       onCallout: (k) => toast("Callout · " + NT().CALLOUT_LABEL[k] + " · click again for the next kind"), onDraw: openDraw,
     });
@@ -2602,7 +2616,7 @@
       ${field("fG", "Google Calendar", "Google Calendar › Settings › your calendar › Integrate calendar › Secret address in iCal format.", st.gcal_feed_url, fd.gcal, "https://calendar.google.com/calendar/ical/…/basic.ics")}
       <div class="feed"><b>Sync across devices</b><div class="dim">Your list and notes on your other computers, your phone and the web app, through your own free Firebase project.</div>
       <div class="dim feed-st">${S.cloud && S.cloud.signed_in ? "Signed in as " + esc(S.cloud.email || "you") : S.cloud && S.cloud.configured ? "Not signed in" : "Not set up"} · <button class="chip on" data-act="cloudOpen">${S.cloud && S.cloud.signed_in ? "Sync…" : "Set up…"}</button></div></div>
-      <div class="dim">These links work like passwords to your calendars. With sync on they go to your other devices through your own Firebase project, where only your Google account can read them. They're checked every 30 minutes; ${MOD}+R or F5 checks now.</div>
+      <div class="dim">These links work like passwords to your calendars. With sync on they go to your other devices through Firebase, where only your Google account (and the project's owner, in its console) can read them. They're checked every 30 minutes; ${MOD}+R or F5 checks now.</div>
       <div class="feed"><b>Gradescope</b><div class="dim">For classes that post work on Gradescope instead of Canvas. Sign in with your school account in the window that opens; the app then reads this quarter's courses and assignments every 30 minutes and checks off what you've submitted.</div>
       <div class="dim feed-st" id="gsSt">${gsOn ? (gsCourses ? gsCourses + " · " : "") + feedLine(fd.gradescope, "gradescope") : "Not connected"} · <button class="chip ${gsOn ? "" : "on"}" data-act="gsConnect">${gsOn ? "Sign in again" : "Sign in to Gradescope…"}</button>${gsOn ? ' <button class="chip" data-act="gsOff">Disconnect</button>' : ""}</div></div>
       <div class="feed"><b>WeBWorK</b><div class="dim">For math classes that put homework on WeBWorK. Pick your course and sign in with its WeBWorK username and password in the window that opens; the app then reads its open sets and due dates every 20 minutes. WeBWorK signs you out after 30 idle minutes, so after the app has been closed a while you may need to sign in again. Your sets stay either way.</div>
@@ -2643,7 +2657,7 @@
       copyOut(r.command, null, `${esc(r.error || "Not added")} · the command that adds it is on your clipboard`);
     }, (e) => toast(esc(String(e))));
   }
-  // Sync across devices: your own Firebase project with Google sign-in (src-tauri/src/cloud.rs in the app, cloud.js in the
+  // Sync across devices: Firebase (the built-in project or your own) with Google sign-in (src-tauri/src/cloud.rs in the app, cloud.js in the
   // web app; docs/SYNC.md). The app uses the project built in from cloud-config.js (or one pasted here) and signs in on
   // the web app's link page in the browser; the web app signs in with Google on the page.
   const cloudApi = {
@@ -2654,7 +2668,7 @@
     config: (config) => CA.store.invoke("cloud_config", { config }),
   };
   function openSync(edit) {
-    if (!OWN) return openOv("sync", dialog("Sync across devices", "Esc", `<div class="feeds"><div class="dim">In the app and the web app this keeps your list and notes the same on every device, through your own free Firebase project and your Google account. The demo keeps everything on this page.</div>
+    if (!OWN) return openOv("sync", dialog("Sync across devices", "Esc", `<div class="feeds"><div class="dim">In the app and the web app this keeps your list and notes the same on every device, through Firebase and your Google account. The demo keeps everything on this page.</div>
       <div class="nb"><button class="btn" data-act="closeOv">Close<kbd>Esc</kbd></button></div></div>`));
     S.cloudEdit = !!edit;
     cloudApi.status().then((st) => { S.cloud = st; syncDialog(); }, (e) => toast("Sync · " + esc(String(e))));
@@ -2835,11 +2849,72 @@
       S.courses.push(c);
     }
     c.code = code; c.tag = CA.store.tagOf(code); c.title = title;
-    const old = c.links.find((l) => !/canvas/i.test(l[0]));
-    if (old) c.links.splice(c.links.indexOf(old), 1);
-    if (link) c.links.push([/gradescope\.com/i.test(link) ? "Gradescope" : /\/webwork2\//i.test(link) ? "WeBWorK" : hostOf(link).split("/")[0], link]);
+    // the new page takes the old one's place, so a class whose quick link it was keeps it as the quick link
+    const old = c.links.find((l) => !/canvas/i.test(l[0])), at = old ? c.links.indexOf(old) : c.links.length;
+    const page = link ? [[/gradescope\.com/i.test(link) ? "Gradescope" : /\/webwork2\//i.test(link) ? "WeBWorK" : hostOf(link).split("/")[0], link]] : [];
+    c.links.splice(at, old ? 1 : 0, ...page);
     CA.store.saveCourse(c).catch((e) => toast("Not saved · " + esc(String(e))));
     closeOv(); toast(`${esc(code)} ${id ? "saved" : `added · press Q and try “hw1 ${esc(c.tag.toLowerCase())} fri”`}`, { ms: 7000 }); CA.sound.ok(); S.fx = { flip: true }; renderAll();
+  }
+
+  /* ─────────── a class's quick link ─────────── */
+  // Which of a class's links the course key on its work opens (qLink). Swapping is for the whole class by default (the
+  // link moves to the front of the course's links); "Just this one" keeps the pick on one item (it.quick) instead.
+  function openQLink(id, cid, keep) {
+    const it = id ? find(id) : null, c = it ? courseOf(it) : cById(cid);
+    if (!c || !c.links.length) return toast(c ? `${esc(c.code)} has no links yet · add its page with Edit class` : "This has no class links");
+    if (!keep || !it) S.qlOne = false;
+    S.qlFor = { id: it ? it.id : null, c: c.id };
+    const one = S.qlOne, cur = one ? qLink(it, c) : c.links[0], short = (t) => (t.length > 22 ? t.slice(0, 21) + "…" : t);
+    const scope = it ? `<div class="seg ql-scope" role="radiogroup" aria-label="Swap it for">${[[false, "All " + c.code + " work"], [true, "Just “" + short(it.title) + "”"]].map(([v, l]) =>
+      `<button class="chip ${v === one ? "on" : ""}" role="radio" aria-checked="${v === one}" data-act="qlScope" data-v="${v ? 1 : 0}">${esc(l)}</button>`).join("")}</div>` : "";
+    const rows = c.links.map((l, i) => `<div class="pal-it${l === cur ? " on" : ""}" data-act="qlPick" data-i="${i}" style="--i:${i}"><kbd>${i + 1}</kbd><span>${esc(l[0])}</span><span class="sp"></span><span class="dim">${l === cur ? "in use" : esc(hostOf(l[1]))}</span></div>`).join("");
+    const back = one && it.quick ? `<div class="pal-it" data-act="qlPick" data-i="-1" style="--i:${c.links.length}"><kbd>0</kbd><span>Follow the class again</span><span class="sp"></span><span class="dim">${esc(c.links[0][0])}</span></div>` : "";
+    const kept = one ? 0 : S.items.filter((x) => !x.deleted && x.course === c.id && x.quick && x !== it).length;
+    const add = `<label class="fbox lnk ql-add">${ic("links")}<input id="qlIn" class="finput" placeholder="Paste another ${esc(c.code)} link (WeBWorK, a class site) · Enter" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Add a ${esc(c.code)} link and use it"></label>`;
+    openOv("qlink", dialog("Quick link · " + esc(c.code), "1–" + c.links.length + " · Esc", scope + `<div class="pal-res stag">${rows}${back}</div>` + add +
+      (kept ? `<div class="dim ql-note">${kept} ${kept === 1 ? "item keeps the link" : "items keep the links"} picked for ${kept === 1 ? "it" : "them"} alone.</div>` : ""), "sm"));
+    if (c.links.length < 2) MO.after(() => { const f = $("#qlIn"); if (f) f.focus(); });
+  }
+  // a pasted link joins the class's links and becomes the quick link (for the class, or just this one)
+  function qlAdd(v) {
+    const f = S.qlFor || {}, it = f.id ? find(f.id) : null, c = cById(f.c), u = String(v || "").trim();
+    if (!c) return;
+    if (!/^https?:\/\/\S+$/i.test(u)) return toast("Paste the full https:// address of the page");
+    let l = c.links.find((x) => x[1] === u);
+    if (!l) { l = [E.linkLabel(u), u]; c.links.push(l); CA.store.saveCourse(c).catch((e) => toast("Not saved · " + esc(String(e)))); }
+    closeOv(); qlSet(it, c, l, !!(it && S.qlOne));
+  }
+  function qlPick(i) {
+    const f = S.qlFor || {}, it = f.id ? find(f.id) : null, c = cById(f.c), one = !!(it && S.qlOne), l = c && (i < 0 ? null : c.links[i]);
+    if (!c || (!l && !(one && i === -1))) return;
+    closeOv(); qlSet(it, c, l, one);
+  }
+  // one: just this item (l null, or the class's own link: it follows the class again); else the class, and this item follows it
+  function qlSet(it, c, l, one) {
+    if (one) {
+      const v = l && l !== c.links[0] ? l[1] : null; if ((it.quick || null) === v) return;
+      editStep(it, { quick: v }, "quick link");
+      toast(v ? `${esc(it.title)} opens ${esc(l[0])} · just this one` : `${esc(it.title)} follows ${esc(c.code)} again · ${esc(c.links[0][0])}`, { undo: true });
+    } else {
+      const was = c.links.slice(), at = c.links.indexOf(l), mine = it && it.quick;
+      if (at < 0) return;
+      if (at === 0 && !mine) return toast(`${esc(c.code)} work opens ${esc(l[0])}`);
+      if (at > 0) { c.links.splice(at, 1); c.links.unshift(l); CA.store.saveCourse(c).catch((e) => toast("Not saved · " + esc(String(e)))); }
+      if (mine) edit(it, { quick: null });
+      toast(`${esc(c.code)} work opens ${esc(l[0])}`, { actions: [["Undo", () => {
+        c.links = was; CA.store.saveCourse(c).catch(() => {}); if (mine && find(it.id)) edit(it, { quick: mine });
+        CA.sound.tick(); S.fx = { flip: true }; renderAll();
+      }]] });
+    }
+    CA.sound.click(); S.fx = { flip: true }; renderAll();
+  }
+  // right-click a course key: open it, use another of the class's links for all its work, or pick one for this item alone
+  function qlinkMenu(it) {
+    const c = courseOf(it), cur = qLink(it, c);
+    return { hub: "Link", opts: [["ext", "Open", () => openLink(cur[1])], ...c.links.filter((l) => l !== cur).slice(0, 4).map((l) => ["swap", "Use " + l[0], () => qlSet(it, c, l, false)]),
+      c.links.length > 1 && ["edit", "Just this one…", () => { S.qlOne = true; openQLink(it.id, null, true); }], it.quick && ["close", "Follow class", () => qlSet(it, c, null, true)],
+      ["plus", "Add link…", () => openQLink(it.id)]] };
   }
 
   // Duplicates: two sources naming one class ("CS 130A" from Gradescope, "CMPSC 130A" from Canvas), or the same
@@ -3154,6 +3229,8 @@
     if (tab) return tabMenu(tab.dataset.v);
     const cl = t.closest('[data-act="goClass"][data-c], .ccard[data-c]'), c = cl && cById(cl.dataset.c);
     if (c) return classMenu(c);
+    const qk = t.closest("[data-qlink]"), qi = qk && find(qk.dataset.qlink);
+    if (qi && courseOf(qi)) return qlinkMenu(qi);
     const own = t.closest("[data-id]"), it = (own && find(own.dataset.id)) || (t.closest("#insp") && S.sel && find(S.sel));
     if (it) return itemMenu(it);
     if (S.lens === "week" && t.closest("#list")) {
@@ -3184,7 +3261,7 @@
     const l = c.links[0], cal = "c:" + c.id + ":cal";
     return { hub: "Class", opts: [["go", "Open", () => goClass(c.id)], c.included && ["plus", "Add work", () => quickWith("  " + c.tag)], ["notes", "New note", () => newNote(null, c)],
       (S.side || sideTree()).map.has(cal) && ["week", "Calendar", () => sideGo(cal)], l && ["ext", l[0], () => openLink(l[1])],
-      ["edit", "Edit class", () => openCourse(c.id)], ["trash", "Delete", () => openCourseDel(c.id)]] };
+      l && ["swap", "Swap link…", () => openQLink(null, c.id)], ["edit", "Edit class", () => openCourse(c.id)], ["trash", "Delete", () => openCourseDel(c.id)]] };
   }
   function seriesMenu(id) {
     const s = S.calendarSeries.find((z) => z.id === id); if (!s) return homeMenu();
@@ -3345,6 +3422,7 @@
     feedOff: (el) => CA.store.invoke("set_feed", { adapter: el.dataset.s, url: null }).then((st) => { S.settings = st; toast("Disconnected · its items stay"); openFeeds(); renderAll(); }).catch((e) => toast(esc(String(e)))),
     tpl: (el) => { const inp = $("#qaIn"); qaEdClose(); S.qaOver.kind = null; inp.value = TPL[+el.dataset.i][1]; inp.focus(); const k = inp.value.indexOf("  "); inp.setSelectionRange(k + 1, k + 1); updateQuick(); },
     palRun: (el) => runPalette(+el.dataset.i), snoozePick: (el) => snoozePick(+el.dataset.i),
+    qlSwap: (el) => openQLink(el.dataset.id), qlScope: (el) => { S.qlOne = el.dataset.v === "1"; openQLink(S.qlFor.id, S.qlFor.c, true); }, qlPick: (el) => qlPick(+el.dataset.i),
     trashRestore: (el) => trashRestore([el.dataset.id]), trashEmpty, trash: openTrash,
     fsMin: (el) => { S.fsetup.min = +el.dataset.v; $("#fsBody").innerHTML = S.fsetupBody(); }, fsLvl: (el) => { S.fsetup.level = el.dataset.v; $("#fsBody").innerHTML = S.fsetupBody(); },
     fsGo: () => S.fsetup.id && startFocus(S.fsetup.id, S.fsetup.min, S.fsetup.level), focusSetup: () => openFocusSetup(), focusTop,
@@ -3683,6 +3761,8 @@
       if (mod && lk === "s") { e.preventDefault(); if (S.note && S.note.ed) S.note.ed.flush(); const st = $("#nsSt"); if (st) { st.textContent = "Saved"; MO.ack(st, "flash"); } return; }
       if (t.id === "nsTitle" && (k === "Enter" || k === "ArrowDown")) { e.preventDefault(); return S.note && S.note.ed.focus(false); }
       if (t.id === "nsLink" && k === "Enter") { e.preventDefault(); return noteLinkEnd(true); }
+      // while a note is open, undo walks the note's own history (editor.js), wherever the focus is but a field
+      if (mod && !inField && (lk === "z" || lk === "y") && S.note && S.note.ed && !S.note.draw) { e.preventDefault(); return lk === "y" || e.shiftKey ? S.note.ed.redo() : S.note.ed.undo(); }
     }
     if (mod && lk === "j" && !e.shiftKey) { e.preventDefault(); return openAI(S.overlay === "note" && S.note ? { note: S.note.id } : null); }
     if (S.overlay === "quick" && k === "Tab" && (t.id === "qaIn" || t.id === "qaTx")) { e.preventDefault(); const i = QMODES.findIndex(([v]) => v === S.qaMode); return switchMode(QMODES[(i + (e.shiftKey ? 2 : 1)) % 3][0]); }
@@ -3714,6 +3794,7 @@
       return;
     }
     if (t.id === "isIn" && k === "Enter") { e.preventDefault(); const v = t.value; t.value = ""; t.blur(); addFromText(v); renderAll(); return; }
+    if (t.id === "qlIn" && k === "Enter") { e.preventDefault(); return qlAdd(t.value); }
     if (t.id === "lnkIn" && k === "Enter") {
       e.preventDefault(); const it = find(S.sel), urls = E.linksIn(t.value, true);
       if (!it || !t.value.trim()) return;
@@ -3726,6 +3807,7 @@
       return;
     }
     if (S.overlay === "snooze" && /^[1-9]$/.test(k)) { e.preventDefault(); return snoozePick(+k - 1); }
+    if (S.overlay === "qlink" && /^[0-9]$/.test(k) && !mod && !inField) { e.preventDefault(); return qlPick(+k - 1); }
     if (S.overlay === "notetpl" && /^[1-9]$/.test(k)) { const tp = NT().TEMPLATES[+k - 1]; e.preventDefault(); if (tp) { closeOv(); newNote(tp); } return; }
     if (S.overlay === "trash" && /^[1-9]$/.test(k) && !inField && !mod) { const m = S.trash && S.trash.entries[+k - 1]; e.preventDefault(); return m && trashRestore([m.id]); }
     if (S.overlay === "fsetup" && k === "Enter") { e.preventDefault(); return ACTIONS.fsGo(); }

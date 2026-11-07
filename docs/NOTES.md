@@ -32,7 +32,7 @@ The editor is a sheet over the screen with the page centred. The title is the no
 
 | group | tools |
 |---|---|
-| edit | Undo `Mod+Z`, Redo `Mod+Shift+Z` (the editor's own typing history) |
+| edit | Undo `Mod+Z`, Redo `Mod+Shift+Z` or `Mod+Y` (the note's own history; see below) |
 | block | Text `Mod+Alt+0`, Heading 1–3 `Mod+Alt+1`–`3` |
 | inline | Bold `Mod+B`, Italic `Mod+I`, Underline `Mod+U`, Strikethrough `Mod+Shift+X`, Highlight `Mod+Shift+H`, Inline code `Mod+E`, Link `Mod+K` |
 | list | Bulleted `Mod+Shift+8`, Numbered `Mod+Shift+7`, Checklist `Mod+Shift+9`, Indent `Tab`, Outdent `Shift+Tab` |
@@ -41,7 +41,25 @@ The editor is a sheet over the screen with the page centred. The title is the no
 **Markdown as you type.**
 
 - At the start of a line, these become their block: `#`, `##` and `###` headings, `- ` bullets, `1. ` numbers, `[] ` checklists, `> ` quotes, ```` ``` ```` code blocks and `---` dividers.
-- These format when their closing mark is typed: `**bold**`, `*italic*`, `~~strike~~`, `==highlight==` and `` `code` ``.
+- These format when their closing mark is typed: `**bold**`, `*italic*`, `~~strike~~`, `==highlight==` and `` `code` ``; what you type next comes out plain.
+- Undo right after one brings back the characters you typed.
+
+**What you see is what's saved.** Every change that reshapes a block (a list, a heading, a format, `Enter`, a merge, a paste) draws the blocks it touched again from their Markdown, so the page never shows something that would come back different when you reopen the note. Typing alone is left to the web view. Blank lines between blocks stay while the note is open, but Markdown drops them when it saves.
+
+**Formats.** Bold, italic, underline, strikethrough, highlight and inline code toggle over any selection, across lines, list items and table cells: when everything selected already has the format it comes off, otherwise the whole selection gets it. With nothing selected, a format applies to what you type next until the caret moves. Clear formatting takes every format and link off the selection.
+
+**Lists**, like Notion's:
+
+- `Enter` splits an item at the caret, and the items under it move to the new one.
+- `Enter` on an empty item, or `Backspace` at the start of one, takes it out of the list: a nested item moves out a level, a top-level one becomes a paragraph.
+- `Tab` nests an item under the one above it, and `Shift+Tab` moves it out a level. The items under it move with it.
+- The list tools turn the selected lines into that kind of list, or back into text when they all already are. A bullet among checkboxes starts a list of its own, because a list holds only one kind of item.
+
+**Other blocks.** `Backspace` at the start of a heading makes it text, at the start of a quote or callout's first line takes that line out, and after a divider removes the divider. `Enter` on an empty last line leaves a quote, a callout or a code block. Quotes, callouts and table cells hold plain paragraphs, so the heading and list tools refuse there.
+
+**Undo.** Each note keeps its own history for as long as the app runs. Typing is one step per word, and every command is a step of its own. Closing a note keeps its history: opening it again picks up where you left off, and if the note changed meanwhile (an assistant, another device), the first undo goes back to how you left it. With no note open, `Mod+Z` undoes the app's own actions, and closing a note counts as one step there.
+
+**Dragging text.** Pressing inside selected text starts a new selection; text is never dragged away.
 
 **Checklists.**
 
@@ -77,7 +95,7 @@ Seven inks (`1`–`7`: ink, red, orange, yellow, green, blue, purple) and three 
 - a width slider, 5–100% of the text column;
 - **Delete**.
 
-Drag a drawing to move it anywhere in the text. Every change is one step of the editor's undo.
+Drag a drawing to move it anywhere in the text; it moves as you drag. Dropped near the left or right edge of the page, it wraps at the start of that paragraph. Anywhere else, it goes where you let go, on a line of its own (or in the line, if it was in the text). Every change is one step of the note's undo.
 
 **Dark themes.** Ink is chosen for paper. A dark theme shows the layer and every drawing inverted, so black ink reads as white and the colours keep their hue; exports and prints keep the paper colours.
 

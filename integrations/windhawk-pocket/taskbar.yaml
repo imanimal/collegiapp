@@ -245,29 +245,49 @@ controlStyles:
       - Opacity@InactiveRunningIndicator=0
       - Opacity@RequestingAttentionRunningIndicator=0
       - Opacity@NoRunningIndicator=0
-  # Notifications (unread counts and app overlay icons): the canvas's badge, on the icon's top-right corner.
-  - target: Grid#IconPanel > Taskbar.Badge#BadgeControl, Taskbar.TaskListLabeledButtonPanel#IconPanel > Taskbar.Badge#BadgeControl, Grid#IconPanel > Image#OverlayIcon, Taskbar.TaskListLabeledButtonPanel#IconPanel > Image#OverlayIcon
+  # Notifications (unread counts and app overlay icons): an indicator light in the key's top-right corner, like Caps
+  # Lock's, inside the key so the button's edge never clips it (Windows' spot, past the icon's corner, put half of it
+  # outside the button). The button centres the light's box, margins included, on a point 9.2 px right of the key's
+  # centre and 14.3 px below the taskbar's top (measured over UI Automation at 125%), whatever its alignment. So a
+  # margin moves the light half its size away from that side: the left margin carries it right and the bottom margin
+  # up. It sits 1.6 px inside the face's top and right edges, and goes up and down with the icon as the key rises and
+  # goes down; on the focused key it moves in from the thicker rim.
+  - target: Grid#IconPanel@CommonStates > Taskbar.Badge#BadgeControl, Taskbar.TaskListLabeledButtonPanel@CommonStates > Taskbar.Badge#BadgeControl, Grid#IconPanel@CommonStates > Image#OverlayIcon, Taskbar.TaskListLabeledButtonPanel@CommonStates > Image#OverlayIcon
     styles:
-      - HorizontalAlignment=Center
-      - VerticalAlignment=Center
-      - Margin=24,0,0,24
       - Canvas.ZIndex=3
-  - target: Grid#IconPanel > Taskbar.Badge#BadgeControl, Taskbar.TaskListLabeledButtonPanel#IconPanel > Taskbar.Badge#BadgeControl
+      - Margin=4.8,0,0,1
+      - Margin@PointerOver=4.8,0,0,2.6
+      - Margin@InactivePointerOver=4.8,0,0,2.6
+      - Margin@MultiWindowPointerOver=4.8,0,0,2.6
+      - Margin@RequestingAttentionPointerOver=4.8,0,0,2.6
+      - Margin@Pressed=4.8,3.8,0,0
+      - Margin@InactivePressed=4.8,3.8,0,0
+      - Margin@MultiWindowPressed=4.8,3.8,0,0
+      - Margin@RequestingAttentionPressed=4.8,3.8,0,0
+      - Margin@ActiveNormal=3.2,1.4,0,0
+      - Margin@ActivePointerOver=3.2,1.4,0,0
+      - Margin@ActivePressed=3.2,3.8,0,0
+      - Margin@MultiWindowActive=3.2,1.4,0,0
+  - target: Grid#IconPanel > Image#OverlayIcon, Taskbar.TaskListLabeledButtonPanel > Image#OverlayIcon
     styles:
-      - Height=16
-      - MinWidth=16
+      - Width=12
+      - Height=12
+  - target: Grid#IconPanel > Taskbar.Badge#BadgeControl, Taskbar.TaskListLabeledButtonPanel > Taskbar.Badge#BadgeControl
+    styles:
+      - Height=14
+      - MinWidth=14
   - target: Taskbar.Badge > Grid > Rectangle
     styles:
       - Fill=$Accent
-      - Stroke=$Deck
-      - StrokeThickness=2
-      - RadiusX=5
-      - RadiusY=5
+      - Stroke=$KeyEdge
+      - StrokeThickness=1.6
+      - RadiusX=7
+      - RadiusY=7
   - target: Taskbar.Badge > Grid > TextBlock
     styles:
       - FontFamily=Space Mono
       - FontWeight=Bold
-      - FontSize=10
+      - FontSize=9
       - Foreground=#1B1915
   # The deck's printed model name and speaker grille, left of the tray.
   - target: Grid#SystemTrayFrameGrid, StackPanel#SystemTrayFrameGrid

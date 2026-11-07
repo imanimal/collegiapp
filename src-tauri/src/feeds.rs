@@ -55,6 +55,8 @@ pub struct Feeds {
     /// Google series whose meetings were pruned (un-picked, hidden or read as a copy), so they
     /// come back when the series is a class again. None = from before this was kept.
     pub gcal_pruned: Option<Vec<String>>,
+    /// The same for Google events that are not classes (`ics::GCAL_EVENT`).
+    pub gcal_ev_pruned: Vec<String>,
 }
 
 /// The last Google export, kept in memory so changing the class picks re-imports without a
@@ -197,7 +199,9 @@ pub fn import_canvas(g: &mut AppState, text: &str) -> Result<ImportCounts, Strin
 }
 
 /// Import a Google Calendar export: refreshes the series list, imports the picked series as
-/// classes (sections tagged as such) and removes the classes of series you un-picked.
+/// classes (sections tagged as such) and removes the classes of series you un-picked. Every
+/// other event that isn't a copy or hidden comes in as an `event` (adapter `gcalev`), so a
+/// meeting or appointment you add in Google shows up; one deleted in Google goes with it.
 pub fn import_gcal(g: &mut AppState, text: &str) -> Result<ImportCounts, String> {
     let events = ics::parse_ics(text, &Local).map_err(|e| e.to_string())?;
     let (now, device) = (Utc::now(), g.device_id());
@@ -258,6 +262,36 @@ pub fn import_gcal(g: &mut AppState, text: &str) -> Result<ImportCounts, String>
         &device,
     );
     g.data.feeds.gcal_pruned = Some(pruned);
+    // everything else on the calendar (appointments, meetings, one-offs) comes in as events;
+    // a hidden series, a copy or a class is not one, and an event deleted in Google goes too
+    let mut skip = picks.series.clone();
+    skip.extend(dups);
+    skip.extend(g.data.settings.gcal_hidden.iter().cloned());
+    let events_in =
+        ics::gcal_to_event_items(&events, &skip, &g.data.courses, from, to, &Local, now, &device);
+    let keep = ics::gcal_event_series(&events, &skip);
+    let mut ev_pruned = std::mem::take(&mut g.data.feeds.gcal_ev_pruned);
+    let back = ics::restore_series(
+        &mut g.data.items,
+        ics::GCAL_EVENT,
+        &keep,
+        &mut ev_pruned,
+        now,
+        &device,
+    );
+    let e = merge_imported(&mut g.data.items, events_in, now, &device);
+    n.added += e.added;
+    n.updated += e.updated + back;
+    n.unchanged += e.unchanged;
+    n.removed += ics::prune_series(
+        &mut g.data.items,
+        ics::GCAL_EVENT,
+        &keep,
+        &mut ev_pruned,
+        now,
+        &device,
+    );
+    g.data.feeds.gcal_ev_pruned = ev_pruned;
     Ok(n)
 }
 

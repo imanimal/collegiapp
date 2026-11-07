@@ -39,6 +39,10 @@ The first time Claude uses a tool, Collegiapp comes to the front and asks you to
 | `create_note` | a new note, with a class, tags or a pin if you like |
 | `append_to_note` | adds to the end of a note; nothing already there changes |
 | `update_note` | replaces the text, or retitles, files, tags, pins or archives a note |
+| `search_items` | everything on your list but notes (tasks, assignments, exams, classes, calendar events): words plus `kind:event`, `due:today`, `due<=week`, `course:130a`, `status:todo` |
+| `read_item` | one item in full, with its notes and links |
+| `add_item` | an event or task with exact times (`due` is the start of an event, `end` its finish) |
+| `update_item` | reschedules, renames, files, tags, finishes (`status: done`) or deletes an item |
 | `list_classes` | your classes, with the codes and aliases `class` takes |
 | `add_tasks` | tasks in the quick-add grammar (`pa3 130a fri 11:59p ~4h !!`) |
 
@@ -47,7 +51,7 @@ The server tells Claude the rules of Collegiapp Markdown (`docs/NOTES.md`), the 
 ## Safety
 
 - **Only this computer.** The bridge listens on 127.0.0.1, and it takes nothing without a token you allowed. Websites can't reach it.
-- **Nothing is lost.** When Claude replaces a note's text, the old version goes to the trash (Mod+K › Trash), marked "Replaced by Claude". Appending keeps everything there.
+- **Nothing is lost.** When Claude replaces a note's text, changes an item or deletes one, the old version goes to the trash (Mod+K › Trash), marked "Replaced by Claude", "Changed by Claude" or "Deleted by Claude". Appending keeps everything there.
 - **No deleting.** Claude can archive a note but can't delete one.
 - **An open note follows along.** If the note Claude changes is open in the editor, the editor takes the new text, so closing it doesn't put the old text back.
 

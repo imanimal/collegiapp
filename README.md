@@ -1,8 +1,8 @@
 # Collegiapp
 
-**One always-visible "do first" list for getting through UCSB.** Classes from Google Calendar, assignments from Canvas, work from Gradescope/Ed/Piazza, Shoreline events and tickets, and anything you type: one model, ranked, with focus mode and a desktop "live activity" so the next thing is never out of sight. Rust + Tauri 2: a standalone app for Windows and macOS, with the same shell set up for iPhone and Android. $0 to run.
+**One always-visible "do first" list for getting through college.** Classes from Google Calendar, assignments from Canvas, work from Gradescope/Ed/Piazza, Shoreline events and tickets, and anything you type: one model, ranked, with focus mode and a desktop "live activity" so the next thing is never out of sight. Rust + Tauri 2: a standalone app for Windows and macOS, with the same shell set up for iPhone and Android. $0 to run.
 
-> Status: **M1 local app.** Your items live in the Rust store and survive restarts. Connect the Canvas calendar feed and your Google Calendar's secret iCal address (Classes › Sources, or the command palette), pick which Google series are classes, and the island, alerts and Do first run on your real schedule. The UI's final design is **Pocket** (`CAPP1 L6 P9 B8 F3 T6 G2 M2 D3 C2 …`): a handheld with LCD countdowns, hardware keys and labelled modules, in Light (P9) and Night (P11). Its layouts run from phone width to wide monitors. The other looks are archived in `archive/looks-2026-10/`. The Rust core (model, quick-add parser, filters, ranking, sync merge, ICS, presence) is tested. The Tauri shell has the island window, tray, global hotkey and real focus sessions. Opened in a plain browser, the UI runs on sample data. Next is M2 (OAuth sources, Shoreline, UCSB APIs). See [docs/SPEC.md](docs/SPEC.md).
+> Status: **M1 local app.** Your items live in the Rust store and survive restarts. Connect the Canvas calendar feed and your Google Calendar's secret iCal address (Classes › Sources, or the command palette), pick which Google series are classes, and the island, alerts and Do first run on your real schedule. The UI's final design is **Pocket** (`CAPP1 L6 P9 B8 F3 T6 G2 M2 D3 C2 …`): a handheld with LCD countdowns, hardware keys and labelled modules, in Light (P9) and Night (P11). Its layouts run from phone width to wide monitors. The other looks are archived in `archive/looks-2026-10/`. The Rust core (model, quick-add parser, filters, ranking, sync merge, ICS, presence) is tested. The Tauri shell has the island window, tray, global hotkey and real focus sessions. Opened in a plain browser, the UI runs on sample data. Next is M2 (OAuth sources, Shoreline, campus APIs). See [docs/SPEC.md](docs/SPEC.md).
 
 ## Try the UI in a browser (no Rust needed)
 
@@ -95,7 +95,7 @@ tools/                   serve_ui.py (dev server) · bundle_artifact.py (single-
 
 ## Docs
 
-- [SPEC.md](docs/SPEC.md): the full product spec, data model, integrations, UCSB/CS features and roadmap
+- [SPEC.md](docs/SPEC.md): the full product spec, data model, integrations, campus and CS features and roadmap
 - [DESIGN_RESEARCH.md](docs/DESIGN_RESEARCH.md): the research behind navigation, interruptions and the CRT look
 - [THEME_FORMAT.md](docs/THEME_FORMAT.md): how to write a theme pack
 - [THEMES.md](docs/THEMES.md): the small theme file Collegiapp and PocketCanvas share

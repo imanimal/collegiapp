@@ -626,6 +626,53 @@ pub fn gcal_to_class_items<Tz: TimeZone>(
     .collect()
 }
 
+/// The adapter of Google events that are not classes (an appointment, a dinner, a one-off
+/// meeting). Their own adapter keeps [`prune_series`] and [`mark_sections`] on the classes
+/// (`"gcal"`) from touching them.
+pub const GCAL_EVENT: &str = "gcalev";
+
+/// UIDs of the Google events that become [`GCAL_EVENT`] items: every live event or series
+/// except those in `skip` (picked classes, hidden series, copies).
+pub fn gcal_event_series(events: &[IcsEvent], skip: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for e in events
+        .iter()
+        .filter(|e| e.recurrence_id.is_none() && !e.is_cancelled() && !skip.contains(&e.uid))
+    {
+        if !out.contains(&e.uid) {
+            out.push(e.uid.clone());
+        }
+    }
+    out
+}
+
+/// Google export -> `event` items for everything [`gcal_event_series`] keeps, so a meeting you
+/// put on your calendar shows up even when it is not one of your classes.
+#[allow(clippy::too_many_arguments)]
+pub fn gcal_to_event_items<Tz: TimeZone>(
+    events: &[IcsEvent],
+    skip: &[String],
+    courses: &[Course],
+    from: DateTime<Utc>,
+    to: DateTime<Utc>,
+    tz: &Tz,
+    now: DateTime<Utc>,
+    device: &str,
+) -> Vec<Item> {
+    events_to_items(
+        events,
+        GCAL_EVENT,
+        ItemKind::Event,
+        courses,
+        from,
+        to,
+        tz,
+        now,
+        device,
+        |e| !skip.contains(&e.uid),
+    )
+}
+
 /// Words that make a series title read as a section rather than a lecture ("CS 16 Lab",
 /// "Discussion 0102", "PSTAT 120A Sec"). Trailing digits are ignored ("dis01").
 pub fn looks_like_section(summary: &str) -> bool {
@@ -1128,6 +1175,41 @@ END:VCALENDAR\n";
             party,
             vec![(u("2026-10-31T04:00:00Z"), u("2026-10-31T04:00:00Z"))]
         );
+    }
+
+    #[test]
+    fn gcal_events_are_everything_that_is_not_a_class() {
+        let evs = parse_ics(GCAL, &pdt()).unwrap();
+        let skip = vec!["algo-lecture@google.com".to_string()];
+        let keep = gcal_event_series(&evs, &skip);
+        assert_eq!(
+            keep,
+            vec!["section@google.com", "biweekly@google.com", "party@google.com"]
+        );
+        let items = gcal_to_event_items(
+            &evs,
+            &skip,
+            &[],
+            u("2026-10-01T00:00:00Z"),
+            u("2026-11-02T00:00:00Z"),
+            &pdt(),
+            u("2026-10-26T00:00:00Z"),
+            "dev",
+        );
+        assert!(items
+            .iter()
+            .all(|i| i.kind == ItemKind::Event && i.source.adapter == GCAL_EVENT));
+        assert!(items.iter().any(|i| i.title == "Party"), "the one-off shows");
+        assert!(!items.iter().any(|i| i.title.starts_with("CMPSC")));
+        // a pruned series comes back through the same helpers the classes use
+        let mut live = items;
+        let mut pruned = Vec::new();
+        let now = u("2026-10-27T00:00:00Z");
+        let only = vec!["party@google.com".to_string()];
+        assert!(prune_series(&mut live, GCAL_EVENT, &only, &mut pruned, now, "dev") > 0);
+        assert_eq!(live.iter().filter(|i| !i.deleted).count(), 1);
+        assert!(restore_series(&mut live, GCAL_EVENT, &keep, &mut pruned, now, "dev") > 0);
+        assert!(live.iter().all(|i| !i.deleted));
     }
 
     #[test]

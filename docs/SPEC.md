@@ -4,7 +4,7 @@ v0.1 · 2026-10-31 · Fall 2026 (F26) · status: UI prototype + Rust core
 
 ## 0. The brief, rebuilt
 
-> Build **Collegiapp**, a Rust (Tauri 2) desktop app for a UCSB computer-science student on Windows 11 and macOS, with an iPhone app later. It is **one always-visible "do first" surface** for everything school throws at me: class sessions from Google Calendar, assignments and links from Canvas, work posted on other sites (Gradescope, Ed/Piazza, PrairieLearn …), Shoreline club events and tickets, and anything I type in myself.
+> Build **Collegiapp**, a Rust (Tauri 2) desktop app for a computer-science student on Windows 11 and macOS, with an iPhone app later. It is **one always-visible "do first" surface** for everything school throws at me: class sessions from Google Calendar, assignments and links from Canvas, work posted on other sites (Gradescope, Ed/Piazza, PrairieLearn …), Shoreline club events and tickets, and anything I type in myself.
 >
 > - **One model, many filters.** Every assignment, exam, class, event, errand and idea is an **Item**. "Assignments", "Today", "Exams", "Classes" are saved filters over the same list, never separate screens. Esc clears every filter.
 > - **Always aware.** The next class and the current focus timer live outside the window: a floating island, the Windows taskbar's progress bar and dot, the macOS menu bar, and an optional Zebar status-bar widget on Windows. Alerts fire at the right moment, and they escalate from nudge to alert to full-screen takeover.
@@ -121,21 +121,21 @@ Only actionable kinds are ranked; classes, events and tickets feed **Up Next** i
 
 | source | method | auth | cost | notes |
 |---|---|---|---|---|
-| **Google Calendar** | Calendar API v3, events + incremental sync tokens | OAuth desktop loopback + PKCE; publish the OAuth app "In production" (Testing-mode refresh tokens expire after 7 days) | free | Use a personal Google account if UCSB's Google Workspace blocks third-party apps. Fallback: the calendar's *secret iCal address*. You pick each recurring series' role: lecture, section (discussion, lab) or not a class, and its course when the title doesn't say. Sections are class meetings of the course tagged `section`. |
-| **Canvas (canvas.ucsb.edu)** | REST: courses, assignments, announcements, files; planner items | personal access token (Account › Settings) | free | Fallback: Calendar Feed ICS (no token). Per-course include/exclude; quicklinks pulled from course tabs. |
-| **Gradescope** | the student pages (`/account`, `/courses/<id>`) read with your session; no API exists | sign in once in a Gradescope window inside the app (UCSB SSO works there) | free | This term's courses land in your courses (matched by code, else added with a Gradescope link); assignments become items, checked off when you submit. `src-tauri/src/gradescope.rs`, parsing in the core. |
-| **WeBWorK** | a course's homework list (`/webwork2/<course>/`, WeBWorK 2.18 at UCSB) read with your session; no student API or feed exists | sign in to each course once in a WeBWorK window inside the app (its own username and password) | free | The course lands in your courses (matched by code, else added with a WeBWorK link); open sets become items due at their full-credit date. Read every 20 min to keep the session alive (WeBWorK ends it after 30 idle min); signed out, its items stay until you sign in again. `src-tauri/src/webwork.rs`, parsing in the core. |
+| **Google Calendar** | Calendar API v3, events + incremental sync tokens | OAuth desktop loopback + PKCE; publish the OAuth app "In production" (Testing-mode refresh tokens expire after 7 days) | free | Use a personal Google account if your school's Google Workspace blocks third-party apps. Fallback: the calendar's *secret iCal address*. You pick each recurring series' role: lecture, section (discussion, lab) or not a class, and its course when the title doesn't say. Sections are class meetings of the course tagged `section`. |
+| **Canvas** | REST: courses, assignments, announcements, files; planner items | personal access token (Account › Settings) | free | Fallback: Calendar Feed ICS (no token). Per-course include/exclude; quicklinks pulled from course tabs. |
+| **Gradescope** | the student pages (`/account`, `/courses/<id>`) read with your session; no API exists | sign in once in a Gradescope window inside the app (school SSO works there) | free | This term's courses land in your courses (matched by code, else added with a Gradescope link); assignments become items, checked off when you submit. `src-tauri/src/gradescope.rs`, parsing in the core. |
+| **WeBWorK** | a course's homework list (`/webwork2/<course>/`, WeBWorK 2.18) read with your session; no student API or feed exists | sign in to each course once in a WeBWorK window inside the app (its own username and password) | free | The course lands in your courses (matched by code, else added with a WeBWorK link); open sets become items due at their full-credit date. Read every 20 min to keep the session alive (WeBWorK ends it after 30 idle min); signed out, its items stay until you sign in again. `src-tauri/src/webwork.rs`, parsing in the core. |
 | **Firefox: PocketCanvas** | WebExtension (MV3, `../pocketcanvas`) talking to the app on `127.0.0.1:4747` (`src-tauri/src/bridge.rs`) | pairing code: the extension asks, the app shows the code and you allow it | free | Reads Canvas, WeBWorK and Gradescope with Firefox's own sign-in (Google sign-in works there, unlike the app's sign-in windows) and sends your classes with their priority / ghost / hidden modes and all your work, undated work included, with due dates filled in from WeBWorK and Gradescope. Work it can't call work (nothing to turn in online, not on your Canvas To Do list, not in WeBWorK or Gradescope: grade columns and notices) comes in as Info, in the Inbox for you to sort unless its title reads as a grade. Items keep the feed's and readers' ids, so nothing duplicates. Also captures pages (quick add) and follows the app's focus sessions with site blocking. Import in `crates/collegiapp-core/src/pocketcanvas.rs`. |
 | **Zoom** | none needed | — | free | Detects `zoom.us/j/…` links in event location/description/Canvas; "Join Zoom" opens `zoommtg://`. |
 | **Shoreline** (CampusGroups) | iCal subscription for "My Events" + RSVP list | secret URL | free | Tickets are Items of kind `ticket` with QR/link, door time, location. |
-| **UCSB APIs** (developer.ucsb.edu) | Dining menus/hours, Academic quarter calendar, campus events | free API key | free | Quarter dates drive week numbers, the finals countdown and pass-time reminders. |
+| **Campus APIs** (the school's developer portal) | Dining menus/hours, Academic quarter calendar, campus events | free API key | free | Quarter dates drive week numbers, the finals countdown and pass-time reminders. |
 | **SB MTD** | GTFS + GTFS-realtime | none | free | "Next 11/24X from Storke & El Colegio" in Up Next when you're off campus (later). |
 | **GoGaucho / GOLD** | page capture via the extension, or paste | — | free | Course schedule import; confirm what you use GoGaucho for (open question). |
 | **Gmail** (later) | Gmail API, label `collegiapp` → items | OAuth | free | "Forward to capture" without a server. |
 
 New sites plug in as **adapters** (`fetch → [SourceRecord] → upsert Items`), implemented in Rust when the site has an API or feed, or in the Firefox extension when it doesn't.
 
-## 8. Features tailored to UCSB + CS (beyond the brief)
+## 8. Features tailored to campus life + CS (beyond the brief)
 
 **Quarter rhythm**
 - Week number in the header ("WK 5/10") and a finals countdown, both from the quarter calendar.
@@ -156,7 +156,7 @@ New sites plug in as **adapters** (`fetch → [SourceRecord] → upsert Items`),
 
 **Campus life**
 - Shoreline events and tickets with "leave by" alerts; club meetings as optional classes.
-- Dining: tonight's menu at De La Guerra/Carrillo/Ortega/Portola in the evening Up Next slot (UCSB Dining API).
+- Dining: tonight's menu at De La Guerra/Carrillo/Ortega/Portola in the evening Up Next slot (campus dining API).
 - Library study-room booking link (LibCal), CLAS tutoring, Student Health and CAPS links in Links.
 - MTD bus next-departure when the event is off campus.
 
@@ -202,7 +202,7 @@ Inside the app the UI loads everything with `load_all` and saves edits with `sav
 |---|---|
 | **M0 (done)** | Spec, UI prototype (explored 7 renditions, then finalized Pocket with Light/Night and phone-to-desktop layouts), Rust core (65 tests), Tauri shell with island, tray, focus enforcement, CI; desktop-only parts gated so the shell compiles for iOS/Android |
 | **M1 Local app (done)** | UI ↔ Tauri commands; persistence; Canvas feed + Google secret-iCal import by link (refreshed every 30 min) or .ics file, with courses found from Canvas; class picker; alerts (in-app, system notification, takeover) + island live from the core; real focus sessions |
-| **M2 Sources** | Google OAuth, Canvas token API, Shoreline iCal, UCSB APIs; Zoom detection |
+| **M2 Sources** | Google OAuth, Canvas token API, Shoreline iCal, campus APIs; Zoom detection |
 | **M3 Firefox** | extension: page capture adapters (Ed, GOLD), per-session site blocking, send-page (Gradescope moved into the app, 2026-11) |
 | **M4 Sync** | Firebase Auth + Firestore sync between Windows and Mac, and the web app on Firebase Hosting (built 2026-11, `docs/SYNC.md`); theme packs loaded from disk |
 | **M5 Presence+** | Zebar widget, macOS menu bar polish, weekly review, syllabus import |
@@ -212,8 +212,8 @@ Inside the app the UI loads everything with `load_all` and saves edits with `sav
 
 1. ~~Final look~~: decided, Pocket `CAPP1 L6 P9 B8 F3 T6 G2 M2 D3 C2 s4 g0 f0 n0 a0 v0 mN bN S1`.
 2. GoGaucho: what do you use it for? (Schedule, dining, maps?) That decides capture vs. API.
-3. Does canvas.ucsb.edu let you create a personal access token? If not, we start with the Calendar Feed + extension.
-4. Personal Google account or UCSB Google account for Calendar?
+3. Does your school's Canvas let you create a personal access token? If not, we start with the Calendar Feed + extension.
+4. Personal Google account or school Google account for Calendar?
 5. Custom Windows shell: try Zebar (recommended), or stay stock with island + taskbar?
 6. Default focus level for `F`: Hard (current) or Soft?
 7. Public or private GitHub repo?

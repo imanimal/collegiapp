@@ -386,12 +386,13 @@ mod tests {
     fn accepts_the_ui_item_shape() {
         let js = r#"{"id":"054bfb7b-b27c-44d5-bc72-a9cb2d362e4c","title":"quick","kind":"task","status":"inbox",
             "course_id":null,"due":"2026-11-05T06:59:00.000Z","end":null,"est_minutes":null,"priority":0,"weight_pct":null,
-            "tags":[],"links":[{"label":"x.com","url":"https://x.com"}],"location":null,"notes":"","interrupt":"none",
+            "tags":[],"links":[{"label":"x.com","url":"https://x.com"}],"quick_link":"https://x.edu/ww","location":null,"notes":"","interrupt":"none",
             "source":{"external_id":"event-assignment-4","url":null,"kind":"info","adapter":"canvas"},"snoozed_until":null,
             "created_at":"2026-11-01T07:38:18.573Z","updated_at":"2026-11-01T07:38:18.573Z","updated_by":"","deleted":false}"#;
         let it: Item = serde_json::from_str(js).unwrap();
         assert_eq!(it.title, "quick");
         assert_eq!(it.status, Status::Inbox);
+        assert_eq!(it.quick_link.as_deref(), Some("https://x.edu/ww"));
         // the reader's kind rides along in the source, so a kind you pick stays yours
         assert_eq!(
             (it.source.adapter.as_str(), it.source.kind),

@@ -173,7 +173,8 @@
       }
       const m = RE.li.exec(line), ind = indentOf(line);
       if (m && ind === base) {
-        if (kindOf(m[2], m[3]) === "ol" !== (list.kind === "ol")) break; // a bullet after numbers starts a new list
+        const k = kindOf(m[2], m[3]);
+        if (k === "ol" !== (list.kind === "ol") || (k === "todo") !== (list.kind === "todo")) break; // numbers, bullets and boxes are lists of their own
         let text = m[3], done = null;
         const t = /^\[( |x|X)\]\s?(.*)$/.exec(text);
         if (t && /^[-*+]$/.test(m[2])) { done = t[1] !== " "; text = t[2]; }
@@ -342,6 +343,8 @@
     }
     return runs(el, blocksOf).map((b) => (b.t === "p" ? { t: "p", md: lineStart(b.md) } : b));
   }
+  // the Markdown of some block elements in a row (the editor redraws the blocks you change from it)
+  const fromNodes = (nodes) => fromDOM({ childNodes: nodes });
   function fromDOM(root) { return runs(root, blocksOf).map((b) => (b.t === "p" ? lineStart(b.md) : b.md)).filter((s) => s.trim()).join("\n\n"); }
   function fromHTML(html) {
     const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
@@ -706,6 +709,6 @@ img[data-place=left]{float:left;margin:.2em 1.2em .5em 0}img[data-place=right]{f
   // the first drawing in a note, for its card
   function firstDrawing(md) { const m = /!\[[^\]]*\]\((data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+)\)/.exec(String(md || "")); return m ? m[1] : ""; }
 
-  CA.notes = { parse, inline, toHTML, fromDOM, fromHTML, toText, checklist, outline, stats, preview, titleOf, withoutTitle, TEMPLATES, CALLOUTS, CALLOUT_LABEL, imgHTML, firstDrawing,
+  CA.notes = { parse, inline, toHTML, fromDOM, fromNodes, fromHTML, lineStart, toText, checklist, outline, stats, preview, titleOf, withoutTitle, TEMPLATES, CALLOUTS, CALLOUT_LABEL, imgHTML, firstDrawing,
     files: { name: fileName, md: toMarkdownFile, txt: toTextFile, html: toHTMLFile, docx: toDocx, docxMedia, docHTML, css: DOC_CSS, printCss: PRINT_CSS }, readFile, fromDocx, zip };
 })();
