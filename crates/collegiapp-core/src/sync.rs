@@ -32,12 +32,33 @@ fn precedence(a: &Item, b: &Item) -> Ordering {
         })
 }
 
-/// Pick the winning version of one record (ids are assumed equal).
+/// Pick the winning version of one record (ids are assumed equal). The winner keeps what the
+/// reader last said ([`reader_word`]).
 pub fn merge(local: &Item, remote: &Item) -> Item {
-    if precedence(remote, local) == Ordering::Greater {
-        remote.clone()
+    let (mut won, lost) = if precedence(remote, local) == Ordering::Greater {
+        (remote.clone(), local)
     } else {
-        local.clone()
+        (local.clone(), remote)
+    };
+    reader_word(&mut won, lost);
+    won
+}
+
+/// What the reader last said (`source.kind`, `source.said`) is how a re-import tells your edits
+/// from its own, not an edit itself. A device on an older build (or the phone app) drops the
+/// parts it doesn't know when it saves an item, so the winner takes them from the other version
+/// when it has none, as long as both came from the same place. Otherwise the next re-import
+/// would take an edit made there for the reader's and put the reader's back.
+fn reader_word(won: &mut Item, other: &Item) {
+    let (w, o) = (&mut won.source, &other.source);
+    if w.adapter != o.adapter || w.external_id != o.external_id {
+        return;
+    }
+    if w.kind.is_none() {
+        w.kind = o.kind;
+    }
+    if w.said.is_none() {
+        w.said.clone_from(&o.said);
     }
 }
 
@@ -244,6 +265,48 @@ mod tests {
         assert_eq!(rep.pulled, vec![shared.id, remote_only.id]);
         assert_eq!(rep.to_push, vec![local_only.id, local_newer.id]);
         assert_eq!(merge_sets(&local, &remote).len(), 4);
+    }
+
+    #[test]
+    fn an_older_build_doesnt_lose_the_readers_word() {
+        use crate::model::{merge_imported, stable_id};
+        let mut items = Vec::new();
+        let mut fresh = Item::new("MATH 4B lecture", ItemKind::Class, t0(), "laptop");
+        fresh.id = stable_id("gcal", "uid-2");
+        fresh.source.adapter = "gcal".into();
+        fresh.source.external_id = Some("uid-2".into());
+        merge_imported(&mut items, vec![fresh.clone()], t0(), "laptop");
+        let here = items[0].clone();
+        assert!(here.source.said.is_some());
+
+        // the phone renames it and, on an older build, saves it without the reader's word
+        let mut phone = here.clone();
+        phone.title = "MATH 4B lecture (room change)".into();
+        phone.kind = ItemKind::Exam;
+        (phone.source.kind, phone.source.said) = (None, None);
+        phone.updated_at = t0() + Duration::minutes(5);
+        phone.updated_by = "phone".into();
+        let m = merge(&here, &phone);
+        assert_eq!(m, merge(&phone, &here));
+        assert_eq!(m.title, phone.title);
+        assert_eq!(m.source.said, here.source.said);
+        assert_eq!(m.source.kind, Some(ItemKind::Class));
+
+        // so the next read of the calendar keeps the phone's edits
+        items[0] = m;
+        merge_imported(
+            &mut items,
+            vec![fresh],
+            t0() + Duration::minutes(30),
+            "laptop",
+        );
+        assert_eq!(items[0].title, "MATH 4B lecture (room change)");
+        assert_eq!(items[0].kind, ItemKind::Exam);
+
+        // a different source's word is never borrowed
+        let mut other = phone.clone();
+        other.source.adapter = "manual".into();
+        assert_eq!(merge(&here, &other).source.said, None);
     }
 
     #[test]

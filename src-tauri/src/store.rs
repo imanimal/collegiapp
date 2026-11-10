@@ -260,6 +260,7 @@ impl AppState {
                     if s.views.is_empty() {
                         s.views = default_views();
                     }
+                    collegiapp_core::note_readers_word(&mut s.items);
                     s
                 }
                 Err(e) => {
@@ -387,7 +388,8 @@ mod tests {
         let js = r#"{"id":"054bfb7b-b27c-44d5-bc72-a9cb2d362e4c","title":"quick","kind":"task","status":"inbox",
             "course_id":null,"due":"2026-11-05T06:59:00.000Z","end":null,"est_minutes":null,"priority":0,"weight_pct":null,
             "tags":[],"links":[{"label":"x.com","url":"https://x.com"}],"quick_link":"https://x.edu/ww","location":null,"notes":"","interrupt":"none",
-            "source":{"external_id":"event-assignment-4","url":null,"kind":"info","adapter":"canvas"},"snoozed_until":null,
+            "source":{"external_id":"event-assignment-4","url":null,"kind":"info",
+                "said":{"title":"Quiz 4","due":"2026-11-05T06:59:00Z","end":null,"location":null,"course_id":"math4b"},"adapter":"canvas"},"snoozed_until":null,
             "created_at":"2026-11-01T07:38:18.573Z","updated_at":"2026-11-01T07:38:18.573Z","updated_by":"","deleted":false}"#;
         let it: Item = serde_json::from_str(js).unwrap();
         assert_eq!(it.title, "quick");
@@ -398,6 +400,9 @@ mod tests {
             (it.source.adapter.as_str(), it.source.kind),
             ("canvas", Some(ItemKind::Info))
         );
+        // and so does what it last said for the other fields, so your rename stays yours
+        let said = it.source.said.as_ref().expect("said");
+        assert_eq!((said.title.as_str(), said.due), ("Quiz 4", it.due));
         assert_eq!(it.due.unwrap().to_rfc3339(), "2026-11-05T06:59:00+00:00");
     }
 

@@ -23,8 +23,9 @@ pub mod webwork;
 
 pub use filter::{run_query, Ctx, Filter, FilterTerm};
 pub use model::{
-    default_views, merge_imported, remove_course, stable_id, Course, ImportCounts, InterruptLevel,
-    Item, ItemKind, Lens, Link, Sort, Source, Status, View,
+    default_views, merge_imported, note_readers_word, remove_course, stable_id, Course,
+    ImportCounts, InterruptLevel,
+    Item, ItemKind, Lens, Link, Said, Sort, Source, Status, View,
 };
 pub use presence::{alerts_due, next_up, Presence};
 pub use quickadd::{Draft, Token, TokenKind};

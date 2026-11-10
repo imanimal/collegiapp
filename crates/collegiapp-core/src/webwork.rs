@@ -363,6 +363,7 @@ pub fn to_items(
                 external_id: Some(ext),
                 url: Some(url),
                 kind: None,
+                said: None,
             };
             it
         })

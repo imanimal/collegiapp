@@ -29,6 +29,8 @@ The sample "Welcome" item never syncs.
 
 Each device reads the feeds itself. An imported item has the same id on every device (`stable_id` in the core), so two computers reading the same Canvas feed meet on one document, and checking it off on one checks it off everywhere.
 
+Your edits beat the feeds. Each imported item keeps what its reader last said about the title, times, location, class and kind (`source.said`, `source.kind`). When you change one of those on any device, it no longer matches, so later reads of Google Calendar, Canvas, Gradescope or WeBWorK leave it alone and only update the fields you didn't touch. Put the reader's value back and it follows the feed again. Items saved before this record existed get it when the app loads, from what they hold then. A device on an older build (or the phone app) drops that record when it saves an item, so the merge carries it over from the other version (`sync.rs` `reader_word`). Every computer that reads feeds needs a build with this, or its reads still undo edits.
+
 **A new computer.** Install the app and sign in: your list, notes, look, calendar links and class picks come down, and the new computer starts reading your calendars. Gradescope and WeBWorK keep their sign-ins on each device, so when your list has work from them the app points you at **Connect sources** to sign in there too. A paired browser (PocketCanvas) pairs with each computer's app on its own.
 
 ## PocketCanvas

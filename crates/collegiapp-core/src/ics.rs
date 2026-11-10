@@ -477,6 +477,7 @@ pub fn canvas_feed_to_items<Tz: TimeZone>(
             external_id: Some(ev.uid.clone()),
             url: ev.url.clone(),
             kind: None,
+            said: None,
         };
         if let Some(u) = &ev.url {
             it.links.push(Link {
@@ -524,6 +525,7 @@ pub fn events_to_items<Tz: TimeZone>(
             external_id: Some(ext),
             url: ev.url.clone(),
             kind: None,
+            said: None,
         };
         if let Some(u) = &ev.url {
             it.links.push(Link::from_url(u));

@@ -281,6 +281,7 @@ pub fn import(
             external_id: Some(w.external_id.clone()),
             url: w.url.clone(),
             kind: None,
+            said: None,
         };
         if let Some(u) = &w.url {
             it.links.push(Link {

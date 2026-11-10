@@ -41,7 +41,7 @@ v0.1 · 2026-10-31 · Fall 2026 (F26) · status: UI prototype + Rust core
 | `tags`, `location`, `links[]` (label + url), `notes` | |
 | `interrupt` | `none · nudge · alert · takeover` (scheduled kinds) |
 | `snoozed_until` | hides from Do First until then |
-| `source` | `{ adapter, external_id, url, kind }` e.g. `canvas`, `gcal`, `shoreline`, `gradescope`, `manual`; `kind` is what the reader last said, so a kind you change stays yours on re-import |
+| `source` | `{ adapter, external_id, url, kind, said }` e.g. `canvas`, `gcal`, `shoreline`, `gradescope`, `manual`; `kind` and `said` (title, due, end, location, course) are what the reader last gave it, so a field you change stays yours on re-import |
 
 **Course** — `code` (CMPSC 130A), `tag` (CS130A), `aliases` (130a, cs130a, ds&a), `color`, `included`, meeting pattern, links (Canvas, Gradescope, Piazza/Ed, syllabus, Zoom), optional grade weights.
 

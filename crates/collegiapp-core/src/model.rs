@@ -12,7 +12,7 @@
 //! Canvas work a reader isn't sure about lands as Info in the Inbox for you to sort
 //! ([`canvas_kind`]).
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SubsecRound, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -241,6 +241,10 @@ pub struct Source {
     /// kind differs, you chose it, and re-imports keep yours.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<ItemKind>,
+    /// What the reader last gave the other fields it fills in ([`merge_imported`] keeps it).
+    /// A field that no longer matches is your edit, and re-imports keep it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub said: Option<Said>,
 }
 
 impl Default for Source {
@@ -256,8 +260,46 @@ impl Source {
             external_id: None,
             url: None,
             kind: None,
+            said: None,
         }
     }
+}
+
+/// The fields a reader fills in, as it last gave them ([`Source::said`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct Said {
+    pub title: String,
+    pub due: Option<DateTime<Utc>>,
+    pub end: Option<DateTime<Utc>>,
+    pub location: Option<String>,
+    pub course_id: Option<String>,
+}
+
+impl Said {
+    fn of(it: &Item) -> Said {
+        Said {
+            title: it.title.clone(),
+            due: it.due,
+            end: it.end,
+            location: it.location.clone(),
+            course_id: it.course_id.clone(),
+        }
+    }
+}
+
+/// Times as the UI keeps them (whole milliseconds), so a save from the UI doesn't look like an
+/// edit.
+fn same_time(a: Option<DateTime<Utc>>, b: Option<DateTime<Utc>>) -> bool {
+    a.map(|t| t.trunc_subsecs(3)) == b.map(|t| t.trunc_subsecs(3))
+}
+
+/// Text as the UI keeps it: trimmed, and empty is none.
+fn same_text(a: Option<&str>, b: Option<&str>) -> bool {
+    fn norm(s: Option<&str>) -> Option<&str> {
+        s.map(str::trim).filter(|s| !s.is_empty())
+    }
+    norm(a) == norm(b)
 }
 
 /// The one record type. See module docs.
@@ -374,35 +416,71 @@ impl Item {
         self.updated_by = device.to_string();
     }
 
-    /// Re-import from an external source: take the source-owned fields from `fresh`
-    /// (title, due/end, location, source url, kind, course) while keeping everything the
-    /// user owns (status, priority, estimate, notes, tags, snooze, interrupt, weight).
+    /// Re-import from an external source: take the reader's fields from `fresh` (title,
+    /// due/end, location, source url, kind, course) while keeping everything the user owns
+    /// (status, priority, estimate, notes, tags, snooze, interrupt, weight).
     ///
-    /// The kind is yours once you change it (it no longer matches `source.kind`), and a reader
-    /// that isn't sure (it says Info) doesn't undo another reader's work kind. When a reader
-    /// changes the kind of an item still in the Inbox or to do, the item takes the reader's
-    /// status: unsure work goes to the Inbox for you to sort, sure work comes out of it.
-    /// Returns true if anything changed (and then touches the item).
+    /// A reader's field is yours once you change it: it no longer matches what the reader last
+    /// gave it (`source.said`, `source.kind`), and re-imports keep your version until you put
+    /// the reader's back. An item from before the reader's word was kept takes all of them once.
+    /// A reader that isn't sure (it says Info) doesn't undo another reader's work kind. When a
+    /// reader changes the kind of an item still in the Inbox or to do, the item takes the
+    /// reader's status: unsure work goes to the Inbox for you to sort, sure work comes out of it.
+    /// Returns true if anything you see changed (and then touches the item, so it syncs).
     pub fn refresh_from_source(&mut self, fresh: &Item, now: DateTime<Utc>, device: &str) -> bool {
-        let before = (
-            self.title.clone(),
-            self.due,
-            self.end,
-            self.location.clone(),
-            self.source.clone(),
-            self.kind,
-            self.course_id.clone(),
-            self.status,
-        );
+        let seen = |it: &Item| {
+            let s = &it.source;
+            (
+                (it.title.clone(), it.due, it.end, it.location.clone()),
+                (
+                    s.adapter.clone(),
+                    s.external_id.clone(),
+                    s.url.clone(),
+                    s.kind,
+                ),
+                (it.kind, it.course_id.clone(), it.status),
+            )
+        };
+        let before = seen(self);
         let said = self.source.kind;
         let yours = said.is_some_and(|k| k != self.kind);
         let surer = fresh.kind == ItemKind::Info && said.is_some_and(|k| k != ItemKind::Info);
-        self.title = fresh.title.clone();
-        self.due = fresh.due;
-        self.end = fresh.end;
-        self.location = fresh.location.clone();
+        let last = self.source.said.take();
+        let follows = |same: &dyn Fn(&Said) -> bool| last.as_ref().is_none_or(same);
+        let title = follows(&|s| s.title.trim() == self.title.trim());
+        let due = follows(&|s| same_time(s.due, self.due));
+        let end = follows(&|s| same_time(s.end, self.end));
+        let location = follows(&|s| same_text(s.location.as_deref(), self.location.as_deref()));
+        let course = follows(&|s| same_text(s.course_id.as_deref(), self.course_id.as_deref()));
+        // a reader with no course for it leaves the course where it was
+        let said_course = if fresh.course_id.is_some() {
+            fresh.course_id.clone()
+        } else if let Some(s) = &last {
+            s.course_id.clone()
+        } else {
+            self.course_id.clone()
+        };
+        if title {
+            self.title = fresh.title.clone();
+        }
+        if due {
+            self.due = fresh.due;
+        }
+        if end {
+            self.end = fresh.end;
+        }
+        if location {
+            self.location = fresh.location.clone();
+        }
+        if course && fresh.course_id.is_some() {
+            self.course_id = fresh.course_id.clone();
+        }
         self.source = Source {
             kind: if surer { said } else { Some(fresh.kind) },
+            said: Some(Said {
+                course_id: said_course,
+                ..Said::of(fresh)
+            }),
             ..fresh.source.clone()
         };
         if !yours && !surer && self.kind != fresh.kind {
@@ -411,25 +489,12 @@ impl Item {
                 self.status = fresh.status;
             }
         }
-        if fresh.course_id.is_some() {
-            self.course_id = fresh.course_id.clone();
-        }
         for l in &fresh.links {
             if !self.links.iter().any(|x| x.url == l.url) {
                 self.links.push(l.clone());
             }
         }
-        let after = (
-            self.title.clone(),
-            self.due,
-            self.end,
-            self.location.clone(),
-            self.source.clone(),
-            self.kind,
-            self.course_id.clone(),
-            self.status,
-        );
-        let changed = before != after;
+        let changed = before != seen(self);
         if changed {
             self.touch(now, device);
         }
@@ -458,6 +523,20 @@ pub fn stable_id(adapter: &str, external_id: &str) -> Uuid {
         .into_uuid()
 }
 
+/// Note the reader's word for imported items saved before it was kept: what they hold now, which
+/// is what the last read gave them. Then an edit made before the next read already counts as
+/// yours. Returns how many it noted.
+pub fn note_readers_word(items: &mut [Item]) -> usize {
+    let mut n = 0;
+    for it in items.iter_mut().filter(|i| {
+        i.source.adapter != "manual" && i.source.external_id.is_some() && i.source.said.is_none()
+    }) {
+        it.source.said = Some(Said::of(it));
+        n += 1;
+    }
+    n
+}
+
 /// What an import did, from [`merge_imported`] (plus series the caller pruned).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImportCounts {
@@ -468,9 +547,9 @@ pub struct ImportCounts {
 }
 
 /// Merge freshly imported items (stable ids, see [`stable_id`]) into `items`: unknown ids are
-/// added, known ones take the source-owned fields and keep the user's
+/// added, known ones take the reader's fields you haven't changed and keep the rest
 /// ([`Item::refresh_from_source`]). An item the user deleted stays deleted. Each item's
-/// `source.kind` records the kind its reader gave it.
+/// `source.kind` and `source.said` record what its reader gave it.
 pub fn merge_imported(
     items: &mut Vec<Item>,
     incoming: Vec<Item>,
@@ -480,6 +559,7 @@ pub fn merge_imported(
     let mut n = ImportCounts::default();
     for mut fresh in incoming {
         fresh.source.kind = Some(fresh.kind);
+        fresh.source.said = Some(Said::of(&fresh));
         match items.iter_mut().find(|i| i.id == fresh.id) {
             Some(existing) => {
                 if existing.refresh_from_source(&fresh, now, device) {
@@ -866,6 +946,119 @@ mod tests {
             items[1].deleted,
             "a re-import must not bring back what you deleted"
         );
+    }
+
+    #[test]
+    fn your_edits_to_an_imported_event_outlast_re_imports() {
+        let now = t("2026-11-10T17:00:00Z");
+        let at = |h: i64| Some(now + chrono::Duration::hours(h));
+        let google = |title: &str, start: i64, place: &str| {
+            let mut it = Item::new(title, ItemKind::Event, now, "dev");
+            it.id = stable_id("gcalev", "uid-1@google.com");
+            it.source.adapter = "gcalev".into();
+            it.source.external_id = Some("uid-1@google.com".into());
+            (it.due, it.end) = (at(start), at(start + 1));
+            it.location = Some(place.into());
+            it.course_id = Some("math4b".into());
+            it
+        };
+        let mut items = Vec::new();
+        merge_imported(&mut items, vec![google("Study", 2, "Library")], now, "dev");
+
+        // you rename it, move it an hour later and put it in no class, as the UI saves it
+        let it = &mut items[0];
+        it.title = "Study with Ana".into();
+        (it.due, it.end) = (at(3), at(4));
+        it.course_id = None;
+        it.touch(now + chrono::Duration::minutes(1), "phone");
+        let mine = items[0].clone();
+
+        // the same event again changes nothing, and doesn't bump the item over your edit
+        let later = now + chrono::Duration::minutes(30);
+        let n = merge_imported(
+            &mut items,
+            vec![google("Study", 2, "Library")],
+            later,
+            "dev",
+        );
+        assert_eq!((n.updated, n.unchanged), (0, 1));
+        assert_eq!(items[0], mine);
+
+        // Google moves the room: that follows, your title, time and class stay
+        let n = merge_imported(
+            &mut items,
+            vec![google("Study", 2, "HSSB 1173")],
+            later,
+            "dev",
+        );
+        assert_eq!(n.updated, 1);
+        let it = &items[0];
+        assert_eq!(it.location.as_deref(), Some("HSSB 1173"));
+        assert_eq!(
+            (it.title.as_str(), it.due, it.end),
+            ("Study with Ana", at(3), at(4))
+        );
+        assert_eq!(it.course_id, None);
+
+        // Google renames it too: yours still wins, and Google's word is noted without a change
+        let n = merge_imported(
+            &mut items,
+            vec![google("Review", 2, "HSSB 1173")],
+            later,
+            "dev",
+        );
+        assert_eq!((n.updated, n.unchanged), (0, 1));
+        assert_eq!(items[0].title, "Study with Ana");
+        assert_eq!(items[0].source.said.as_ref().unwrap().title, "Review");
+
+        // put Google's title back and it follows Google again
+        items[0].title = "Review".into();
+        merge_imported(
+            &mut items,
+            vec![google("Final review", 2, "HSSB 1173")],
+            later,
+            "dev",
+        );
+        assert_eq!(items[0].title, "Final review");
+        assert_eq!(items[0].due, at(3), "the time is still yours");
+    }
+
+    #[test]
+    fn an_item_from_before_the_readers_word_was_kept_takes_it_once() {
+        let now = t("2026-11-10T17:00:00Z");
+        let canvas = |title: &str| {
+            let mut it = Item::new(title, ItemKind::Assignment, now, "dev");
+            it.id = stable_id("canvas", "a1");
+            it.source.adapter = "canvas".into();
+            it
+        };
+        let mut old = canvas("HW 1 (old title)");
+        old.source.kind = Some(ItemKind::Assignment);
+        let mut items = vec![old];
+        merge_imported(&mut items, vec![canvas("HW 1")], now, "dev");
+        assert_eq!(items[0].title, "HW 1");
+        assert_eq!(items[0].source.said.as_ref().unwrap().title, "HW 1");
+        // and from then on an edit is yours
+        items[0].title = "HW 1 (do the bonus)".into();
+        merge_imported(&mut items, vec![canvas("HW 1")], now, "dev");
+        assert_eq!(items[0].title, "HW 1 (do the bonus)");
+    }
+
+    #[test]
+    fn an_edit_right_after_the_update_already_counts() {
+        let now = t("2026-11-10T17:00:00Z");
+        let mut lecture = Item::new("MATH 4B lecture", ItemKind::Class, now, "dev");
+        lecture.id = stable_id("gcal", "uid-3");
+        lecture.source.adapter = "gcal".into();
+        lecture.source.external_id = Some("uid-3".into());
+        let mine = Item::new("groceries", ItemKind::Errand, now, "dev");
+        let mut items = vec![lecture.clone(), mine];
+        // only what a reader brought in
+        assert_eq!(note_readers_word(&mut items), 1);
+        assert_eq!(note_readers_word(&mut items), 0);
+        items[0].title = "MATH 4B lecture (in HSSB today)".into();
+        merge_imported(&mut items, vec![lecture], now, "dev");
+        assert_eq!(items[0].title, "MATH 4B lecture (in HSSB today)");
     }
 
     #[test]
