@@ -507,7 +507,7 @@ dependencies = [
 
 [[package]]
 name = "collegiapp"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "brotli",
  "chrono",
@@ -533,7 +533,7 @@ dependencies = [
 
 [[package]]
 name = "collegiapp-core"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "chrono",
  "serde",
